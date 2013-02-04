@@ -1,0 +1,15 @@
+menu "Machine selection"
+
+config MACH
+	bool
+	default n
+
+config MACH_NES
+	bool "nes (Nintendo Entertainment System)"
+	select MACH
+	default y
+	help
+		Enable NES (Nintendo Entertainment System) support
+
+endmenu
+

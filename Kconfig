@@ -1,0 +1,4 @@
+mainmenu "Emux Configuration"
+
+source mach/Kconfig
+
