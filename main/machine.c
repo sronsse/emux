@@ -12,10 +12,15 @@ bool machine_init(char *name)
 		if (!strcmp(name, m->name))
 			machine = m;
 
+	/* Exit if machine has not been found */
 	if (!machine) {
 		fprintf(stderr, "Machine \"%s\" not recognized!\n", name);
 		return false;
 	}
+
+	/* Display machine name and description */
+	fprintf(stdout, "Machine: %s (%s)\n", machine->name,
+		machine->description);
 
 	return machine->init();
 }

@@ -1,23 +1,42 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <cmdline.h>
 #include <config.h>
 #include <machine.h>
 
-static void print_usage(char *program, bool error);
+static void print_usage(bool error);
 
-void print_usage(char *program, bool error)
+void print_usage(bool error)
 {
-	fprintf(error ? stderr : stdout,
-		"Usage: %s -m <machine> -o <options>\n",
-		program);
+	FILE *stream = error ? stderr : stdout;
+
+	fprintf(stream, "Usage: emux [OPTION]...\n");
+	fprintf(stream, "Emulates various machines (consoles, arcades).\n");
+
+	/* Don't print full usage in case of error */
+	if (error) {
+		fprintf(stream, "Try `emux --help' for more information.\n");
+		return;
+	}
+
+	fprintf(stream, "\n");
+	fprintf(stream, "Emux options:\n");
+	fprintf(stream, " -m, --machine=MACH  Selects machine to emulate\n");
+	fprintf(stream, " -h, --help          Display this help and exit\n");
+	fprintf(stream, "\n");
+	fprintf(stream, "Valid machines:\n");
+#ifdef CONFIG_MACH_NES
+	fprintf(stream, " nes                 Nintendo Entertainment System\n");
+#endif
+	fprintf(stream, "\n");
+	fprintf(stream, "Report bugs to: sronsse@gmail.com\n");
+	fprintf(stream, "Project page: <https://github.com/sronsse/emux>\n");
 }
 
 int main(int argc, char *argv[])
 {
-	char *machine = NULL;
-	char *options = NULL;
-	int c;
+	char *machine;
 	int i;
 
 	/* Print version and command line */
@@ -27,29 +46,22 @@ int main(int argc, char *argv[])
 		fprintf(stdout, " %s", argv[i]);
 	fprintf(stdout, "\n");
 
-	/* Get machine name and options */
-	while ((c = getopt(argc, argv, "m:o:")) != -1)
-		switch (c) {
-		case 'm':
-			machine = optarg;
-			break;
-		case 'o':
-			options = optarg;
-			break;
-		case '?':
-			print_usage(argv[0], false);
-			return 1;
-		default:
-			print_usage(argv[0], true);
-			return 1;
-		}
+	/* Initialize command line and parse it */
+	cmdline_init(argc, argv);
 
-	/* Validate arguments were passed correctly */
-	if (!machine || !options || (optind != argc)) {
-		print_usage(argv[0], true);
+	/* Check if user requires help */
+	if (cmdline_parse_bool("help", 'h')) {
+		print_usage(false);
+		return 0;
+	}
+
+	/* Checks for machine selection */
+	if (!cmdline_parse_string("machine", 'm', &machine)) {
+		print_usage(true);
 		return 1;
 	}
 
+	/* Initialize machine */
 	if (!machine_init(machine))
 		return 1;
 

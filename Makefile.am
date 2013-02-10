@@ -1,7 +1,7 @@
 bin_PROGRAMS = emux
 emux_CFLAGS = -I$(srcdir)/include
 emux_LDFLAGS = -Tlinker.lds
-emux_SOURCES = main/machine.c main/main.c
+emux_SOURCES = main/cmdline.c main/machine.c main/main.c
 
 # Machines
 if CONFIG_MACH_NES
