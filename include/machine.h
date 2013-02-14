@@ -2,6 +2,7 @@
 #define _MACHINE_H
 
 #include <stdbool.h>
+#include <cpu.h>
 
 #define MACHINE_START(_name, _description) \
 	static struct machine machine_##_name \
@@ -19,6 +20,7 @@ struct machine {
 	char *description;
 	bool (*init)();
 	void (*deinit)();
+	struct cpu_link *cpus;
 };
 
 bool machine_init(char *name);

@@ -2,6 +2,7 @@
 
 bool nes_init()
 {
+	cpu_add("rp2a03");
 	return true;
 }
 
