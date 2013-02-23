@@ -5,7 +5,8 @@ emux_SOURCES = main/cmdline.c \
 	main/controller.c \
 	main/cpu.c \
 	main/machine.c \
-	main/main.c
+	main/main.c \
+	main/memory.c
 
 # Machines
 if CONFIG_MACH_NES
