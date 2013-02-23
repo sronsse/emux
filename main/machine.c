@@ -28,6 +28,7 @@ bool machine_init(char *name)
 void machine_deinit()
 {
 	cpu_remove_all();
+	controller_remove_all();
 	machine->deinit();
 }
 
