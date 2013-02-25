@@ -66,6 +66,10 @@ bool nes_validate_cart()
 
 	/* Copy useful header information into mapper machine data structure */
 	nes_mapper_mach_data.path = cart_path;
+	/* Bits 4-7 of flags 6 contain the mapper number lower nibble */
+	/* Bits 4-7 of flags 7 contain the mapper number upper nibble */
+	nes_mapper_mach_data.number = (cart_header->flags6 >> 4) |
+		(cart_header->flags7 & 0xF0);
 
 	/* Unmap cart header */
 	memory_unmap_file(cart_header, sizeof(struct cart_header));
