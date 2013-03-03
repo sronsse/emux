@@ -1,7 +1,9 @@
+#include <stdbool.h>
 #include <controller.h>
 
-void ppu_init(struct controller *controller)
+bool ppu_init(struct controller *controller)
 {
+	return true;
 }
 
 void ppu_deinit(struct controller *controller)

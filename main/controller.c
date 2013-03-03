@@ -35,9 +35,9 @@ void controller_add(char *name, machine_data_t *mdata)
 	struct controller *c;
 	for (c = &__controllers_begin; c < &__controllers_end; c++)
 		if (!strcmp(name, c->name)) {
-			controller_insert(c);
 			c->mdata = mdata;
-			c->init(c);
+			if (c->init(c))
+				controller_insert(c);
 			return;
 		}
 

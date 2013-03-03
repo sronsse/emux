@@ -15,7 +15,7 @@
 
 struct cpu {
 	char *name;
-	void (*init)();
+	bool (*init)();
 	void (*deinit)();
 };
 

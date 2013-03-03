@@ -35,8 +35,8 @@ void cpu_add(char *name)
 	struct cpu *cpu;
 	for (cpu = &__cpus_begin; cpu < &__cpus_end; cpu++)
 		if (!strcmp(name, cpu->name)) {
-			cpu_insert(cpu);
-			cpu->init();
+			if (cpu->init())
+				cpu_insert(cpu);
 			return;
 		}
 

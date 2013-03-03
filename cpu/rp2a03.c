@@ -1,9 +1,9 @@
-#include <stdint.h>
-#include <stdio.h>
+#include <stdbool.h>
 #include <cpu.h>
 
-void rp2a03_init()
+bool rp2a03_init()
 {
+	return true;
 }
 
 void rp2a03_deinit()

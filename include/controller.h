@@ -18,7 +18,7 @@ typedef void controller_data_t;
 
 struct controller {
 	char *name;
-	void (*init)(struct controller *controller);
+	bool (*init)(struct controller *controller);
 	void (*deinit)(struct controller *controller);
 	machine_data_t *mdata;
 	controller_data_t *cdata;

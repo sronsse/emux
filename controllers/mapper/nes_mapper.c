@@ -22,7 +22,7 @@ static char *mappers[] = {
 	"mmc1",		/* Mapper 1: MMC1 - PRG/32K/16K, VROM/8K/4K, NT */
 };
 
-void nes_mapper_init(struct controller *controller)
+bool nes_mapper_init(struct controller *controller)
 {
 	struct nes_mapper_mach_data *mdata = controller->mdata;
 	struct cart_header *cart_header;
@@ -34,14 +34,14 @@ void nes_mapper_init(struct controller *controller)
 	if (!cart_header) {
 		fprintf(stderr, "Could not map header from \"%s\"!\n",
 			mdata->path);
-		return;
+		return false;
 	}
 
 	/* Validate header */
 	if (cart_header->ines_constant != INES_CONSTANT) {
 		fprintf(stderr, "Cart header does not have valid format!\n");
 		memory_unmap_file(cart_header, sizeof(struct cart_header));
-		return;
+		return false;
 	}
 
 	/* Print header info */
@@ -63,11 +63,12 @@ void nes_mapper_init(struct controller *controller)
 	/* Check if mapper is supported */
 	if ((number >= ARRAY_SIZE(mappers)) || !mappers[number]) {
 		fprintf(stderr, "Mapper %u is not supported!\n", number);
-		return;
+		return false;
 	}
 
 	/* Mapper is supported */
 	fprintf(stdout, "Mapper %u (%s) detected.\n", number, mappers[number]);
+	return true;
 }
 
 void nes_mapper_deinit(struct controller *controller)
