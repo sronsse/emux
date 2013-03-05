@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <cpu.h>
 #include <controller.h>
+#include <memory.h>
 
 #define MACHINE_START(_name, _description) \
 	static struct machine machine_##_name \
@@ -23,6 +24,7 @@ struct machine {
 	void (*deinit)();
 	struct cpu_link *cpus;
 	struct controller_link *controllers;
+	struct region_link *regions;
 };
 
 bool machine_init(char *name);
