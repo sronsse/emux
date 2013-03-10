@@ -23,7 +23,9 @@ bool machine_init(char *name)
 	fprintf(stdout, "Machine: %s (%s)\n", machine->name,
 		machine->description);
 
-	return machine->init();
+	if (machine->init)
+		return machine->init();
+	return true;
 }
 
 void machine_deinit()
@@ -31,6 +33,7 @@ void machine_deinit()
 	cpu_remove_all();
 	controller_remove_all();
 	memory_region_remove_all();
-	machine->deinit();
+	if (machine->deinit)
+		machine->deinit();
 }
 

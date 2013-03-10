@@ -62,12 +62,7 @@ bool nes_mapper_init(struct controller *controller)
 	return true;
 }
 
-void nes_mapper_deinit(struct controller *UNUSED(controller))
-{
-}
-
 CONTROLLER_START(nes_mapper)
-	.init = nes_mapper_init,
-	.deinit = nes_mapper_deinit
+	.init = nes_mapper_init
 CONTROLLER_END
 

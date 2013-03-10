@@ -37,7 +37,7 @@ void controller_add(char *name, machine_data_t *mdata)
 	for (c = &__controllers_begin; c < &__controllers_end; c++)
 		if (!strcmp(name, c->name)) {
 			c->mdata = mdata;
-			if (c->init(c))
+			if ((c->init && c->init(c)) || !c->init)
 				controller_insert(c);
 			return;
 		}
@@ -51,7 +51,8 @@ void controller_remove_all()
 	struct controller_link *link;
 	while (machine->controllers) {
 		link = machine->controllers;
-		link->controller->deinit(link->controller);
+		if (link->controller->deinit)
+			link->controller->deinit(link->controller);
 		machine->controllers = machine->controllers->next;
 		free(link);
 	}
