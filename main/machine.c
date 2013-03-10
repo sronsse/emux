@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <machine.h>
 
 extern struct machine __machines_begin, __machines_end;

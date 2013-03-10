@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <resource.h>
 
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 #define KB(x) (x * 1024)
 
 struct region;

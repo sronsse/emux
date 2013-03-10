@@ -1,9 +1,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cmdline.h>
 #include <machine.h>
 #include <memory.h>
 #include <resource.h>
+#include <util.h>
 #include <controllers/mapper/nes_mapper.h>
 
 #define WORK_RAM_START			0x0000
@@ -113,6 +115,7 @@ bool nes_init()
 	/* Get cart option */
 	if (!cmdline_parse_string("cart", 'c', &nes_mapper_mach_data.path)) {
 		fprintf(stderr, "Please provide a cart option!\n");
+		nes_print_usage();
 		return false;
 	}
 

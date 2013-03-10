@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <string.h>
 #include <resource.h>
 
 struct resource *resource_get(char *name, enum resource_type type,

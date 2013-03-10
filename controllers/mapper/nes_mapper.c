@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <controller.h>
 #include <memory.h>
+#include <util.h>
 #include <controllers/mapper/nes_mapper.h>
 
 #define INES_CONSTANT 0x1A53454E
@@ -61,7 +62,7 @@ bool nes_mapper_init(struct controller *controller)
 	return true;
 }
 
-void nes_mapper_deinit(struct controller *controller)
+void nes_mapper_deinit(struct controller *UNUSED(controller))
 {
 }
 

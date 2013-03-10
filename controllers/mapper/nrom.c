@@ -9,8 +9,6 @@ static void prg_rom_map(struct controller *controller);
 static void prg_rom_unmap(struct controller *controller);
 static uint8_t prg_rom_readb(struct region *region, uint16_t address);
 static uint16_t prg_rom_readw(struct region *region, uint16_t address);
-static void prg_rom_writeb(struct region *region, uint8_t b, uint16_t address);
-static void prg_rom_writew(struct region *region, uint16_t w, uint16_t address);
 
 struct prg_rom_data {
 	uint8_t *mem;

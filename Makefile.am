@@ -1,5 +1,5 @@
 bin_PROGRAMS = emux
-emux_CFLAGS = -I$(srcdir)/include
+emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror
 emux_LDFLAGS = -Tlinker.lds
 emux_SOURCES = main/cmdline.c \
 	main/controller.c \

@@ -91,7 +91,7 @@ uint8_t memory_readb(uint16_t address)
 	struct region *region;
 	uint16_t a = address;
 
-	while (region = memory_find_region(&regions, &a)) {
+	while ((region = memory_find_region(&regions, &a))) {
 		if (region->mops->readb)
 			return region->mops->readb(region, a);
 		a = address;
@@ -105,7 +105,7 @@ uint16_t memory_readw(uint16_t address)
 	struct region *region;
 	uint16_t a = address;
 
-	while (region = memory_find_region(&regions, &a)) {
+	while ((region = memory_find_region(&regions, &a))) {
 		if (region->mops->readw)
 			return region->mops->readw(region, a);
 		a = address;
@@ -119,7 +119,7 @@ void memory_writeb(uint8_t b, uint16_t address)
 	struct region *region;
 	uint16_t a = address;
 
-	while (region = memory_find_region(&regions, &a)) {
+	while ((region = memory_find_region(&regions, &a))) {
 		if (region->mops->writeb)
 			region->mops->writeb(region, b, a);
 		a = address;
@@ -132,7 +132,7 @@ void memory_writew(uint16_t w, uint16_t address)
 	struct region *region;
 	uint16_t a = address;
 
-	while (region = memory_find_region(&regions, &a)) {
+	while ((region = memory_find_region(&regions, &a))) {
 		if (region->mops->writew)
 			region->mops->writew(region, w, a);
 		a = address;

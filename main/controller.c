@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <machine.h>
 
 static void controller_insert(struct controller *controller);
