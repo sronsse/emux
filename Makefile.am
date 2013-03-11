@@ -10,6 +10,7 @@ emux_SOURCES = main/cmdline.c \
 	main/resource.c
 
 # Machines
+emux_SOURCES += mach/chip8.c
 if CONFIG_MACH_NES
 emux_SOURCES += mach/nes.c
 endif
