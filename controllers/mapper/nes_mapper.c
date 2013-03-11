@@ -7,6 +7,8 @@
 
 #define INES_CONSTANT 0x1A53454E
 
+static bool nes_mapper_init(struct controller *controller);
+
 static char *mappers[] = {
 	"nrom"		/* No Mapper (or unknown mapper) */
 };

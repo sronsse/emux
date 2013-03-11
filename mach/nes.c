@@ -19,6 +19,8 @@
 #define CART_PRG_ROM_AREA_START		0x8000
 #define CART_PRG_ROM_AREA_END		0xFFFF
 
+static bool nes_init();
+static void nes_deinit();
 static void nes_print_usage();
 static uint8_t wram_readb(struct region *region, uint16_t address);
 static uint16_t wram_readw(struct region *region, uint16_t address);

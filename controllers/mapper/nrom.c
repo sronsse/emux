@@ -5,6 +5,8 @@
 
 #define PRG_ROM_OFFSET 0x0010
 
+static bool nrom_init(struct controller *controller);
+static void nrom_deinit(struct controller *controller);
 static void prg_rom_map(struct controller *controller);
 static void prg_rom_unmap(struct controller *controller);
 static uint8_t prg_rom_readb(struct region *region, uint16_t address);
