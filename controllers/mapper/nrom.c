@@ -9,8 +9,8 @@ static bool nrom_init(struct controller *controller);
 static void nrom_deinit(struct controller *controller);
 static void prg_rom_map(struct controller *controller);
 static void prg_rom_unmap(struct controller *controller);
-static uint8_t prg_rom_readb(struct region *region, uint16_t address);
-static uint16_t prg_rom_readw(struct region *region, uint16_t address);
+static uint8_t prg_rom_readb(region_data_t *data, uint16_t address);
+static uint16_t prg_rom_readw(region_data_t *data, uint16_t address);
 
 struct prg_rom_data {
 	uint8_t *mem;
@@ -26,27 +26,27 @@ static struct mops prg_rom_mops = {
 	.readw = prg_rom_readw
 };
 
-uint8_t prg_rom_readb(struct region *region, uint16_t address)
+uint8_t prg_rom_readb(region_data_t *data, uint16_t address)
 {
-	struct prg_rom_data *data = region->data;
+	struct prg_rom_data *prg_rom_data = data;
 	uint8_t *mem;
 
 	/* Handle NROM-128 mirroring */
-	address %= data->size;
+	address %= prg_rom_data->size;
 
-	mem = data->mem + address;
+	mem = prg_rom_data->mem + address;
 	return *mem;
 }
 
-uint16_t prg_rom_readw(struct region *region, uint16_t address)
+uint16_t prg_rom_readw(region_data_t *data, uint16_t address)
 {
-	struct prg_rom_data *data = region->data;
+	struct prg_rom_data *prg_rom_data = data;
 	uint8_t *mem;
 
 	/* Handle NROM-128 mirroring */
-	address %= data->size;
+	address %= prg_rom_data->size;
 
-	mem = data->mem + address;
+	mem = prg_rom_data->mem + address;
 	return (*(mem + 1) << 8) | *mem;
 }
 
@@ -67,7 +67,8 @@ void prg_rom_map(struct controller *controller)
 		mdata->num_resources);
 
 	/* Map header and compute PRG ROM size */
-	cart_header = memory_map_file(mdata->path, 0, sizeof(struct cart_header));
+	cart_header = memory_map_file(mdata->path, 0,
+		sizeof(struct cart_header));
 	prg_rom_size = cart_header->prg_rom_size * KB(16);
 	memory_unmap_file(cart_header, sizeof(struct cart_header));
 

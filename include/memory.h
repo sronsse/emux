@@ -6,13 +6,13 @@
 
 #define KB(x) (x * 1024)
 
-struct region;
+typedef void region_data_t;
 
 struct mops {
-	uint8_t (*readb)(struct region *region, uint16_t address);
-	uint16_t (*readw)(struct region *region, uint16_t address);
-	void (*writeb)(struct region *region, uint8_t b, uint16_t address);
-	void (*writew)(struct region *region, uint16_t w, uint16_t address);
+	uint8_t (*readb)(region_data_t *data, uint16_t address);
+	uint16_t (*readw)(region_data_t *data, uint16_t address);
+	void (*writeb)(region_data_t *data, uint8_t b, uint16_t address);
+	void (*writew)(region_data_t *data, uint16_t w, uint16_t address);
 };
 
 struct region {
@@ -20,7 +20,7 @@ struct region {
 	struct resource *mirrors;
 	int num_mirrors;
 	struct mops *mops;
-	void *data;
+	region_data_t *data;
 };
 
 struct region_link {

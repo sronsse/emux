@@ -22,10 +22,10 @@
 static bool nes_init();
 static void nes_deinit();
 static void nes_print_usage();
-static uint8_t wram_readb(struct region *region, uint16_t address);
-static uint16_t wram_readw(struct region *region, uint16_t address);
-static void wram_writeb(struct region *region, uint8_t b, uint16_t address);
-static void wram_writew(struct region *region, uint16_t w, uint16_t address);
+static uint8_t wram_readb(region_data_t *data, uint16_t address);
+static uint16_t wram_readw(region_data_t *data, uint16_t address);
+static void wram_writeb(region_data_t *data, uint8_t b, uint16_t address);
+static void wram_writew(region_data_t *data, uint16_t w, uint16_t address);
 
 static struct resource wram_area = {
 	.name = "wram",
@@ -81,27 +81,27 @@ static struct nes_mapper_mach_data nes_mapper_mach_data = {
 	.num_resources = ARRAY_SIZE(nes_mapper_resources)
 };
 
-uint8_t wram_readb(struct region *region, uint16_t address)
+uint8_t wram_readb(region_data_t *data, uint16_t address)
 {
-	uint8_t *mem = (uint8_t *)region->data + address;
+	uint8_t *mem = (uint8_t *)data + address;
 	return *mem;
 }
 
-uint16_t wram_readw(struct region *region, uint16_t address)
+uint16_t wram_readw(region_data_t *data, uint16_t address)
 {
-	uint8_t *mem = (uint8_t *)region->data + address;
+	uint8_t *mem = (uint8_t *)data + address;
 	return (*(mem + 1) << 8) | *mem;
 }
 
-void wram_writeb(struct region *region, uint8_t b, uint16_t address)
+void wram_writeb(region_data_t *data, uint8_t b, uint16_t address)
 {
-	uint8_t *mem = (uint8_t *)region->data + address;
+	uint8_t *mem = (uint8_t *)data + address;
 	*mem = b;
 }
 
-void wram_writew(struct region *region, uint16_t w, uint16_t address)
+void wram_writew(region_data_t *data, uint16_t w, uint16_t address)
 {
-	uint8_t *mem = (uint8_t *)region->data + address;
+	uint8_t *mem = (uint8_t *)data + address;
 	*mem++ = w;
 	*mem = w >> 8;
 }
