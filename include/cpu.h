@@ -13,10 +13,15 @@
 #define CPU_END \
 	};
 
+typedef void cpu_mach_data_t;
+typedef void cpu_priv_data_t;
+
 struct cpu {
 	char *name;
-	bool (*init)();
-	void (*deinit)();
+	bool (*init)(struct cpu *cpu);
+	void (*deinit)(struct cpu *cpu);
+	cpu_mach_data_t *mach_data;
+	cpu_priv_data_t *priv_data;
 };
 
 struct cpu_link {

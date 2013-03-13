@@ -36,7 +36,7 @@ void cpu_add(char *name)
 	struct cpu *cpu;
 	for (cpu = &__cpus_begin; cpu < &__cpus_end; cpu++)
 		if (!strcmp(name, cpu->name)) {
-			if ((cpu->init && cpu->init()) || !cpu->init)
+			if ((cpu->init && cpu->init(cpu)) || !cpu->init)
 				cpu_insert(cpu);
 			return;
 		}
@@ -51,7 +51,7 @@ void cpu_remove_all()
 	while (machine->cpus) {
 		link = machine->cpus;
 		if (link->cpu->deinit)
-			link->cpu->deinit();
+			link->cpu->deinit(link->cpu);
 		machine->cpus = machine->cpus->next;
 		free(link);
 	}

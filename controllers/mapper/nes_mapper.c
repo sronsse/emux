@@ -15,16 +15,16 @@ static char *mappers[] = {
 
 bool nes_mapper_init(struct controller *controller)
 {
-	struct nes_mapper_mach_data *mdata = controller->mdata;
+	struct nes_mapper_mach_data *mach_data = controller->mach_data;
 	struct cart_header *cart_header;
 	uint8_t number;
 
 	/* Map cart header */
-	cart_header = memory_map_file(mdata->path, 0,
+	cart_header = memory_map_file(mach_data->path, 0,
 		sizeof(struct cart_header));
 	if (!cart_header) {
 		fprintf(stderr, "Could not map header from \"%s\"!\n",
-			mdata->path);
+			mach_data->path);
 		return false;
 	}
 
@@ -59,7 +59,7 @@ bool nes_mapper_init(struct controller *controller)
 
 	/* Mapper type is supported, so add actual controller */
 	fprintf(stdout, "Mapper %u (%s) detected.\n", number, mappers[number]);
-	controller_add(mappers[number], controller->mdata);
+	controller_add(mappers[number], controller->mach_data);
 
 	return true;
 }

@@ -31,12 +31,12 @@ void controller_insert(struct controller *controller)
 	tail->next = link;
 }
 
-void controller_add(char *name, machine_data_t *mdata)
+void controller_add(char *name, controller_mach_data_t *mach_data)
 {
 	struct controller *c;
 	for (c = &__controllers_begin; c < &__controllers_end; c++)
 		if (!strcmp(name, c->name)) {
-			c->mdata = mdata;
+			c->mach_data = mach_data;
 			if ((c->init && c->init(c)) || !c->init)
 				controller_insert(c);
 			return;

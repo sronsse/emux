@@ -13,15 +13,15 @@
 #define CONTROLLER_END \
 	};
 
-typedef void machine_data_t;
-typedef void controller_data_t;
+typedef void controller_mach_data_t;
+typedef void controller_priv_data_t;
 
 struct controller {
 	char *name;
 	bool (*init)(struct controller *controller);
 	void (*deinit)(struct controller *controller);
-	machine_data_t *mdata;
-	controller_data_t *cdata;
+	controller_mach_data_t *mach_data;
+	controller_priv_data_t *priv_data;
 };
 
 struct controller_link {
@@ -29,7 +29,7 @@ struct controller_link {
 	struct controller_link *next;
 };
 
-void controller_add(char *name, machine_data_t *mdata);
+void controller_add(char *name, controller_mach_data_t *mach_data);
 void controller_remove_all();
 
 #endif
