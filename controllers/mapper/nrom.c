@@ -5,10 +5,10 @@
 
 #define PRG_ROM_OFFSET 0x0010
 
-static bool nrom_init(struct controller *controller);
-static void nrom_deinit(struct controller *controller);
-static void prg_rom_map(struct controller *controller);
-static void prg_rom_unmap(struct controller *controller);
+static bool nrom_init(struct controller_instance *instance);
+static void nrom_deinit(struct controller_instance *instance);
+static void prg_rom_map(struct controller_instance *instance);
+static void prg_rom_unmap(struct controller_instance *instance);
 static uint8_t prg_rom_readb(region_data_t *data, uint16_t address);
 static uint16_t prg_rom_readw(region_data_t *data, uint16_t address);
 
@@ -50,10 +50,10 @@ uint16_t prg_rom_readw(region_data_t *data, uint16_t address)
 	return (*(mem + 1) << 8) | *mem;
 }
 
-void prg_rom_map(struct controller *controller)
+void prg_rom_map(struct controller_instance *instance)
 {
-	struct nes_mapper_mach_data *mach_data = controller->mach_data;
-	struct nrom_data *priv_data = controller->priv_data;
+	struct nes_mapper_mach_data *mach_data = instance->mach_data;
+	struct nrom_data *priv_data = instance->priv_data;
 	struct prg_rom_data *data;
 	struct region *region = &priv_data->prg_rom_region;
 	struct cart_header *cart_header;
@@ -63,8 +63,8 @@ void prg_rom_map(struct controller *controller)
 	/* Get PRG ROM resource from machine data */
 	res = resource_get("prg_rom",
 		RESOURCE_MEM,
-		mach_data->->resources,
-		mach_data->->num_resources);
+		instance->resources,
+		instance->num_resources);
 
 	/* Map header and compute PRG ROM size */
 	cart_header = memory_map_file(mach_data->path, 0,
@@ -87,25 +87,25 @@ void prg_rom_map(struct controller *controller)
 	memory_region_add(region);
 }
 
-void prg_rom_unmap(struct controller *controller)
+void prg_rom_unmap(struct controller_instance *instance)
 {
-	struct nrom_data *priv_data = controller->priv_data;
+	struct nrom_data *priv_data = instance->priv_data;
 	struct prg_rom_data *data = priv_data->prg_rom_region.data;
 	memory_unmap_file(data->mem, data->size);
 	free(data);
 }
 
-bool nrom_init(struct controller *controller)
+bool nrom_init(struct controller_instance *instance)
 {
-	controller->priv_data = malloc(sizeof(struct nrom_data));
-	prg_rom_map(controller);
+	instance->priv_data = malloc(sizeof(struct nrom_data));
+	prg_rom_map(instance);
 	return true;
 }
 
-void nrom_deinit(struct controller *controller)
+void nrom_deinit(struct controller_instance *instance)
 {
-	prg_rom_unmap(controller);
-	free(controller->priv_data);
+	prg_rom_unmap(instance);
+	free(instance->priv_data);
 }
 
 CONTROLLER_START(nrom)

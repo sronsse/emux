@@ -3,57 +3,59 @@
 #include <string.h>
 #include <machine.h>
 
-static void controller_insert(struct controller *controller);
+static void controller_insert(struct controller_instance *instance);
 
 extern struct controller __controllers_begin, __controllers_end;
 extern struct machine *machine;
 
-void controller_insert(struct controller *controller)
+void controller_insert(struct controller_instance *instance)
 {
-	struct controller_link *link;
-	struct controller_link *tail;
+	struct controller_instance_link *link;
+	struct controller_instance_link *tail;
 
 	/* Create new link */
-	link = malloc(sizeof(struct controller_link));
-	link->controller = controller;
+	link = malloc(sizeof(struct controller_instance_link));
+	link->instance = instance;
 	link->next = NULL;
 
 	/* Set head if needed */
-	if (!machine->controllers) {
-		machine->controllers = link;
+	if (!machine->controller_instances) {
+		machine->controller_instances = link;
 		return;
 	}
 
 	/* Find tail and add link */
-	tail = machine->controllers;
+	tail = machine->controller_instances;
 	while (tail->next)
 		tail = tail->next;
 	tail->next = link;
 }
 
-void controller_add(char *name, controller_mach_data_t *mach_data)
+void controller_add(struct controller_instance *instance)
 {
 	struct controller *c;
 	for (c = &__controllers_begin; c < &__controllers_end; c++)
-		if (!strcmp(name, c->name)) {
-			c->mach_data = mach_data;
-			if ((c->init && c->init(c)) || !c->init)
-				controller_insert(c);
+		if (!strcmp(instance->controller_name, c->name)) {
+			instance->controller = c;
+			if ((c->init && c->init(instance)) || !c->init)
+				controller_insert(instance);
 			return;
 		}
 
 	/* Warn as controller was not found */
-	fprintf(stderr, "Controller \"%s\" not recognized!\n", name);
+	fprintf(stderr, "Controller \"%s\" not recognized!\n",
+		instance->controller_name);
 }
 
 void controller_remove_all()
 {
-	struct controller_link *link;
-	while (machine->controllers) {
-		link = machine->controllers;
-		if (link->controller->deinit)
-			link->controller->deinit(link->controller);
-		machine->controllers = machine->controllers->next;
+	struct controller_instance_link *link;
+	while (machine->controller_instances) {
+		link = machine->controller_instances;
+		if (link->instance->controller->deinit)
+			link->instance->controller->deinit(link->instance);
+		machine->controller_instances =
+			machine->controller_instances->next;
 		free(link);
 	}
 }

@@ -55,20 +55,26 @@ static struct region wram_region = {
 	.mops = &wram_mops
 };
 
+static struct controller_instance ppu_instance = {
+	.controller_name = "ppu"
+};
+
+static struct nes_mapper_mach_data nes_mapper_mach_data;
+
 static struct resource nes_mapper_resources[] = {
-	[0] = {
+	{
 		.name = "expansion",
 		.start = CART_EXPANSION_AREA_START,
 		.end = CART_EXPANSION_AREA_END,
 		.type = RESOURCE_MEM
 	},
-	[1] = {
+	{
 		.name = "sram",
 		.start = CART_SRAM_AREA_START,
 		.end = CART_SRAM_AREA_END,
 		.type = RESOURCE_MEM
 	},
-	[2] = {
+	{
 		.name = "prg_rom",
 		.start = CART_PRG_ROM_AREA_START,
 		.end = CART_PRG_ROM_AREA_END,
@@ -76,9 +82,11 @@ static struct resource nes_mapper_resources[] = {
 	}
 };
 
-static struct nes_mapper_mach_data nes_mapper_mach_data = {
+static struct controller_instance nes_mapper_instance = {
+	.controller_name = "nes_mapper",
 	.resources = nes_mapper_resources,
-	.num_resources = ARRAY_SIZE(nes_mapper_resources)
+	.num_resources = ARRAY_SIZE(nes_mapper_resources),
+	.mach_data = &nes_mapper_mach_data
 };
 
 uint8_t wram_readb(region_data_t *data, uint16_t address)
@@ -127,8 +135,8 @@ bool nes_init()
 
 	/* Add CPU and controllers */
 	cpu_add("rp2a03");
-	controller_add("ppu", NULL);
-	controller_add("nes_mapper", &nes_mapper_mach_data);
+	controller_add(&ppu_instance);
+	controller_add(&nes_mapper_instance);
 
 	return true;
 }

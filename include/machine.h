@@ -23,7 +23,7 @@ struct machine {
 	bool (*init)();
 	void (*deinit)();
 	struct cpu_link *cpus;
-	struct controller_link *controllers;
+	struct controller_instance_link *controller_instances;
 	struct region_link *regions;
 };
 

@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <controller.h>
 #include <memory.h>
 #include <util.h>
@@ -7,15 +8,17 @@
 
 #define INES_CONSTANT 0x1A53454E
 
-static bool nes_mapper_init(struct controller *controller);
+static bool nes_mapper_init(struct controller_instance *instance);
+static void nes_mapper_deinit(struct controller_instance *instance);
 
 static char *mappers[] = {
 	"nrom"		/* No Mapper (or unknown mapper) */
 };
 
-bool nes_mapper_init(struct controller *controller)
+bool nes_mapper_init(struct controller_instance *instance)
 {
-	struct nes_mapper_mach_data *mach_data = controller->mach_data;
+	struct nes_mapper_mach_data *mach_data = instance->mach_data;
+	struct controller_instance *mapper_instance;
 	struct cart_header *cart_header;
 	uint8_t number;
 
@@ -59,12 +62,24 @@ bool nes_mapper_init(struct controller *controller)
 
 	/* Mapper type is supported, so add actual controller */
 	fprintf(stdout, "Mapper %u (%s) detected.\n", number, mappers[number]);
-	controller_add(mappers[number], controller->mach_data);
+	mapper_instance = malloc(sizeof(struct controller_instance));
+	mapper_instance->controller_name = mappers[number];
+	mapper_instance->num_resources = instance->num_resources;
+	mapper_instance->resources = instance->resources;
+	mapper_instance->mach_data = instance->mach_data;
+	instance->priv_data = mapper_instance;
+	controller_add(mapper_instance);
 
 	return true;
 }
 
+void nes_mapper_deinit(struct controller_instance *instance)
+{
+	free(instance->priv_data);
+}
+
 CONTROLLER_START(nes_mapper)
-	.init = nes_mapper_init
+	.init = nes_mapper_init,
+	.deinit = nes_mapper_deinit
 CONTROLLER_END
 

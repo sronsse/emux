@@ -2,12 +2,9 @@
 #define _NES_MAPPER_H
 
 #include <stdint.h>
-#include <resource.h>
 
 struct nes_mapper_mach_data {
 	char *path;
-	struct resource *resources;
-	int num_resources;
 };
 
 struct cart_header {
