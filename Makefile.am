@@ -1,7 +1,9 @@
 bin_PROGRAMS = emux
 emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror
 emux_LDFLAGS = -Tlinker.lds
-emux_SOURCES = main/cmdline.c \
+emux_LDADD = -lrt
+emux_SOURCES = main/clock.c \
+	main/cmdline.c \
 	main/controller.c \
 	main/cpu.c \
 	main/machine.c \

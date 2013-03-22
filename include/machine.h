@@ -2,6 +2,7 @@
 #define _MACHINE_H
 
 #include <stdbool.h>
+#include <clock.h>
 #include <cpu.h>
 #include <controller.h>
 #include <memory.h>
@@ -20,14 +21,17 @@
 struct machine {
 	char *name;
 	char *description;
-	bool (*init)();
-	void (*deinit)();
+	struct clock_link *clocks;
 	struct cpu_link *cpus;
 	struct controller_instance_link *controller_instances;
 	struct region_link *regions;
+	uint64_t clock_rate;
+	bool (*init)();
+	void (*deinit)();
 };
 
 bool machine_init(char *name);
+void machine_run();
 void machine_deinit();
 
 #endif

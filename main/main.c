@@ -65,6 +65,9 @@ int main(int argc, char *argv[])
 	if (!machine_init(machine))
 		return 1;
 
+	/* Run machine */
+	machine_run();
+
 	/* Deinitialize machine */
 	machine_deinit();
 
