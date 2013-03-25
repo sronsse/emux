@@ -27,32 +27,8 @@ static uint16_t wram_readw(region_data_t *data, uint16_t address);
 static void wram_writeb(region_data_t *data, uint8_t b, uint16_t address);
 static void wram_writew(region_data_t *data, uint16_t w, uint16_t address);
 
-static struct resource wram_area = {
-	.name = "wram",
-	.start = WORK_RAM_START,
-	.end = WORK_RAM_END,
-	.type = RESOURCE_MEM
-};
-
-static struct resource wram_mirror = {
-	.name = "wram_mirror",
-	.start = WORK_RAM_MIRROR_START,
-	.end = WORK_RAM_MIRROR_END,
-	.type = RESOURCE_MEM
-};
-
-static struct mops wram_mops = {
-	.readb = wram_readb,
-	.readw = wram_readw,
-	.writeb = wram_writeb,
-	.writew = wram_writew
-};
-
-static struct region wram_region = {
-	.area = &wram_area,
-	.mirrors = &wram_mirror,
-	.num_mirrors = 1,
-	.mops = &wram_mops
+static struct cpu_instance rp2a03_instance = {
+	.cpu_name = "rp2a03"
 };
 
 static struct controller_instance ppu_instance = {
@@ -87,6 +63,34 @@ static struct controller_instance nes_mapper_instance = {
 	.resources = nes_mapper_resources,
 	.num_resources = ARRAY_SIZE(nes_mapper_resources),
 	.mach_data = &nes_mapper_mach_data
+};
+
+static struct resource wram_area = {
+	.name = "wram",
+	.start = WORK_RAM_START,
+	.end = WORK_RAM_END,
+	.type = RESOURCE_MEM
+};
+
+static struct resource wram_mirror = {
+	.name = "wram_mirror",
+	.start = WORK_RAM_MIRROR_START,
+	.end = WORK_RAM_MIRROR_END,
+	.type = RESOURCE_MEM
+};
+
+static struct mops wram_mops = {
+	.readb = wram_readb,
+	.readw = wram_readw,
+	.writeb = wram_writeb,
+	.writew = wram_writew
+};
+
+static struct region wram_region = {
+	.area = &wram_area,
+	.mirrors = &wram_mirror,
+	.num_mirrors = 1,
+	.mops = &wram_mops
 };
 
 uint8_t wram_readb(region_data_t *data, uint16_t address)
@@ -134,7 +138,7 @@ bool nes_init()
 	memory_region_add(&wram_region);
 
 	/* Add CPU and controllers */
-	cpu_add("rp2a03");
+	cpu_add(&rp2a03_instance);
 	controller_add(&ppu_instance);
 	controller_add(&nes_mapper_instance);
 

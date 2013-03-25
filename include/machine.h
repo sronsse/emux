@@ -22,7 +22,7 @@ struct machine {
 	char *name;
 	char *description;
 	struct clock_link *clocks;
-	struct cpu_link *cpus;
+	struct cpu_instance_link *cpu_instances;
 	struct controller_instance_link *controller_instances;
 	struct region_link *regions;
 	uint64_t clock_rate;

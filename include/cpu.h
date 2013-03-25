@@ -16,20 +16,27 @@
 typedef void cpu_mach_data_t;
 typedef void cpu_priv_data_t;
 
+struct cpu_instance;
+
 struct cpu {
 	char *name;
-	bool (*init)(struct cpu *cpu);
-	void (*deinit)(struct cpu *cpu);
+	bool (*init)(struct cpu_instance *instance);
+	void (*deinit)(struct cpu_instance *instance);
+};
+
+struct cpu_instance {
+	char *cpu_name;
 	cpu_mach_data_t *mach_data;
 	cpu_priv_data_t *priv_data;
-};
-
-struct cpu_link {
 	struct cpu *cpu;
-	struct cpu_link *next;
 };
 
-void cpu_add(char *name);
+struct cpu_instance_link {
+	struct cpu_instance *instance;
+	struct cpu_instance_link *next;
+};
+
+void cpu_add(struct cpu_instance *instance);
 void cpu_remove_all();
 
 #endif
