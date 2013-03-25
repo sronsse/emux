@@ -16,6 +16,10 @@ static void chip8_print_usage();
 static uint8_t ram_readb(region_data_t *data, uint16_t address);
 static void ram_writeb(region_data_t *data, uint8_t b, uint16_t address);
 
+static struct cpu_instance chip8_cpu_instance = {
+	.cpu_name = "chip8"
+};
+
 static struct resource ram_area = {
 	.name = "ram",
 	.start = RAM_START,
@@ -117,6 +121,8 @@ bool chip8_init()
 		return false;
 	}
 	fclose(f);
+
+	cpu_add(&chip8_cpu_instance);
 
 	return true;
 }

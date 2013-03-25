@@ -29,6 +29,7 @@ emux_SOURCES += frontends/video/sdl_video.c
 endif
 
 # CPUs
+emux_SOURCES += cpu/chip8_cpu.c
 emux_SOURCES += cpu/rp2a03.c
 
 # Controllers
