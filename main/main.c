@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 	cmdline_init(argc, argv);
 
 	/* Check if user requires help */
-	if (cmdline_parse_bool("help", 'h')) {
+	if (cmdline_parse_bool("help", 'h', NULL)) {
 		print_usage(false);
 		return 0;
 	}

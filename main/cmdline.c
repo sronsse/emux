@@ -56,9 +56,15 @@ bool cmdline_parse(char *long_name, char short_name, bool has_arg, char **arg)
 	return false;
 }
 
-bool cmdline_parse_bool(char *long_name, char short_name)
+bool cmdline_parse_bool(char *long_name, char short_name, bool *arg)
 {
-	return cmdline_parse(long_name, short_name, false, NULL);
+	bool b;
+
+	b = cmdline_parse(long_name, short_name, false, NULL);
+
+	if (arg)
+		*arg = b;
+	return b;
 }
 
 bool cmdline_parse_int(char *long_name, char short_name, int *arg)
@@ -74,7 +80,8 @@ bool cmdline_parse_int(char *long_name, char short_name, int *arg)
 	if (*end)
 		return false;
 
-	*arg = i;
+	if (arg)
+		*arg = i;
 	return true;
 }
 
@@ -85,7 +92,8 @@ bool cmdline_parse_string(char *long_name, char short_name, char **arg)
 	if (!cmdline_parse(long_name, short_name, true, &str))
 		return false;
 
-	*arg = str;
+	if (arg)
+		*arg = str;
 	return true;
 }
 
