@@ -1,5 +1,6 @@
 menu "Frontend selection"
 
+source frontends/audio/Kconfig
 source frontends/video/Kconfig
 
 endmenu

@@ -1,0 +1,8 @@
+menu "Audio frontend selection"
+
+config AUDIO
+	bool
+	default n
+
+endmenu
+

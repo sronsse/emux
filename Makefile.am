@@ -4,7 +4,8 @@ emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
 	$(SDL_CFLAGS)
 emux_LDFLAGS = -Tlinker.lds
 emux_LDADD = -lrt $(CACA_LIBS) $(SDL_LIBS)
-emux_SOURCES = main/clock.c \
+emux_SOURCES = main/audio.c \
+	main/clock.c \
 	main/cmdline.c \
 	main/controller.c \
 	main/cpu.c \
