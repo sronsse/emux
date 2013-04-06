@@ -1,7 +1,10 @@
+#include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <audio.h>
 #include <clock.h>
 #include <cpu.h>
 #include <memory.h>
@@ -20,6 +23,12 @@
 #define SCREEN_HEIGHT		32
 #define CHAR_SIZE		5
 #define NUM_PIXELS_PER_BYTE	8
+
+#define SAMPLING_FREQ	11025
+#define AUDIO_FORMAT	AUDIO_FORMAT_S16
+#define NUM_CHANNELS	1
+#define NUM_SAMPLES	512
+#define BEEP_FREQ	440
 
 union opcode {
 	uint16_t raw;
@@ -44,6 +53,7 @@ struct chip8 {
 	uint8_t ST;
 	union opcode opcode;
 	uint16_t stack[STACK_SIZE];
+	float audio_time;
 	video_surface_t *surface;
 	struct clock cpu_clock;
 	struct clock counters_clock;
@@ -54,6 +64,7 @@ static bool chip8_init(struct cpu_instance *instance);
 static void chip8_tick(clock_data_t *data);
 static void chip8_update_counters(clock_data_t *data);
 static void chip8_draw(clock_data_t *data);
+static void chip8_mix(audio_data_t *data, void *buffer, int len);
 static void chip8_deinit(struct cpu_instance *instance);
 static inline void CLS(struct chip8 *chip8);
 static inline void RET(struct chip8 *chip8);
@@ -398,14 +409,30 @@ void opcode_F(struct chip8 *chip8)
 bool chip8_init(struct cpu_instance *instance)
 {
 	struct chip8 *chip8;
-
-	/* Initialize video frontend */
-	if (!video_init(SCREEN_WIDTH, SCREEN_HEIGHT))
-		return false;
+	struct audio_specs audio_specs;
 
 	/* Allocate chip8 structure and set private data */
 	chip8 = malloc(sizeof(struct chip8));
 	instance->priv_data = chip8;
+
+	/* Initialize audio frontend */
+	audio_specs.freq = SAMPLING_FREQ;
+	audio_specs.format = AUDIO_FORMAT;
+	audio_specs.channels = NUM_CHANNELS;
+	audio_specs.samples = NUM_SAMPLES;
+	audio_specs.mix = chip8_mix;
+	audio_specs.data = chip8;
+	if (!audio_init(&audio_specs)) {
+		free(chip8);
+		return false;
+	}
+
+	/* Initialize video frontend */
+	if (!video_init(SCREEN_WIDTH, SCREEN_HEIGHT)) {
+		free(chip8);
+		audio_deinit();
+		return false;
+	}
 
 	/* Initialize registers */
 	memset(chip8->V, 0, NUM_REGISTERS);
@@ -414,6 +441,9 @@ bool chip8_init(struct cpu_instance *instance)
 	chip8->SP = 0;
 	chip8->DT = 0;
 	chip8->ST = 0;
+
+	/* Initialize audio time */
+	chip8->audio_time = 0.0f;
 
 	/* Initialize video surface */
 	chip8->surface = video_create_surface(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -498,6 +528,12 @@ void chip8_update_counters(clock_data_t *data)
 		chip8->DT--;
 	if (chip8->ST > 0)
 		chip8->ST--;
+
+	/* Beep if ST is non-zero */
+	if (chip8->ST > 0)
+		audio_start();
+	else
+		audio_stop();
 }
 
 void chip8_draw(clock_data_t *data)
@@ -509,11 +545,32 @@ void chip8_draw(clock_data_t *data)
 	video_update();
 }
 
+void chip8_mix(audio_data_t *data, void *buffer, int len)
+{
+	struct chip8 *chip8 = data;
+	int16_t *b = buffer;
+	float sample;
+	unsigned int i;
+
+	/* Fill audio buffer */
+	for (i = 0; i < len / sizeof(int16_t); i++) {
+		/* Compute sine wave sample of desired frequency */
+		sample = sinf(2 * M_PI * BEEP_FREQ * chip8->audio_time);
+		b[i] = SHRT_MAX * sample;
+
+		/* Increment time */
+		chip8->audio_time += 1.0f / SAMPLING_FREQ;
+		if (BEEP_FREQ * chip8->audio_time > 1.0f / BEEP_FREQ)
+			chip8->audio_time -= 1.0f / BEEP_FREQ;
+	}
+}
+
 void chip8_deinit(struct cpu_instance *instance)
 {
 	struct chip8 *chip8 = instance->priv_data;
 	video_free_surface(chip8->surface);
 	video_deinit();
+	audio_deinit();
 	free(chip8);
 }
 
