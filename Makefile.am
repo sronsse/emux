@@ -9,6 +9,7 @@ emux_SOURCES = main/audio.c \
 	main/cmdline.c \
 	main/controller.c \
 	main/cpu.c \
+	main/list.c \
 	main/machine.c \
 	main/main.c \
 	main/memory.c \
