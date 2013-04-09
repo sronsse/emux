@@ -8,40 +8,38 @@
 #include <machine.h>
 #include <memory.h>
 
-static struct region *memory_find_region(struct region_link **regions,
+static struct region *memory_find_region(struct list_link **regions,
 	uint16_t *a);
 
 extern struct machine *machine;
 
-struct region *memory_find_region(struct region_link **regions, uint16_t *a)
+struct region *memory_find_region(struct list_link **regions, uint16_t *a)
 {
+	struct region *r;
 	struct region *region = NULL;
 	struct resource *area;
 	struct resource *mirror;
 	int i;
 
-	while (*regions) {
+	while ((r = list_get_next(regions))) {
 		/* Check region area */
-		area = (*regions)->region->area;
+		area = r->area;
 		if ((*a >= area->start) && (*a <= area->end)) {
 			*a -= area->start;
-			region = (*regions)->region;
+			region = r;
 		} else {
 			/* Check region mirrors */
-			for (i = 0; i < (*regions)->region->num_mirrors; i++) {
-				mirror = &(*regions)->region->mirrors[i];
+			for (i = 0; i < r->num_mirrors; i++) {
+				mirror = &r->mirrors[i];
 				if ((*a >= mirror->start) &&
 					(*a <= mirror->end)) {
 					*a = (*a - mirror->start) %
 						(area->end - area->start + 1);
-					region = (*regions)->region;
+					region = r;
 					break;
 				}
 			}
 		}
-
-		/* Skip to next region */
-		*regions = (*regions)->next;
 
 		/* Break if region has been found */
 		if (region)
@@ -54,40 +52,17 @@ struct region *memory_find_region(struct region_link **regions, uint16_t *a)
 
 void memory_region_add(struct region *region)
 {
-	struct region_link *link;
-	struct region_link *tail;
-
-	/* Create new link */
-	link = malloc(sizeof(struct region_link));
-	link->region = region;
-	link->next = NULL;
-
-	/* Set head if needed */
-	if (!machine->regions) {
-		machine->regions = link;
-		return;
-	}
-
-	/* Find tail and add link */
-	tail = machine->regions;
-	while (tail->next)
-		tail = tail->next;
-	tail->next = link;
+	list_insert(&machine->regions, region);
 }
 
 void memory_region_remove_all()
 {
-	struct region_link *link;
-	while (machine->regions) {
-		link = machine->regions;
-		machine->regions = machine->regions->next;
-		free(link);
-	}
+	list_remove_all(&machine->regions);
 }
 
 uint8_t memory_readb(uint16_t address)
 {
-	struct region_link *regions = machine->regions;
+	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
 
@@ -101,7 +76,7 @@ uint8_t memory_readb(uint16_t address)
 
 uint16_t memory_readw(uint16_t address)
 {
-	struct region_link *regions = machine->regions;
+	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
 
@@ -115,7 +90,7 @@ uint16_t memory_readw(uint16_t address)
 
 void memory_writeb(uint8_t b, uint16_t address)
 {
-	struct region_link *regions = machine->regions;
+	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
 
@@ -128,7 +103,7 @@ void memory_writeb(uint8_t b, uint16_t address)
 
 void memory_writew(uint16_t w, uint16_t address)
 {
-	struct region_link *regions = machine->regions;
+	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
 

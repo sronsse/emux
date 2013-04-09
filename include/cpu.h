@@ -31,11 +31,6 @@ struct cpu_instance {
 	struct cpu *cpu;
 };
 
-struct cpu_instance_link {
-	struct cpu_instance *instance;
-	struct cpu_instance_link *next;
-};
-
 void cpu_add(struct cpu_instance *instance);
 void cpu_remove_all();
 

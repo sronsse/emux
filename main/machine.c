@@ -3,7 +3,11 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <clock.h>
+#include <controller.h>
+#include <cpu.h>
 #include <machine.h>
+#include <memory.h>
 
 #define NS(s) (s * 1000000000)
 

@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cmdline.h>
+#include <controller.h>
+#include <cpu.h>
 #include <machine.h>
 #include <memory.h>
 #include <resource.h>

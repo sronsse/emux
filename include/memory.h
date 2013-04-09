@@ -23,11 +23,6 @@ struct region {
 	region_data_t *data;
 };
 
-struct region_link {
-	struct region *region;
-	struct region_link *next;
-};
-
 void memory_region_add(struct region *region);
 void memory_region_remove_all();
 uint8_t memory_readb(uint16_t address);

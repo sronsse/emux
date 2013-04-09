@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cmdline.h>
+#include <cpu.h>
 #include <machine.h>
+#include <memory.h>
 #include <util.h>
 
 #define RAM_START	0x0000

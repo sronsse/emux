@@ -2,10 +2,8 @@
 #define _MACHINE_H
 
 #include <stdbool.h>
-#include <clock.h>
-#include <cpu.h>
-#include <controller.h>
-#include <memory.h>
+#include <stdint.h>
+#include <list.h>
 
 #define MACHINE_START(_name, _description) \
 	static struct machine machine_##_name \
@@ -21,10 +19,10 @@
 struct machine {
 	char *name;
 	char *description;
-	struct clock_link *clocks;
-	struct cpu_instance_link *cpu_instances;
-	struct controller_instance_link *controller_instances;
-	struct region_link *regions;
+	struct list_link *clocks;
+	struct list_link *cpu_instances;
+	struct list_link *controller_instances;
+	struct list_link *regions;
 	uint64_t clock_rate;
 	bool (*init)();
 	void (*deinit)();

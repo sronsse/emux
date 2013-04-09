@@ -12,11 +12,6 @@ struct clock {
 	void (*tick)(clock_data_t *clock_data);
 };
 
-struct clock_link {
-	struct clock *clock;
-	struct clock_link *next;
-};
-
 void clock_add(struct clock *clock);
 void clock_tick_all(uint64_t cycle);
 void clock_remove_all();
