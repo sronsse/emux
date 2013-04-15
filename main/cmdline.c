@@ -10,7 +10,6 @@ struct cmdline {
 };
 
 static bool cmdline_parse(char *long_name,
-	char short_name,
 	bool has_arg,
 	char **arg);
 
@@ -23,14 +22,13 @@ void cmdline_init(int argc, char *argv[])
 	cmdline.argv = argv;
 }
 
-bool cmdline_parse(char *long_name, char short_name, bool has_arg, char **arg)
+bool cmdline_parse(char *long_name, bool has_arg, char **arg)
 {
 	int has_argument = has_arg ? required_argument : no_argument;
 	struct option long_options[] = {
-		{ long_name, has_argument, 0, short_name },
+		{ long_name, has_argument, NULL, 'o' },
 		{ 0, 0, 0, 0 }
 	};
-	char optstring[] = { short_name, has_arg ? ':' : '\0' , '\0'};
 	int c;
 
 	/* Reset option index and make sure errors don't get printed out */
@@ -39,14 +37,14 @@ bool cmdline_parse(char *long_name, char short_name, bool has_arg, char **arg)
 
 	/* Parse option until we either find requested one or none is left */
 	do {
-		c = getopt_long(cmdline.argc,
+		c = getopt_long_only(cmdline.argc,
 			cmdline.argv,
-			optstring,
+			"",
 			long_options,
 			NULL);
 
 		/* Check if option is found */
-		if (c == short_name) {
+		if (c == 'o') {
 			if (has_arg)
 				*arg = optarg;
 			return true;
@@ -56,24 +54,24 @@ bool cmdline_parse(char *long_name, char short_name, bool has_arg, char **arg)
 	return false;
 }
 
-bool cmdline_parse_bool(char *long_name, char short_name, bool *arg)
+bool cmdline_parse_bool(char *long_name, bool *arg)
 {
 	bool b;
 
-	b = cmdline_parse(long_name, short_name, false, NULL);
+	b = cmdline_parse(long_name, false, NULL);
 
 	if (arg)
 		*arg = b;
 	return b;
 }
 
-bool cmdline_parse_int(char *long_name, char short_name, int *arg)
+bool cmdline_parse_int(char *long_name, int *arg)
 {
 	char *str;
 	char *end;
 	int i;
 
-	if (!cmdline_parse(long_name, short_name, true, &str))
+	if (!cmdline_parse(long_name, true, &str))
 		return false;
 
 	i = strtol(str, &end, 10);
@@ -85,11 +83,11 @@ bool cmdline_parse_int(char *long_name, char short_name, int *arg)
 	return true;
 }
 
-bool cmdline_parse_string(char *long_name, char short_name, char **arg)
+bool cmdline_parse_string(char *long_name, char **arg)
 {
 	char *str;
 
-	if (!cmdline_parse(long_name, short_name, true, &str))
+	if (!cmdline_parse(long_name, true, &str))
 		return false;
 
 	if (arg)

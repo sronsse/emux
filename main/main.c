@@ -22,12 +22,12 @@ void print_usage(bool error)
 
 	fprintf(stream, "\n");
 	fprintf(stream, "Emux options:\n");
-	fprintf(stream, " -m, --machine=MACH  Selects machine to emulate\n");
-	fprintf(stream, " -h, --help          Display this help and exit\n");
+	fprintf(stream, "  --machine=MACH    Selects machine to emulate\n");
+	fprintf(stream, "  --help            Display this help and exit\n");
 	fprintf(stream, "\n");
 	fprintf(stream, "Valid machines:\n");
 #ifdef CONFIG_MACH_NES
-	fprintf(stream, " nes                 Nintendo Entertainment System\n");
+	fprintf(stream, "  nes               Nintendo Entertainment System\n");
 #endif
 	fprintf(stream, "\n");
 	fprintf(stream, "Report bugs to: sronsse@gmail.com\n");
@@ -50,13 +50,13 @@ int main(int argc, char *argv[])
 	cmdline_init(argc, argv);
 
 	/* Check if user requires help */
-	if (cmdline_parse_bool("help", 'h', NULL)) {
+	if (cmdline_parse_bool("help", NULL)) {
 		print_usage(false);
 		return 0;
 	}
 
 	/* Checks for machine selection */
-	if (!cmdline_parse_string("machine", 'm', &machine)) {
+	if (!cmdline_parse_string("machine", &machine)) {
 		print_usage(true);
 		return 1;
 	}

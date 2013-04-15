@@ -123,13 +123,13 @@ void wram_writew(region_data_t *data, uint16_t w, uint16_t address)
 void nes_print_usage()
 {
 	fprintf(stderr, "Valid nes options:\n");
-	fprintf(stderr, "  -c, --cart    Game cart path\n");
+	fprintf(stderr, "  --cart    Game cart path\n");
 }
 
 bool nes_init()
 {
 	/* Get cart option */
-	if (!cmdline_parse_string("cart", 'c', &nes_mapper_mach_data.path)) {
+	if (!cmdline_parse_string("cart", &nes_mapper_mach_data.path)) {
 		fprintf(stderr, "Please provide a cart option!\n");
 		nes_print_usage();
 		return false;

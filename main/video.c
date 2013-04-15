@@ -18,14 +18,14 @@ bool video_init(int width, int height)
 	}
 
 	/* Get selected frontend name */
-	if (!cmdline_parse_string("video", 0, &name)) {
+	if (!cmdline_parse_string("video", &name)) {
 		fprintf(stderr, "No video frontend selected!\n");
 		return false;
 	}
 
 	/* Check if user specified/overrode some parameters first */
-	cmdline_parse_int("width", 'w', &width);
-	cmdline_parse_int("height", 'h', &height);
+	cmdline_parse_int("width", &width);
+	cmdline_parse_int("height", &height);
 
 	/* Find frontend and initialize it */
 	for (fe = &__video_frontends_begin; fe < &__video_frontends_end; fe++)

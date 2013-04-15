@@ -73,7 +73,7 @@ void ram_writeb(region_data_t *data, uint8_t b, uint16_t address)
 void chip8_print_usage()
 {
 	fprintf(stderr, "Valid chip8 options:\n");
-	fprintf(stderr, "  -r, --rom    ROM path\n");
+	fprintf(stderr, "  --rom    ROM path\n");
 }
 
 bool chip8_init()
@@ -85,7 +85,7 @@ bool chip8_init()
 	uint8_t *ram;
 
 	/* Get ROM option */
-	if (!cmdline_parse_string("rom", 'r', &rom_path)) {
+	if (!cmdline_parse_string("rom", &rom_path)) {
 		fprintf(stderr, "Please provide a rom option!\n");
 		chip8_print_usage();
 		return false;

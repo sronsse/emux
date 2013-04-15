@@ -18,7 +18,7 @@ bool audio_init(struct audio_specs *specs)
 	}
 
 	/* Get selected frontend name */
-	if (!cmdline_parse_string("audio", 0, &name)) {
+	if (!cmdline_parse_string("audio", &name)) {
 		fprintf(stderr, "No audio frontend selected!\n");
 		return false;
 	}
