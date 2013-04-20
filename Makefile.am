@@ -27,6 +27,9 @@ endif
 if CONFIG_AUDIO_SDL
 emux_SOURCES += frontends/audio/sdl_audio.c
 endif
+if CONFIG_INPUT_CACA
+emux_SOURCES += frontends/input/caca_input.c
+endif
 if CONFIG_INPUT_SDL
 emux_SOURCES += frontends/input/sdl_input.c
 endif

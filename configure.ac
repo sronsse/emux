@@ -41,7 +41,7 @@ if test "$CONFIG_MACH" != "y"; then
 fi
 
 # Add libcaca if needed
-if test "$CONFIG_VIDEO_CACA" == "y"; then
+if test "$CONFIG_INPUT_CACA" == "y" || test "$CONFIG_VIDEO_CACA" == "y"; then
 PKG_CHECK_MODULES([CACA], [caca])
 fi
 
@@ -63,6 +63,7 @@ AC_DEFUN([AX_DECLARE_CONFIG], [
 
 # Declare all our CONFIG_xxx variables
 AX_DECLARE_CONFIG([CONFIG_AUDIO_SDL])
+AX_DECLARE_CONFIG([CONFIG_INPUT_CACA])
 AX_DECLARE_CONFIG([CONFIG_INPUT_SDL])
 AX_DECLARE_CONFIG([CONFIG_VIDEO_CACA])
 AX_DECLARE_CONFIG([CONFIG_VIDEO_SDL])

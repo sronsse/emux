@@ -4,6 +4,13 @@ config INPUT
 	bool
 	default n
 
+config INPUT_CACA
+	bool "caca"
+	select INPUT
+	default y
+	help
+		Enable libcaca input frontend
+
 config INPUT_SDL
 	bool "sdl"
 	select INPUT
