@@ -44,13 +44,25 @@ void input_report(struct input_event *event, struct input_state *state)
 {
 	struct list_link *link = listeners;
 	struct input_config *config;
+	struct input_event *e;
 	int i;
 
 	while ((config = list_get_next(&link)))
 		for (i = 0; i < config->num_events; i++) {
+			e = &config->events[i];
 			/* Skip event if type is not matched */
 			if (event->type != config->events[i].type)
 				continue;
+
+			/* Skip event if other members are not matched */
+			switch (event->type) {
+			case EVENT_KEYBOARD:
+				if (event->keyboard.key != e->keyboard.key)
+					continue;
+				break;
+			default:
+				break;
+			}
 
 			/* Call registered listener */
 			config->callback(i, state, config->data);

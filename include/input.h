@@ -17,14 +17,21 @@
 typedef void input_data_t;
 
 enum input_event_type {
+	EVENT_KEYBOARD,
 	EVENT_QUIT
 };
 
 struct input_state {
+	bool active;
 };
 
 struct input_event {
 	enum input_event_type type;
+	union {
+		struct {
+			int key;
+		} keyboard;
+	};
 };
 
 struct input_config {
