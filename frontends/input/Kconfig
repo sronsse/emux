@@ -4,5 +4,12 @@ config INPUT
 	bool
 	default n
 
+config INPUT_SDL
+	bool "sdl"
+	select INPUT
+	default y
+	help
+		Enable SDL (Simple DirectMedia Layer) input frontend
+
 endmenu
 
