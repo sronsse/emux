@@ -7,13 +7,13 @@
 #include <audio.h>
 #include <clock.h>
 #include <cpu.h>
+#include <input.h>
 #include <memory.h>
-#include <util.h>
 #include <video.h>
 
-#define NUM_REGISTERS	16
-#define STACK_SIZE	16
-#define START_ADDRESS	0x200
+#define NUM_REGISTERS		16
+#define STACK_SIZE		16
+#define START_ADDRESS		0x200
 
 #define CPU_CLOCK_RATE		840
 #define COUNTERS_CLOCK_RATE	60
@@ -24,11 +24,13 @@
 #define CHAR_SIZE		5
 #define NUM_PIXELS_PER_BYTE	8
 
-#define SAMPLING_FREQ	11025
-#define AUDIO_FORMAT	AUDIO_FORMAT_S16
-#define NUM_CHANNELS	1
-#define NUM_SAMPLES	512
-#define BEEP_FREQ	440
+#define SAMPLING_FREQ		11025
+#define AUDIO_FORMAT		AUDIO_FORMAT_S16
+#define NUM_CHANNELS		1
+#define NUM_SAMPLES		512
+#define BEEP_FREQ		440
+
+#define NUM_KEYS		16
 
 union opcode {
 	uint16_t raw;
@@ -53,11 +55,13 @@ struct chip8 {
 	uint8_t ST;
 	union opcode opcode;
 	uint16_t stack[STACK_SIZE];
-	float audio_time;
-	video_surface_t *surface;
 	struct clock cpu_clock;
 	struct clock counters_clock;
 	struct clock draw_clock;
+	float audio_time;
+	video_surface_t *surface;
+	struct input_config input_config;
+	bool keys[NUM_KEYS];
 };
 
 static bool chip8_init(struct cpu_instance *instance);
@@ -65,6 +69,7 @@ static void chip8_tick(clock_data_t *data);
 static void chip8_update_counters(clock_data_t *data);
 static void chip8_draw(clock_data_t *data);
 static void chip8_mix(audio_data_t *data, void *buffer, int len);
+static void chip8_event(int id, struct input_state *state, input_data_t *data);
 static void chip8_deinit(struct cpu_instance *instance);
 static inline void CLS(struct chip8 *chip8);
 static inline void RET(struct chip8 *chip8);
@@ -262,13 +267,16 @@ void DRW_Vx_Vy_nibble(struct chip8 *chip8)
 	chip8->V[0x0F] = VF;
 }
 
-void SKP_Vx(struct chip8 *UNUSED(chip8))
+void SKP_Vx(struct chip8 *chip8)
 {
+	if (chip8->keys[chip8->V[chip8->opcode.x]])
+		chip8->PC += 2;
 }
 
 void SKNP_Vx(struct chip8 *chip8)
 {
-	chip8->PC += 2;
+	if (!chip8->keys[chip8->V[chip8->opcode.x]])
+		chip8->PC += 2;
 }
 
 void LD_Vx_DT(struct chip8 *chip8)
@@ -278,6 +286,16 @@ void LD_Vx_DT(struct chip8 *chip8)
 
 void LD_Vx_K(struct chip8 *chip8)
 {
+	int i;
+
+	/* Loop through key states and store pressed key if needed */
+	for (i = 0; i < NUM_KEYS; i++)
+		if (chip8->keys[i]) {
+			chip8->V[chip8->opcode.x] = i;
+			return;
+		}
+
+	/* Key not found, so wait */
 	chip8->PC -= 2;
 }
 
@@ -410,6 +428,8 @@ bool chip8_init(struct cpu_instance *instance)
 {
 	struct chip8 *chip8;
 	struct audio_specs audio_specs;
+	struct input_config *input_config;
+	int i;
 
 	/* Allocate chip8 structure and set private data */
 	chip8 = malloc(sizeof(struct chip8));
@@ -433,6 +453,19 @@ bool chip8_init(struct cpu_instance *instance)
 		audio_deinit();
 		return false;
 	}
+
+	/* Initialize input configuration */
+	input_config = &chip8->input_config;
+	input_config->events = malloc(NUM_KEYS * sizeof(struct input_event));
+	for (i = 0; i < NUM_KEYS; i++) {
+		input_config->events[i].type = EVENT_KEYBOARD;
+		input_config->events[i].keyboard.key = 'a' + i;
+	}
+	input_config->num_events = NUM_KEYS;
+	input_config->callback = chip8_event;
+	input_config->data = chip8;
+	memset(chip8->keys, 0, NUM_KEYS * sizeof(bool));
+	input_register(input_config);
 
 	/* Initialize registers */
 	memset(chip8->V, 0, NUM_REGISTERS);
@@ -565,9 +598,17 @@ void chip8_mix(audio_data_t *data, void *buffer, int len)
 	}
 }
 
+static void chip8_event(int id, struct input_state *state, input_data_t *data)
+{
+	struct chip8 *chip8 = data;
+	chip8->keys[id] = state->active;
+}
+
 void chip8_deinit(struct cpu_instance *instance)
 {
 	struct chip8 *chip8 = instance->priv_data;
+	input_unregister(&chip8->input_config);
+	free(chip8->input_config.events);
 	video_free_surface(chip8->surface);
 	video_deinit();
 	audio_deinit();
