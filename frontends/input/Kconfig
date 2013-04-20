@@ -1,0 +1,8 @@
+menu "Input frontend selection"
+
+config INPUT
+	bool
+	default n
+
+endmenu
+

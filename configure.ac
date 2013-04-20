@@ -25,6 +25,11 @@ if test "$CONFIG_AUDIO" != "y"; then
 	AC_MSG_ERROR([please select at least one audio frontend.])
 fi
 
+# Make sure at least one input frontend is selected
+if test "$CONFIG_INPUT" != "y"; then
+	AC_MSG_ERROR([please select at least one input frontend.])
+fi
+
 # Make sure at least one video frontend is selected
 if test "$CONFIG_VIDEO" != "y"; then
 	AC_MSG_ERROR([please select at least one video frontend.])

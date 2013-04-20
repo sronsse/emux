@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <cmdline.h>
+#include <input.h>
 #include <video.h>
 
 extern struct video_frontend __video_frontends_begin, __video_frontends_end;
@@ -11,6 +12,7 @@ bool video_init(int width, int height)
 {
 	struct video_frontend *fe;
 	char *name;
+	video_window_t *window;
 
 	if (frontend) {
 		fprintf(stderr, "Video frontend already initialized!\n");
@@ -30,9 +32,11 @@ bool video_init(int width, int height)
 	/* Find frontend and initialize it */
 	for (fe = &__video_frontends_begin; fe < &__video_frontends_end; fe++)
 		if (!strcmp(name, fe->name)) {
-			if (fe->init && fe->init(width, height)) {
+			if (fe->init && (window = fe->init(width, height))) {
 				frontend = fe;
-				return true;
+
+				/* Initialize input frontend */
+				return input_init(name, window);
 			}
 			return false;
 		}
@@ -91,6 +95,7 @@ void video_deinit()
 {
 	if (frontend->deinit)
 		frontend->deinit();
+	input_deinit();
 	frontend = NULL;
 }
 
