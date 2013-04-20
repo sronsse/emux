@@ -1,5 +1,7 @@
 mainmenu "Emux Configuration"
 
-source frontends/Kconfig
 source mach/Kconfig
+source frontends/Kconfig
+source controllers/Kconfig
+source cpu/Kconfig
 

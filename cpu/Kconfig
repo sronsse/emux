@@ -1,0 +1,16 @@
+menu "CPU selection"
+
+config CPU_CHIP8
+	bool "CHIP8"
+	default y
+	help
+		Enable CHIP-8 CPU
+
+config CPU_RP2A03
+	bool "RP2A03"
+	default y
+	help
+		Enable RP2A03 CPU
+
+endmenu
+

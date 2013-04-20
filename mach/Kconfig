@@ -7,6 +7,7 @@ config MACH
 config MACH_CHIP8
 	bool "chip8 (CHIP-8)"
 	select MACH
+	select CPU_CHIP8
 	default y
 	help
 		Enable CHIP-8 support
@@ -14,6 +15,9 @@ config MACH_CHIP8
 config MACH_NES
 	bool "nes (Nintendo Entertainment System)"
 	select MACH
+	select CPU_RP2A03
+	select CONTROLLER_MAPPER_NES
+	select CONTROLLER_VIDEO_PPU
 	default y
 	help
 		Enable NES (Nintendo Entertainment System) support

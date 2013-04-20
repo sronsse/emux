@@ -43,11 +43,21 @@ emux_SOURCES += frontends/video/sdl_video.c
 endif
 
 # CPUs
+if CONFIG_CPU_CHIP8
 emux_SOURCES += cpu/chip8_cpu.c
+endif
+if CONFIG_CPU_RP2A03
 emux_SOURCES += cpu/rp2a03.c
+endif
 
 # Controllers
+if CONFIG_CONTROLLER_MAPPER_NES
 emux_SOURCES += controllers/mapper/nes_mapper.c
+endif
+if CONFIG_CONTROLLER_MAPPER_NROM
 emux_SOURCES += controllers/mapper/nrom.c
+endif
+if CONFIG_CONTROLLER_VIDEO_PPU
 emux_SOURCES += controllers/video/ppu.c
+endif
 

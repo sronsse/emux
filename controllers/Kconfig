@@ -1,0 +1,7 @@
+menu "Controller selection"
+
+source controllers/mapper/Kconfig
+source controllers/video/Kconfig
+
+endmenu
+

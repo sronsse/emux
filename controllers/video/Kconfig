@@ -1,0 +1,10 @@
+menu "Video"
+
+config CONTROLLER_VIDEO_PPU
+	bool "NES PPU"
+	default y
+	help
+		Enable NES PPU (Picture Processing Unit)
+
+endmenu
+
