@@ -18,7 +18,9 @@ emux_SOURCES = main/audio.c \
 	main/video.c
 
 # Machines
+if CONFIG_MACH_CHIP8
 emux_SOURCES += mach/chip8.c
+endif
 if CONFIG_MACH_NES
 emux_SOURCES += mach/nes.c
 endif

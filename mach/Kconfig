@@ -4,6 +4,13 @@ config MACH
 	bool
 	default n
 
+config MACH_CHIP8
+	bool "chip8 (CHIP-8)"
+	select MACH
+	default y
+	help
+		Enable CHIP-8 support
+
 config MACH_NES
 	bool "nes (Nintendo Entertainment System)"
 	select MACH

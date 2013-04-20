@@ -28,6 +28,9 @@ void print_usage(bool error)
 	fprintf(stream, "  --help            Display this help and exit\n");
 	fprintf(stream, "\n");
 	fprintf(stream, "Valid machines:\n");
+#ifdef CONFIG_MACH_CHIP8
+	fprintf(stream, "  chip8             CHIP-8\n");
+#endif
 #ifdef CONFIG_MACH_NES
 	fprintf(stream, "  nes               Nintendo Entertainment System\n");
 #endif
