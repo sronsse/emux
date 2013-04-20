@@ -1,5 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <cmdline.h>
 #include <config.h>
@@ -38,6 +40,9 @@ int main(int argc, char *argv[])
 {
 	char *machine;
 	int i;
+
+	/* Initialize random seed */
+	srand(time(NULL));
 
 	/* Print version and command line */
 	fprintf(stdout, "Emux version %s\n", PACKAGE_VERSION);
