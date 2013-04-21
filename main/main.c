@@ -3,15 +3,24 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <audio.h>
 #include <cmdline.h>
 #include <config.h>
 #include <machine.h>
+#include <video.h>
 
 static void print_usage(bool error);
+
+extern struct machine __machines_begin, __machines_end;
+extern struct audio_frontend __audio_frontends_begin, __audio_frontends_end;
+extern struct video_frontend __video_frontends_begin, __video_frontends_end;
 
 void print_usage(bool error)
 {
 	FILE *stream = error ? stderr : stdout;
+	struct machine *m;
+	struct audio_frontend *af;
+	struct video_frontend *vf;
 
 	fprintf(stream, "Usage: emux [OPTION]...\n");
 	fprintf(stream, "Emulates various machines (consoles, arcades).\n");
@@ -22,19 +31,36 @@ void print_usage(bool error)
 		return;
 	}
 
+	/* Print options */
 	fprintf(stream, "\n");
 	fprintf(stream, "Emux options:\n");
 	fprintf(stream, "  --machine=MACH    Selects machine to emulate\n");
+	fprintf(stream, "  --audio=AUDIO     Selects audio frontend\n");
+	fprintf(stream, "  --video=VIDEO     Selects video frontend\n");
+	fprintf(stream, "  --width=WIDTH     Overrides window width\n");
+	fprintf(stream, "  --height=HEIGHT   Overrides window height\n");
 	fprintf(stream, "  --help            Display this help and exit\n");
 	fprintf(stream, "\n");
-	fprintf(stream, "Valid machines:\n");
-#ifdef CONFIG_MACH_CHIP8
-	fprintf(stream, "  chip8             CHIP-8\n");
-#endif
-#ifdef CONFIG_MACH_NES
-	fprintf(stream, "  nes               Nintendo Entertainment System\n");
-#endif
+
+	/* Print supported machines */
+	fprintf(stream, "Supported machines:\n");
+	for (m = &__machines_begin; m < &__machines_end; m++)
+		fprintf(stream, "  %s (%s)\n", m->name, m->description);
 	fprintf(stream, "\n");
+
+	/* Print audio frontends */
+	fprintf(stream, "Audio frontends:\n");
+	for (af = &__audio_frontends_begin; af < &__audio_frontends_end; af++)
+		fprintf(stream, "  %s\n", af->name);
+	fprintf(stream, "\n");
+
+	/* Print video frontends */
+	fprintf(stream, "Video frontends:\n");
+	for (vf = &__video_frontends_begin; vf < &__video_frontends_end; vf++)
+		fprintf(stream, "  %s\n", vf->name);
+	fprintf(stream, "\n");
+
+	/* Display project related info */
 	fprintf(stream, "Report bugs to: sronsse@gmail.com\n");
 	fprintf(stream, "Project page: <https://github.com/sronsse/emux>\n");
 }
