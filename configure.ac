@@ -14,11 +14,14 @@ AM_PROG_CC_C_O
 
 PKG_PROG_PKG_CONFIG
 
+# Export source directory to the environment
+export EMUX_SRC_DIR=$srcdir
+
 # Execute menuconfig
-kconfig-mconf Kconfig <& AS_ORIGINAL_STDIN_FD
+kconfig-mconf $EMUX_SRC_DIR/Kconfig <& AS_ORIGINAL_STDIN_FD
 
 # Set all CONFIG_xxx environment variables from the .config file if found
-source $srcdir/.config
+source $PWD/.config
 
 # Make sure at least one audio frontend is selected
 if test "$CONFIG_AUDIO" != "y"; then

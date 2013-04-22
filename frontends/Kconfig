@@ -1,8 +1,8 @@
 menu "Frontend selection"
 
-source frontends/audio/Kconfig
-source frontends/input/Kconfig
-source frontends/video/Kconfig
+source "$EMUX_SRC_DIR/frontends/audio/Kconfig"
+source "$EMUX_SRC_DIR/frontends/input/Kconfig"
+source "$EMUX_SRC_DIR/frontends/video/Kconfig"
 
 endmenu
 

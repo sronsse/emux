@@ -1,7 +1,11 @@
 mainmenu "Emux Configuration"
 
-source mach/Kconfig
-source frontends/Kconfig
-source controllers/Kconfig
-source cpu/Kconfig
+config EMUX_SRC_DIR
+	string
+	option env="EMUX_SRC_DIR"
+
+source "$EMUX_SRC_DIR/mach/Kconfig"
+source "$EMUX_SRC_DIR/frontends/Kconfig"
+source "$EMUX_SRC_DIR/controllers/Kconfig"
+source "$EMUX_SRC_DIR/cpu/Kconfig"
 

@@ -2,9 +2,21 @@ bin_PROGRAMS = emux
 emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
 	$(CACA_CFLAGS) \
 	$(SDL_CFLAGS)
-emux_LDFLAGS = -Tlinker.lds
+emux_LDFLAGS = -T$(srcdir)/linker.lds
 emux_LDADD = -lrt $(CACA_LIBS) $(SDL_LIBS)
-emux_SOURCES = main/audio.c \
+emux_SOURCES = include/audio.h \
+	include/clock.h \
+	include/cmdline.h \
+	include/controller.h \
+	include/cpu.h \
+	include/input.h \
+	include/list.h \
+	include/machine.h \
+	include/memory.h \
+	include/resource.h \
+	include/util.h \
+	include/video.h \
+	main/audio.c \
 	main/clock.c \
 	main/cmdline.c \
 	main/controller.c \
@@ -16,6 +28,17 @@ emux_SOURCES = main/audio.c \
 	main/memory.c \
 	main/resource.c \
 	main/video.c
+EXTRA_DIST = Kconfig \
+	linker.lds \
+	controllers/Kconfig \
+	controllers/mapper/Kconfig \
+	controllers/video/Kconfig \
+	cpu/Kconfig \
+	frontends/Kconfig \
+	frontends/audio/Kconfig \
+	frontends/input/Kconfig \
+	frontends/video/Kconfig \
+	mach/Kconfig
 
 # Machines
 if CONFIG_MACH_CHIP8
@@ -53,6 +76,7 @@ endif
 # Controllers
 if CONFIG_CONTROLLER_MAPPER_NES
 emux_SOURCES += controllers/mapper/nes_mapper.c
+emux_SOURCES += include/controllers/mapper/nes_mapper.h
 endif
 if CONFIG_CONTROLLER_MAPPER_NROM
 emux_SOURCES += controllers/mapper/nrom.c
@@ -60,4 +84,7 @@ endif
 if CONFIG_CONTROLLER_VIDEO_PPU
 emux_SOURCES += controllers/video/ppu.c
 endif
+
+clean-local:
+	rm -f .config
 

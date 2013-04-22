@@ -1,7 +1,7 @@
 menu "Controller selection"
 
-source controllers/mapper/Kconfig
-source controllers/video/Kconfig
+source "$EMUX_SRC_DIR/controllers/mapper/Kconfig"
+source "$EMUX_SRC_DIR/controllers/video/Kconfig"
 
 endmenu
 
