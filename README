@@ -1,0 +1,101 @@
+Emux <https://github.com/sronsse/emux>
+
+These are the release notes for Emux and tell you what this project is about,
+how to build it, how to install it, and how to run it.
+
+WHAT IS EMUX?
+
+  Emux is a cross-platform emulator project with a goal of emulating multiple
+  kinds of machines related to gaming, such as consoles or arcades. Its
+  philosophy is very much inspired by the Linux kernel (hence the name), which
+  brilliantly manages to support multiple machines while keeping drivers
+  entirely platform-independent. Emux is designed in the same way, keeping a
+  code base of CPUs and controllers separate from machines.
+
+  It is distributed under the GNU General Public License v2 - see the
+  accompanying COPYING file for more details.
+
+SOFTWARE DEPENDENCIES
+
+  Before being able to build Emux, kconfig-frontends needs to be installed on
+  your host machine. Linux developers should be very familiar with menuconfig,
+  a convenient menu-driven user interface allowing the configuration of the
+  Linux kernel. kconfig-frontends brings the ability to use these same tools for
+  any project other than the Linux kernel, by packaging these tools apart from
+  the kernel so that they can ship independently. However, the project aims at
+  tracking changes made to kconfig in the kernel development tree, to ensure
+  they benefit to anyone using kconfig-frontends. The current package maintainer
+  is Yann E. Morin, and the project is hosted at:
+  http://ymorin.is-a-geek.org/projects/kconfig-frontends
+
+  Once kconfig-frontends is built and installed, make sure kconfig-mconf is
+  available on your system, as Emux uses this particular frontend.
+
+  Emux can use different audio and video/input frontends. At the time of
+  writing, SDL and libcaca are supported for video/input and only SDL for audio.
+  During the configuration step, you may select the frontends to be included
+  in the build. The configure script will complain if these libraries are not
+  found.
+
+  Here are the software dependencies for a full-featured build of Emux:
+  - autoconf
+  - automake
+  - pkg-config
+  - kconfig-frontends (with mconf support)
+  - libsdl1.2-dev
+  - libcaca-dev
+
+CONFIGURING EMUX
+
+  Once all the software dependencies are taken care of, navigate to the emux
+  sources folder from a terminal and execute the following command to configure
+  Emux:
+    ./configure
+
+  This should bring up a menuconfig interface where you can specify frontends,
+  machines, CPUs, and controllers to build. If you need help with one particular
+  item, press 'h' to show a basic description of your selection.
+
+  Note: standard rules apply if you need to cross-compile Emux.
+
+BUILDING EMUX
+
+  After completion of the configuration step, building is as easy as executing
+  the following command:
+    make
+
+  As the standard GNU make utility is used, you may append the -j<n> option
+  to speed up the build process, where n is your number of execution units.
+  Example:
+    make -j16
+
+INSTALLING EMUX
+
+  If nothing went wrong during the build process, Emux can be installed on your
+  system by executing the following command:
+    make install
+
+RUNNING EMUX
+  Once installed on your system, you should now be able to run Emux. Here is a
+  list of the available options:
+    --machine=MACH    Selects machine to emulate
+    --audio=AUDIO     Selects audio frontend
+    --video=VIDEO     Selects video frontend
+    --width=WIDTH     Overrides window width
+    --height=HEIGHT   Overrides window height
+    --help            Displays help, available frontends and machines
+
+  If you would like to run INVADERS (CHIP-8) using libcaca for graphics, SDL for
+  audio, and use the default window size, the command would be:
+    emux --machine=chip8 --video=caca --audio=sdl --rom=INVADERS
+
+  Every machine has its subset of options which can be displayed by executing
+  emux --machine=MACH where MACH is the machine name. Example:
+    emux --machine=nes
+
+HELP
+  If you need help with Emux, or would like to report bugs (as long as these are
+  detailed), feel free to contact me directly at sronsse@gmail.com. Emux is
+  open-source, so if you would like to contribute to the project, you may
+  contact me as well.
+

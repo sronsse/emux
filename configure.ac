@@ -8,7 +8,7 @@ AC_CONFIG_SRCDIR([main/main.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
 
-AM_INIT_AUTOMAKE([subdir-objects foreign -Wall -Werror])
+AM_INIT_AUTOMAKE([subdir-objects -Wall -Werror])
 AM_SILENT_RULES([yes])
 AM_PROG_CC_C_O
 
