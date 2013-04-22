@@ -4,7 +4,15 @@
 #include <input.h>
 #include <video.h>
 
+#ifdef _WIN32
+extern struct video_frontend _video_frontends_begin, _video_frontends_end;
+static struct video_frontend *video_frontends_begin = &_video_frontends_begin;
+static struct video_frontend *video_frontends_end = &_video_frontends_end;
+#else
 extern struct video_frontend __video_frontends_begin, __video_frontends_end;
+static struct video_frontend *video_frontends_begin = &__video_frontends_begin;
+static struct video_frontend *video_frontends_end = &__video_frontends_end;
+#endif
 
 static struct video_frontend *frontend;
 
@@ -30,7 +38,7 @@ bool video_init(int width, int height)
 	cmdline_parse_int("height", &height);
 
 	/* Find frontend and initialize it */
-	for (fe = &__video_frontends_begin; fe < &__video_frontends_end; fe++)
+	for (fe = video_frontends_begin; fe < video_frontends_end; fe++)
 		if (!strcmp(name, fe->name)) {
 			if (fe->init && (window = fe->init(width, height))) {
 				frontend = fe;

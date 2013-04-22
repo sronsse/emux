@@ -5,7 +5,15 @@
 #include <input.h>
 #include <list.h>
 
+#ifdef _WIN32
+extern struct input_frontend _input_frontends_begin, _input_frontends_end;
+static struct input_frontend *input_frontends_begin = &_input_frontends_begin;
+static struct input_frontend *input_frontends_end = &_input_frontends_end;
+#else
 extern struct input_frontend __input_frontends_begin, __input_frontends_end;
+static struct input_frontend *input_frontends_begin = &__input_frontends_begin;
+static struct input_frontend *input_frontends_end = &__input_frontends_end;
+#endif
 
 static struct input_frontend *frontend;
 static struct list_link *listeners;
@@ -20,7 +28,7 @@ bool input_init(char *name, video_window_t *window)
 	}
 
 	/* Find input frontend and initialize it */
-	for (fe = &__input_frontends_begin; fe < &__input_frontends_end; fe++)
+	for (fe = input_frontends_begin; fe < input_frontends_end; fe++)
 		if (!strcmp(name, fe->name)) {
 			if ((fe->init && fe->init(window))) {
 				frontend = fe;

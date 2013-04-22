@@ -2,11 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/mman.h>
+#include <sys/stat.h>
+#endif
 #include <machine.h>
 #include <memory.h>
+#include <util.h>
 
 static struct region *memory_find_region(struct list_link **regions,
 	uint16_t *a);
@@ -116,6 +120,32 @@ void memory_writew(uint16_t w, uint16_t address)
 
 void *memory_map_file(char *path, int offset, int size)
 {
+#ifdef _WIN32
+	SYSTEM_INFO system_info;
+	HANDLE file;
+	HANDLE mapping;
+	char *data;
+	int pa_offset;
+
+	GetSystemInfo(&system_info);
+	pa_offset = offset & ~(system_info.dwPageSize - 1);
+	size += offset - pa_offset;
+
+	file = CreateFile(path, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
+	if (file == INVALID_HANDLE_VALUE)
+		return NULL;
+
+	mapping = CreateFileMapping(file, 0, PAGE_READONLY, 0, size, 0);
+	CloseHandle(file);
+	if (!mapping)
+		return NULL;
+
+	data = MapViewOfFile(mapping, FILE_MAP_READ, 0, pa_offset, size);
+	CloseHandle(mapping);
+
+	data += offset - pa_offset;
+	return data;
+#else
 	int fd;
 	struct stat sb;
 	char *data;
@@ -151,12 +181,22 @@ void *memory_map_file(char *path, int offset, int size)
 
 	close(fd);
 	return data;
+#endif
 }
 
 void memory_unmap_file(void *data, int size)
 {
+#ifdef _WIN32
+	SYSTEM_INFO system_info;
+	int pa_data;
+	GetSystemInfo(&system_info);
+	pa_data = (int)data & ~(system_info.dwPageSize - 1);
+	size += (int)data - pa_data;
+	UnmapViewOfFile((void *)pa_data);
+#else
 	intptr_t pa_data = (intptr_t)data & ~(sysconf(_SC_PAGE_SIZE) - 1);
 	size += (intptr_t)data - pa_data;
 	munmap((void *)pa_data, size);
+#endif
 }
 

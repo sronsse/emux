@@ -16,13 +16,21 @@
 static void machine_input_event(int id, struct input_state *state,
 	input_data_t *data);
 
+#ifdef _WIN32
+extern struct machine _machines_begin, _machines_end;
+static struct machine *machines_begin = &_machines_begin;
+static struct machine *machines_end = &_machines_end;
+#else
 extern struct machine __machines_begin, __machines_end;
+static struct machine *machines_begin = &__machines_begin;
+static struct machine *machines_end = &__machines_end;
+#endif
 struct machine *machine;
 
 bool machine_init(char *name)
 {
 	struct machine *m;
-	for (m = &__machines_begin; m < &__machines_end; m++)
+	for (m = machines_begin; m < machines_end; m++)
 		if (!strcmp(name, m->name))
 			machine = m;
 

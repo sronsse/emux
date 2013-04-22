@@ -3,7 +3,15 @@
 #include <cmdline.h>
 #include <audio.h>
 
+#ifdef _WIN32
+extern struct audio_frontend _audio_frontends_begin, _audio_frontends_end;
+static struct audio_frontend *audio_frontends_begin = &_audio_frontends_begin;
+static struct audio_frontend *audio_frontends_end = &_audio_frontends_end;
+#else
 extern struct audio_frontend __audio_frontends_begin, __audio_frontends_end;
+static struct audio_frontend *audio_frontends_begin = &__audio_frontends_begin;
+static struct audio_frontend *audio_frontends_end = &__audio_frontends_end;
+#endif
 
 static struct audio_frontend *frontend;
 
@@ -24,7 +32,7 @@ bool audio_init(struct audio_specs *specs)
 	}
 
 	/* Find frontend and initialize it */
-	for (fe = &__audio_frontends_begin; fe < &__audio_frontends_end; fe++)
+	for (fe = audio_frontends_begin; fe < audio_frontends_end; fe++)
 		if (!strcmp(name, fe->name)) {
 			if ((fe->init && fe->init(specs))) {
 				frontend = fe;

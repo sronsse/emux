@@ -4,13 +4,21 @@
 #include <controller.h>
 #include <machine.h>
 
+#ifdef _WIN32
+extern struct controller _controllers_begin, _controllers_end;
+static struct controller *controllers_begin = &_controllers_begin;
+static struct controller *controllers_end = &_controllers_end;
+#else
 extern struct controller __controllers_begin, __controllers_end;
+static struct controller *controllers_begin = &__controllers_begin;
+static struct controller *controllers_end = &__controllers_end;
+#endif
 extern struct machine *machine;
 
 void controller_add(struct controller_instance *instance)
 {
 	struct controller *c;
-	for (c = &__controllers_begin; c < &__controllers_end; c++)
+	for (c = controllers_begin; c < controllers_end; c++)
 		if (!strcmp(instance->controller_name, c->name)) {
 			instance->controller = c;
 			if ((c->init && c->init(instance)) || !c->init)
