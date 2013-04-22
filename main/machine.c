@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <clock.h>
 #include <controller.h>
 #include <cpu.h>
@@ -11,7 +11,7 @@
 #include <memory.h>
 #include <util.h>
 
-#define NS(s) (s * 1000000000)
+#define NS(s) ((s) * 1000000000)
 
 static void machine_input_event(int id, struct input_state *state,
 	input_data_t *data);
@@ -50,8 +50,8 @@ void machine_input_event(int UNUSED(id), struct input_state *UNUSED(state),
 void machine_run()
 {
 	uint64_t counter = 0;
-	struct timespec start_time;
-	struct timespec current_time;
+	struct timeval start_time;
+	struct timeval current_time;
 	unsigned int mach_delay;
 	unsigned int real_delay;
 	struct input_config input_config;
@@ -69,7 +69,7 @@ void machine_run()
 	mach_delay = NS(1) / machine->clock_rate;
 
 	/* Initialize start time */
-	clock_gettime(CLOCK_MONOTONIC, &start_time);
+	gettimeofday(&start_time, NULL);
 
 	/* Set running flag and register for quit events */
 	machine->running = true;
@@ -88,9 +88,9 @@ void machine_run()
 		clock_tick_all(counter++);
 
 		/* Get actual delay (in ns) */
-		clock_gettime(CLOCK_MONOTONIC, &current_time);
-		real_delay = NS(current_time.tv_sec) + current_time.tv_nsec -
-			NS(start_time.tv_sec) - start_time.tv_nsec;
+		gettimeofday(&current_time, NULL);
+		real_delay = NS(current_time.tv_sec - start_time.tv_sec) +
+			(current_time.tv_usec - start_time.tv_usec) * 1000;
 
 		/* Sleep to match machine delay */
 		if (counter * mach_delay > real_delay)
@@ -98,7 +98,7 @@ void machine_run()
 
 		/* Reset counter and start time if needed */
 		if (counter == machine->clock_rate) {
-			clock_gettime(CLOCK_MONOTONIC, &start_time);
+			gettimeofday(&start_time, NULL);
 			counter = 0;
 		}
 	}
