@@ -85,7 +85,6 @@ void print_usage(bool error)
 
 int main(int argc, char *argv[])
 {
-	char *machine;
 	int i;
 
 	/* Initialize random seed */
@@ -107,15 +106,11 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	/* Checks for machine selection */
-	if (!cmdline_parse_string("machine", &machine)) {
+	/* Initialize machine */
+	if (!machine_init()) {
 		print_usage(true);
 		return 1;
 	}
-
-	/* Initialize machine */
-	if (!machine_init(machine))
-		return 1;
 
 	/* Run machine */
 	machine_run();

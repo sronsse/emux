@@ -29,7 +29,7 @@ struct machine {
 	void (*deinit)();
 };
 
-bool machine_init(char *name);
+bool machine_init();
 void machine_run();
 void machine_deinit();
 

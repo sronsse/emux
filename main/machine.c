@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <clock.h>
+#include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
 #include <input.h>
@@ -27,9 +28,15 @@ static struct machine *machines_end = &__machines_end;
 #endif
 struct machine *machine;
 
-bool machine_init(char *name)
+bool machine_init()
 {
+	char *name;
 	struct machine *m;
+
+	/* Parse machine from command line */
+	if (!cmdline_parse_string("machine", &name))
+		return false;
+
 	for (m = machines_begin; m < machines_end; m++)
 		if (!strcmp(name, m->name))
 			machine = m;
@@ -44,8 +51,13 @@ bool machine_init(char *name)
 	fprintf(stdout, "Machine: %s (%s)\n", machine->name,
 		machine->description);
 
-	if (machine->init)
-		return machine->init();
+	if (machine->init && !machine->init())
+		return false;
+
+	/* Warn if no clock has been registered */
+	if (machine->clock_rate == 0)
+		fprintf(stderr, "No clock registered for this machine!\n");
+
 	return true;
 }
 
@@ -66,12 +78,8 @@ void machine_run()
 	struct input_event quit_event;
 
 	/* Return if no clock has been registered */
-	if (machine->clock_rate == 0) {
-		fprintf(stderr, "No clock registered for this machine!\n");
+	if (machine->clock_rate == 0)
 		return;
-	}
-
-	fprintf(stdout, "Machine clock rate: %luHz\n", machine->clock_rate);
 
 	/* Compute machine delay between two ticks (in ns) */
 	mach_delay = NS(1) / machine->clock_rate;
