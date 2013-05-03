@@ -1,4 +1,4 @@
-Emux <https://github.com/sronsse/emux>
+Emux <http://emux.googlecode.com>
 
 These are the release notes for Emux and tell you what this project is about,
 how to build it, how to install it, and how to run it.
@@ -76,6 +76,7 @@ INSTALLING EMUX
     make install
 
 RUNNING EMUX
+
   Once installed on your system, you should now be able to run Emux. Here is a
   list of the available options:
     --machine=MACH    Selects machine to emulate
