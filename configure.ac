@@ -20,8 +20,8 @@ export EMUX_SRC_DIR=$srcdir
 # Execute menuconfig
 kconfig-mconf $EMUX_SRC_DIR/Kconfig <& AS_ORIGINAL_STDIN_FD
 
-# Set all CONFIG_xxx environment variables from the .config file if found
-source $PWD/.config
+# Set all CONFIG_xxx variables from .config file if found, otherwise exit
+test -f $PWD/.config && source $PWD/.config || exit
 
 # Make sure at least one audio frontend is selected
 if test "$CONFIG_AUDIO" != "y"; then
