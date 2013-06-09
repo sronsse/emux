@@ -4,11 +4,19 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define AUDIO_SECTION_NAME	"audio_frontends"
+#ifdef __APPLE__
+#define AUDIO_SEGMENT_NAME	"__DATA"
+#define AUDIO_SECTION_LABEL	AUDIO_SEGMENT_NAME ", " AUDIO_SECTION_NAME
+#else
+#define AUDIO_SECTION_LABEL	AUDIO_SECTION_NAME
+#endif
+
 #define AUDIO_START(_name) \
 	static struct audio_frontend audio_##_name \
 		__attribute__(( \
 			__used__, \
-			__section__("audio_frontends"), \
+			__section__(AUDIO_SECTION_LABEL), \
 			__aligned__(__alignof__(struct audio_frontend)))) = { \
 		.name = #_name,
 #define AUDIO_END \

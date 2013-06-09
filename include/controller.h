@@ -4,11 +4,20 @@
 #include <stdbool.h>
 #include <resource.h>
 
+#define CONTROLLER_SECTION_NAME		"controllers"
+#ifdef __APPLE__
+#define CONTROLLER_SEGMENT_NAME		"__DATA"
+#define CONTROLLER_SECTION_LABEL	CONTROLLER_SEGMENT_NAME ", " \
+	CONTROLLER_SECTION_NAME
+#else
+#define CONTROLLER_SECTION_LABEL	CONTROLLER_SECTION_NAME
+#endif
+
 #define CONTROLLER_START(_name) \
 	static struct controller controller_##_name \
 		__attribute__(( \
 			__used__, \
-			__section__("controllers"), \
+			__section__(CONTROLLER_SECTION_LABEL), \
 			__aligned__(__alignof__(struct controller)))) = { \
 		.name = #_name,
 #define CONTROLLER_END \

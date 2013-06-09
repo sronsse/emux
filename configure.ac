@@ -1,6 +1,9 @@
 AC_INIT([emux], [0.1], [sronsse@gmail.com])
 AC_CONFIG_AUX_DIR([build])
 
+# Retrieve target os
+AC_CANONICAL_TARGET
+
 AC_PROG_CC
 AC_PROG_RANLIB
 
@@ -16,6 +19,11 @@ PKG_PROG_PKG_CONFIG
 
 # Export source directory to the environment
 export EMUX_SRC_DIR=$srcdir
+
+# Declare linker script if arch requires it
+AS_CASE(["$target_os"], [*darwin*], [ldscript_LDFLAGS=""],
+	[ldscript_LDFLAGS="-T${EMUX_SRC_DIR}/linker.lds"])
+AC_SUBST([ldscript_LDFLAGS], [${ldscript_LDFLAGS}])
 
 # Execute menuconfig
 kconfig-mconf $EMUX_SRC_DIR/Kconfig <& AS_ORIGINAL_STDIN_FD

@@ -4,11 +4,19 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define VIDEO_SECTION_NAME	"video_frontends"
+#ifdef __APPLE__
+#define VIDEO_SEGMENT_NAME	"__DATA"
+#define VIDEO_SECTION_LABEL	VIDEO_SEGMENT_NAME ", " VIDEO_SECTION_NAME
+#else
+#define VIDEO_SECTION_LABEL	VIDEO_SECTION_NAME
+#endif
+
 #define VIDEO_START(_name) \
 	static struct video_frontend video_##_name \
 		__attribute__(( \
 			__used__, \
-			__section__("video_frontends"), \
+			__section__(VIDEO_SECTION_LABEL), \
 			__aligned__(__alignof__(struct video_frontend)))) = { \
 		.name = #_name,
 #define VIDEO_END \

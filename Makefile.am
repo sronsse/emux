@@ -2,7 +2,7 @@ bin_PROGRAMS = emux
 emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
 	$(CACA_CFLAGS) \
 	$(SDL_CFLAGS)
-emux_LDFLAGS = -T$(srcdir)/linker.lds
+emux_LDFLAGS = $(ldscript_LDFLAGS)
 emux_LDADD = $(CACA_LIBS) $(SDL_LIBS)
 emux_SOURCES = include/audio.h \
 	include/clock.h \

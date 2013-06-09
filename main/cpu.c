@@ -3,17 +3,42 @@
 #include <string.h>
 #include <cpu.h>
 #include <machine.h>
+#ifdef __APPLE__
+#include <mach-o/getsect.h>
+#endif
 
-#ifdef _WIN32
+#ifdef __APPLE__
+void cx_cpus() __attribute__((__constructor__));
+#endif
+
+#if defined(_WIN32)
 extern struct cpu _cpus_begin, _cpus_end;
 static struct cpu *cpus_begin = &_cpus_begin;
 static struct cpu *cpus_end = &_cpus_end;
+#elif defined(__APPLE__)
+static struct cpu *cpus_begin;
+static struct cpu *cpus_end;
 #else
 extern struct cpu __cpus_begin, __cpus_end;
 static struct cpu *cpus_begin = &__cpus_begin;
 static struct cpu *cpus_end = &__cpus_end;
 #endif
+
 extern struct machine *machine;
+
+#ifdef __APPLE__
+void cx_cpus()
+{
+#ifdef __LP64__
+	const struct section_64 *sect;
+#else
+	const struct section *sect;
+#endif
+	sect = getsectbyname(CPU_SEGMENT_NAME, CPU_SECTION_NAME);
+	cpus_begin = (struct cpu *)(sect->addr);
+	cpus_end = (struct cpu *)(sect->addr + sect->size);
+}
+#endif
 
 void cpu_add(struct cpu_instance *instance)
 {

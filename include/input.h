@@ -4,11 +4,19 @@
 #include <stdbool.h>
 #include <video.h>
 
+#define INPUT_SECTION_NAME	"input_frontends"
+#ifdef __APPLE__
+#define INPUT_SEGMENT_NAME	"__DATA"
+#define INPUT_SECTION_LABEL	INPUT_SEGMENT_NAME ", " INPUT_SECTION_NAME
+#else
+#define INPUT_SECTION_LABEL	INPUT_SECTION_NAME
+#endif
+
 #define INPUT_START(_name) \
 	static struct input_frontend input_##_name \
 		__attribute__(( \
 			__used__, \
-			__section__("input_frontends"), \
+			__section__(INPUT_SECTION_LABEL), \
 			__aligned__(__alignof__(struct input_frontend)))) = { \
 		.name = #_name,
 #define INPUT_END \

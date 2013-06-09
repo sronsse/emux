@@ -3,11 +3,19 @@
 
 #include <stdbool.h>
 
+#define CPU_SECTION_NAME	"cpus"
+#ifdef __APPLE__
+#define CPU_SEGMENT_NAME	"__DATA"
+#define CPU_SECTION_LABEL	CPU_SEGMENT_NAME ", " CPU_SECTION_NAME
+#else
+#define CPU_SECTION_LABEL	CPU_SECTION_NAME
+#endif
+
 #define CPU_START(_name) \
 	static struct cpu cpu_##_name \
 		__attribute__(( \
 			__used__, \
-			__section__("cpus"), \
+			__section__(CPU_SECTION_LABEL), \
 			__aligned__(__alignof__(struct cpu)))) = { \
 		.name = #_name,
 #define CPU_END \
