@@ -6,10 +6,16 @@
 #include <resource.h>
 #include <controllers/mapper/nes_mapper.h>
 
-#define WORK_RAM_START		0x0000
-#define WORK_RAM_END		0x07FF
-#define WORK_RAM_MIRROR_START	0x0800
-#define WORK_RAM_MIRROR_END	0x1FFF
+#define WORK_RAM_START			0x0000
+#define WORK_RAM_END			0x07FF
+#define WORK_RAM_MIRROR_START		0x0800
+#define WORK_RAM_MIRROR_END		0x1FFF
+#define CART_EXPANSION_AREA_START	0x4018
+#define CART_EXPANSION_AREA_END		0x5FFF
+#define CART_SRAM_AREA_START		0x6000
+#define CART_SRAM_AREA_END		0x7FFF
+#define CART_PRG_ROM_AREA_START		0x8000
+#define CART_PRG_ROM_AREA_END		0xFFFF
 
 static void nes_print_usage();
 static uint8_t wram_readb(struct region *region, uint16_t address);
@@ -45,8 +51,31 @@ static struct region wram_region = {
 	.mops = &wram_mops
 };
 
-static struct nes_mapper_mach_data nes_mapper_mach_data;
+static struct resource nes_mapper_resources[] = {
+	[0] = {
+		.name = "expansion",
+		.start = CART_EXPANSION_AREA_START,
+		.end = CART_EXPANSION_AREA_END,
+		.type = RESOURCE_MEM
+	},
+	[1] = {
+		.name = "sram",
+		.start = CART_SRAM_AREA_START,
+		.end = CART_SRAM_AREA_END,
+		.type = RESOURCE_MEM
+	},
+	[2] = {
+		.name = "prg_rom",
+		.start = CART_PRG_ROM_AREA_START,
+		.end = CART_PRG_ROM_AREA_END,
+		.type = RESOURCE_MEM
+	}
+};
 
+static struct nes_mapper_mach_data nes_mapper_mach_data = {
+	.resources = nes_mapper_resources,
+	.num_resources = ARRAY_SIZE(nes_mapper_resources)
+};
 
 uint8_t wram_readb(struct region *region, uint16_t address)
 {

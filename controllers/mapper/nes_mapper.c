@@ -6,20 +6,8 @@
 
 #define INES_CONSTANT 0x1A53454E
 
-struct cart_header {
-	uint32_t ines_constant;
-	uint8_t prg_rom_size;
-	uint8_t chr_rom_size;
-	uint8_t flags6;
-	uint8_t flags7;
-	uint8_t prg_ram_size;
-	uint8_t flags9;
-	uint8_t flags10;
-};
-
 static char *mappers[] = {
-	"nrom",		/* Mapper 0: NROM - No Mapper (or unknown mapper) */
-	"mmc1",		/* Mapper 1: MMC1 - PRG/32K/16K, VROM/8K/4K, NT */
+	"nrom"		/* No Mapper (or unknown mapper) */
 };
 
 bool nes_mapper_init(struct controller *controller)
@@ -66,8 +54,10 @@ bool nes_mapper_init(struct controller *controller)
 		return false;
 	}
 
-	/* Mapper is supported */
+	/* Mapper type is supported, so add actual controller */
 	fprintf(stdout, "Mapper %u (%s) detected.\n", number, mappers[number]);
+	controller_add(mappers[number], controller->mdata);
+
 	return true;
 }
 

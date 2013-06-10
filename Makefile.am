@@ -19,5 +19,6 @@ emux_SOURCES += cpu/rp2a03.c
 
 # Controllers
 emux_SOURCES += controllers/mapper/nes_mapper.c
+emux_SOURCES += controllers/mapper/nrom.c
 emux_SOURCES += controllers/video/ppu.c
 
