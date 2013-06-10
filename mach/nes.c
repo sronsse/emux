@@ -17,6 +17,10 @@
 #define WORK_RAM_END			0x07FF
 #define WORK_RAM_MIRROR_START		0x0800
 #define WORK_RAM_MIRROR_END		0x1FFF
+#define PPU_START			0x2000
+#define PPU_END				0x2007
+#define PPU_MIRROR_START		0x2008
+#define PPU_MIRROR_END			0x3FFF
 #define CART_EXPANSION_AREA_START	0x4018
 #define CART_EXPANSION_AREA_END		0x5FFF
 #define CART_SRAM_AREA_START		0x6000
@@ -37,9 +41,33 @@ static struct cpu_instance rp2a03_instance = {
 	.bus_id = CPU_BUS_ID
 };
 
+static struct resource ppu_mirror = {
+	.name = "ppu_mirror",
+	.mem = {
+		.bus_id = CPU_BUS_ID,
+		.start = PPU_MIRROR_START,
+		.end = PPU_MIRROR_END
+	},
+	.type = RESOURCE_MEM
+};
+
+static struct resource ppu_area = {
+	.name = "ppu",
+	.mem = {
+		.bus_id = CPU_BUS_ID,
+		.start = PPU_START,
+		.end = PPU_END
+	},
+	.type = RESOURCE_MEM,
+	.children = &ppu_mirror,
+	.num_children = 1
+};
+
 static struct controller_instance ppu_instance = {
 	.controller_name = "ppu",
-	.bus_id = PPU_BUS_ID
+	.bus_id = PPU_BUS_ID,
+	.resources = &ppu_area,
+	.num_resources = 1
 };
 
 static struct nes_mapper_mach_data nes_mapper_mach_data;
