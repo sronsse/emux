@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -142,7 +143,8 @@ void *memory_map_file(char *path, int offset, int size)
 {
 	int fd;
 	struct stat sb;
-	void *data;
+	char *data;
+	int pa_offset;
 
 	fd = open(path, O_RDONLY);
 	if (fd == -1)
@@ -154,11 +156,23 @@ void *memory_map_file(char *path, int offset, int size)
 		return NULL;
 	}
 
-	data = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, offset);
+	if (offset + size > sb.st_size) {
+		close(fd);
+		return NULL;
+	}
+
+	/* Offset for mmap must be page-aligned */
+	pa_offset = offset & ~(sysconf(_SC_PAGE_SIZE) - 1);
+	size += offset - pa_offset;
+
+	data = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, pa_offset);
 	if (data == MAP_FAILED) {
 		close(fd);
 		return NULL;
 	}
+
+	/* Adapt returned pointer to point to requested location */
+	data += offset - pa_offset;
 
 	close(fd);
 	return data;
@@ -166,6 +180,8 @@ void *memory_map_file(char *path, int offset, int size)
 
 void memory_unmap_file(void *data, int size)
 {
-	munmap(data, size);
+	intptr_t pa_data = (intptr_t)data & ~(sysconf(_SC_PAGE_SIZE) - 1);
+	size += (intptr_t)data - pa_data;
+	munmap((void *)pa_data, size);
 }
 
