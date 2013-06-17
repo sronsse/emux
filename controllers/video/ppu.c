@@ -17,7 +17,6 @@
 #define VRAM_ADDR_REG_ADDR		6
 #define VRAM_READ_WRITE_DATA_REG_ADDR	7
 #define VRAM_SIZE			0x4000
-#define PPU_CLOCK_RATE			5369318
 
 #define VRAM_ADDR_MSB_MASK		0x3F
 #define N_DOTS_PER_SCANLINE		341
@@ -177,6 +176,10 @@ bool ppu_init(struct controller_instance *instance)
 {
 	struct ppu *ppu;
 	struct region *region;
+	struct resource *clk = resource_get("dot_clk",
+		RESOURCE_CLK,
+		instance->resources,
+		instance->num_resources);
 
 	/* Allocate PPU structure */
 	instance->priv_data = malloc(sizeof(struct ppu));
@@ -201,7 +204,7 @@ bool ppu_init(struct controller_instance *instance)
 	memory_region_add(region);
 
 	/* Set up clock */
-	ppu->clock.rate = PPU_CLOCK_RATE;
+	ppu->clock.rate = clk->rate;
 	ppu->clock.data = ppu;
 	ppu->clock.tick = ppu_tick;
 	clock_add(&ppu->clock);

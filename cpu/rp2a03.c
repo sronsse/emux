@@ -6,7 +6,6 @@
 #include <cpu.h>
 #include <memory.h>
 
-#define CPU_CLOCK_RATE		1790000
 #define NMI_VECTOR		0xFFFA
 #define RESET_VECTOR		0xFFFC
 #define INTERRUPT_VECTOR	0xFFFE
@@ -2059,6 +2058,10 @@ void rp2a03_tick(clock_data_t *data)
 bool rp2a03_init(struct cpu_instance *instance)
 {
 	struct rp2a03 *rp2a03;
+	struct resource *clk = resource_get("cpu_clk",
+		RESOURCE_CLK,
+		instance->resources,
+		instance->num_resources);
 
 	/* Allocate rp2a03 structure and set private data */
 	rp2a03 = malloc(sizeof(struct rp2a03));
@@ -2072,7 +2075,7 @@ bool rp2a03_init(struct cpu_instance *instance)
 	rp2a03->n_cycles = 1;
 
 	/* Add CPU clock */
-	rp2a03->clock.rate = CPU_CLOCK_RATE;
+	rp2a03->clock.rate = clk->rate;
 	rp2a03->clock.data = rp2a03;
 	rp2a03->clock.tick = rp2a03_tick;
 	clock_add(&rp2a03->clock);

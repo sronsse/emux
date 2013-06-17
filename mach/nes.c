@@ -13,6 +13,10 @@
 #define CPU_BUS_ID			0
 #define PPU_BUS_ID			1
 
+#define MASTER_CLOCK_RATE		21477264
+#define CPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 12)
+#define PPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 4)
+
 #define WORK_RAM_START			0x0000
 #define WORK_RAM_END			0x07FF
 #define WORK_RAM_MIRROR_START		0x0800
@@ -36,9 +40,17 @@ static uint16_t wram_readw(region_data_t *data, uint16_t address);
 static void wram_writeb(region_data_t *data, uint8_t b, uint16_t address);
 static void wram_writew(region_data_t *data, uint16_t w, uint16_t address);
 
+static struct resource rp2a03_clock = {
+	.name = "cpu_clk",
+	.rate = CPU_CLOCK_RATE,
+	.type = RESOURCE_CLK
+};
+
 static struct cpu_instance rp2a03_instance = {
 	.cpu_name = "rp2a03",
-	.bus_id = CPU_BUS_ID
+	.bus_id = CPU_BUS_ID,
+	.resources = &rp2a03_clock,
+	.num_resources = 1
 };
 
 static struct resource ppu_mirror = {
@@ -51,23 +63,30 @@ static struct resource ppu_mirror = {
 	.type = RESOURCE_MEM
 };
 
-static struct resource ppu_area = {
-	.name = "ppu",
-	.mem = {
-		.bus_id = CPU_BUS_ID,
-		.start = PPU_START,
-		.end = PPU_END
+static struct resource ppu_resources[] = {
+	{
+		.name = "ppu",
+		.mem = {
+			.bus_id = CPU_BUS_ID,
+			.start = PPU_START,
+			.end = PPU_END
+		},
+		.type = RESOURCE_MEM,
+		.children = &ppu_mirror,
+		.num_children = 1
 	},
-	.type = RESOURCE_MEM,
-	.children = &ppu_mirror,
-	.num_children = 1
+	{
+		.name = "dot_clk",
+		.rate = PPU_CLOCK_RATE,
+		.type = RESOURCE_CLK
+	}
 };
 
 static struct controller_instance ppu_instance = {
 	.controller_name = "ppu",
 	.bus_id = PPU_BUS_ID,
-	.resources = &ppu_area,
-	.num_resources = 1
+	.resources = ppu_resources,
+	.num_resources = ARRAY_SIZE(ppu_resources)
 };
 
 static struct nes_mapper_mach_data nes_mapper_mach_data;
