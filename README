@@ -37,13 +37,21 @@ SOFTWARE DEPENDENCIES
   in the build. The configure script will complain if these libraries are not
   found.
 
+  Emux now uses libroxml - a tiny XML parsing library - in order to read input
+  configuration files. This library is typically not part of standard
+  distributions and needs to be downloaded, built, and installed on your host
+  machine. The libroxml project is developed by Tristan Lelong and can be found
+  at the following location:
+  http://www.libroxml.net/
+
   Here are the software dependencies for a full-featured build of Emux:
   - autoconf
   - automake
-  - pkg-config
   - kconfig-frontends (with mconf support)
-  - libsdl1.2-dev
   - libcaca-dev
+  - libroxml
+  - libsdl1.2-dev
+  - pkg-config
 
 CONFIGURING EMUX
 

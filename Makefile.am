@@ -1,9 +1,10 @@
 bin_PROGRAMS = emux
 emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
+	$(ROXML_CFLAGS) \
 	$(CACA_CFLAGS) \
 	$(SDL_CFLAGS)
 emux_LDFLAGS = $(ldscript_LDFLAGS)
-emux_LDADD = $(CACA_LIBS) $(SDL_LIBS)
+emux_LDADD = $(CACA_LIBS) $(SDL_LIBS) $(ROXML_LIBS)
 emux_SOURCES = include/audio.h \
 	include/clock.h \
 	include/cmdline.h \

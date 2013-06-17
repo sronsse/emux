@@ -457,15 +457,16 @@ bool chip8_init(struct cpu_instance *instance)
 	/* Initialize input configuration */
 	input_config = &chip8->input_config;
 	input_config->events = malloc(NUM_KEYS * sizeof(struct input_event));
-	for (i = 0; i < NUM_KEYS; i++) {
-		input_config->events[i].type = EVENT_KEYBOARD;
-		input_config->events[i].keyboard.key = 'a' + i;
-	}
 	input_config->num_events = NUM_KEYS;
 	input_config->callback = chip8_event;
 	input_config->data = chip8;
-	memset(chip8->keys, 0, NUM_KEYS * sizeof(bool));
+	if (!input_load(instance->cpu->name, input_config->events, NUM_KEYS))
+		for (i = 0; i < NUM_KEYS; i++) {
+			input_config->events[i].type = EVENT_KEYBOARD;
+			input_config->events[i].keyboard.key = 'a' + i;
+		}
 	input_register(input_config);
+	memset(chip8->keys, 0, NUM_KEYS * sizeof(bool));
 
 	/* Initialize registers */
 	memset(chip8->V, 0, NUM_REGISTERS);

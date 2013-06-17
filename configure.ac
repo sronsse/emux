@@ -51,6 +51,9 @@ if test "$CONFIG_MACH" != "y"; then
 	AC_MSG_ERROR([please select at least one machine.])
 fi
 
+# Check if libroxml is present
+PKG_CHECK_MODULES([ROXML], [libroxml])
+
 # Add libcaca if needed
 if test "$CONFIG_INPUT_CACA" == "y" || test "$CONFIG_VIDEO_CACA" == "y"; then
 PKG_CHECK_MODULES([CACA], [caca])
