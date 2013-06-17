@@ -12,6 +12,8 @@ struct resource {
 	uint16_t start;
 	uint16_t end;
 	enum resource_type type;
+	struct resource *children;
+	int num_children;
 };
 
 struct resource *resource_get(char *name, enum resource_type type,

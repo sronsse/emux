@@ -67,18 +67,20 @@ static struct controller_instance nes_mapper_instance = {
 	.mach_data = &nes_mapper_mach_data
 };
 
-static struct resource wram_area = {
-	.name = "wram",
-	.start = WORK_RAM_START,
-	.end = WORK_RAM_END,
-	.type = RESOURCE_MEM
-};
-
 static struct resource wram_mirror = {
 	.name = "wram_mirror",
 	.start = WORK_RAM_MIRROR_START,
 	.end = WORK_RAM_MIRROR_END,
 	.type = RESOURCE_MEM
+};
+
+static struct resource wram_area = {
+	.name = "wram",
+	.start = WORK_RAM_START,
+	.end = WORK_RAM_END,
+	.type = RESOURCE_MEM,
+	.children = &wram_mirror,
+	.num_children = 1
 };
 
 static struct mops wram_mops = {
@@ -90,8 +92,6 @@ static struct mops wram_mops = {
 
 static struct region wram_region = {
 	.area = &wram_area,
-	.mirrors = &wram_mirror,
-	.num_mirrors = 1,
 	.mops = &wram_mops
 };
 

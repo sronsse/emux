@@ -80,8 +80,6 @@ void prg_rom_map(struct controller_instance *instance)
 
 	/* Fill and add PRG ROM region */
 	region->area = res;
-	region->mirrors = NULL;
-	region->num_mirrors = 0;
 	region->mops = &prg_rom_mops;
 	region->data = data;
 	memory_region_add(region);

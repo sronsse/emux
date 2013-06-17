@@ -33,8 +33,8 @@ struct region *memory_find_region(struct list_link **regions, uint16_t *a)
 			region = r;
 		} else {
 			/* Check region mirrors */
-			for (i = 0; i < r->num_mirrors; i++) {
-				mirror = &r->mirrors[i];
+			for (i = 0; i < area->num_children; i++) {
+				mirror = &area->children[i];
 				if ((*a >= mirror->start) &&
 					(*a <= mirror->end)) {
 					*a = (*a - mirror->start) %

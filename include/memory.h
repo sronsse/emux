@@ -17,8 +17,6 @@ struct mops {
 
 struct region {
 	struct resource *area;
-	struct resource *mirrors;
-	int num_mirrors;
 	struct mops *mops;
 	region_data_t *data;
 };
