@@ -110,6 +110,25 @@ static void opcode_8(struct chip8 *chip8);
 static void opcode_E(struct chip8 *chip8);
 static void opcode_F(struct chip8 *chip8);
 
+static struct input_event default_input_events[] = {
+	{ EVENT_KEYBOARD, { { 'a' } } },
+	{ EVENT_KEYBOARD, { { 'b' } } },
+	{ EVENT_KEYBOARD, { { 'c' } } },
+	{ EVENT_KEYBOARD, { { 'd' } } },
+	{ EVENT_KEYBOARD, { { 'e' } } },
+	{ EVENT_KEYBOARD, { { 'f' } } },
+	{ EVENT_KEYBOARD, { { 'g' } } },
+	{ EVENT_KEYBOARD, { { 'h' } } },
+	{ EVENT_KEYBOARD, { { 'i' } } },
+	{ EVENT_KEYBOARD, { { 'j' } } },
+	{ EVENT_KEYBOARD, { { 'k' } } },
+	{ EVENT_KEYBOARD, { { 'l' } } },
+	{ EVENT_KEYBOARD, { { 'm' } } },
+	{ EVENT_KEYBOARD, { { 'n' } } },
+	{ EVENT_KEYBOARD, { { 'o' } } },
+	{ EVENT_KEYBOARD, { { 'p' } } }
+};
+
 void CLS(struct chip8 *chip8)
 {
 	uint8_t x, y;
@@ -429,7 +448,6 @@ bool chip8_init(struct cpu_instance *instance)
 	struct chip8 *chip8;
 	struct audio_specs audio_specs;
 	struct input_config *input_config;
-	int i;
 
 	/* Allocate chip8 structure and set private data */
 	chip8 = malloc(sizeof(struct chip8));
@@ -460,21 +478,22 @@ bool chip8_init(struct cpu_instance *instance)
 	input_config->num_events = NUM_KEYS;
 	input_config->callback = chip8_event;
 	input_config->data = chip8;
-	if (!input_load(instance->cpu->name, input_config->events, NUM_KEYS))
-		for (i = 0; i < NUM_KEYS; i++) {
-			input_config->events[i].type = EVENT_KEYBOARD;
-			input_config->events[i].keyboard.key = 'a' + i;
-		}
-	input_register(input_config);
-	memset(chip8->keys, 0, NUM_KEYS * sizeof(bool));
 
-	/* Initialize registers */
+	/* Load and register input config (fall back to defaults if needed) */
+	if (!input_load(instance->cpu->name, input_config->events, NUM_KEYS))
+		memcpy(input_config->events,
+			default_input_events,
+			NUM_KEYS * sizeof(struct input_event));
+	input_register(input_config);
+
+	/* Initialize registers and data */
 	memset(chip8->V, 0, NUM_REGISTERS);
 	chip8->I = 0;
 	chip8->PC = START_ADDRESS;
 	chip8->SP = 0;
 	chip8->DT = 0;
 	chip8->ST = 0;
+	memset(chip8->keys, 0, NUM_KEYS * sizeof(bool));
 
 	/* Initialize audio time */
 	chip8->audio_time = 0.0f;
