@@ -9,6 +9,7 @@
 #include <cpu.h>
 #include <input.h>
 #include <memory.h>
+#include <util.h>
 #include <video.h>
 
 #define NUM_REGISTERS		16
@@ -59,7 +60,6 @@ struct chip8 {
 	struct clock counters_clock;
 	struct clock draw_clock;
 	float audio_time;
-	video_surface_t *surface;
 	struct input_config input_config;
 	bool keys[NUM_KEYS];
 };
@@ -129,13 +129,13 @@ static struct input_event default_input_events[] = {
 	{ EVENT_KEYBOARD, { { 'p' } } }
 };
 
-void CLS(struct chip8 *chip8)
+void CLS(struct chip8 *UNUSED(chip8))
 {
 	uint8_t x, y;
-	uint32_t black = video_map_rgb(chip8->surface, 0, 0, 0);
+	uint32_t black = video_map_rgb(0, 0, 0);
 	for (x = 0; x < SCREEN_WIDTH; x++)
 		for (y = 0; y < SCREEN_HEIGHT; y++)
-			video_set_pixel(chip8->surface, x, y, black);
+			video_set_pixel(x, y, black);
 }
 
 void RET(struct chip8 *chip8)
@@ -265,10 +265,9 @@ void RND_Vx_byte(struct chip8 *chip8)
 
 void DRW_Vx_Vy_nibble(struct chip8 *chip8)
 {
-	struct surface *s = chip8->surface;
 	uint8_t i, j, x, y, b, src, VF = 0;
-	uint32_t black = video_map_rgb(chip8->surface, 0, 0, 0);
-	uint32_t white = video_map_rgb(chip8->surface, 255, 255, 255);
+	uint32_t black = video_map_rgb(0, 0, 0);
+	uint32_t white = video_map_rgb(255, 255, 255);
 	bool pixel;
 
 	for (i = 0; i < chip8->opcode.n; i++) {
@@ -277,9 +276,9 @@ void DRW_Vx_Vy_nibble(struct chip8 *chip8)
 		for (j = 0; j < NUM_PIXELS_PER_BYTE; j++) {
 			x = (chip8->V[chip8->opcode.x] + j) % SCREEN_WIDTH;
 			src = b >> (NUM_PIXELS_PER_BYTE - j - 1) & 0x01;
-			pixel = (video_get_pixel(s, x, y) == white) ^ src;
-			video_set_pixel(s, x, y, pixel ? white : black);
-			if (src && (video_get_pixel(s, x, y) == black))
+			pixel = (video_get_pixel(x, y) == white) ^ src;
+			video_set_pixel(x, y, pixel ? white : black);
+			if (src && (video_get_pixel(x, y) == black))
 				VF = 1;
 		}
 	}
@@ -498,9 +497,6 @@ bool chip8_init(struct cpu_instance *instance)
 	/* Initialize audio time */
 	chip8->audio_time = 0.0f;
 
-	/* Initialize video surface */
-	chip8->surface = video_create_surface(SCREEN_WIDTH, SCREEN_HEIGHT);
-
 	/* Add CPU clock */
 	chip8->cpu_clock.rate = CPU_CLOCK_RATE;
 	chip8->cpu_clock.data = chip8;
@@ -515,7 +511,6 @@ bool chip8_init(struct cpu_instance *instance)
 
 	/* Add draw clock */
 	chip8->draw_clock.rate = DRAW_CLOCK_RATE;
-	chip8->draw_clock.data = chip8;
 	chip8->draw_clock.tick = chip8_draw;
 	clock_add(&chip8->draw_clock);
 
@@ -589,12 +584,8 @@ void chip8_update_counters(clock_data_t *data)
 		audio_stop();
 }
 
-void chip8_draw(clock_data_t *data)
+void chip8_draw(clock_data_t *UNUSED(data))
 {
-	struct chip8 *chip8 = data;
-
-	/* Blit surface and update screen */
-	video_blit_surface(chip8->surface);
 	video_update();
 }
 
@@ -629,7 +620,6 @@ void chip8_deinit(struct cpu_instance *instance)
 	struct chip8 *chip8 = instance->priv_data;
 	input_unregister(&chip8->input_config);
 	free(chip8->input_config.events);
-	video_free_surface(chip8->surface);
 	video_deinit();
 	audio_deinit();
 	free(chip8);
