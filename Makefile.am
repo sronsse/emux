@@ -1,8 +1,9 @@
 bin_PROGRAMS = emux
 emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
+	$(CACA_CFLAGS) \
 	$(SDL_CFLAGS)
 emux_LDFLAGS = -Tlinker.lds
-emux_LDADD = -lrt $(SDL_LIBS)
+emux_LDADD = -lrt $(CACA_LIBS) $(SDL_LIBS)
 emux_SOURCES = main/clock.c \
 	main/cmdline.c \
 	main/controller.c \
@@ -20,6 +21,9 @@ emux_SOURCES += mach/nes.c
 endif
 
 # Frontends
+if CONFIG_VIDEO_CACA
+emux_SOURCES += frontends/video/caca_video.c
+endif
 if CONFIG_VIDEO_SDL
 emux_SOURCES += frontends/video/sdl_video.c
 endif

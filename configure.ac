@@ -30,6 +30,11 @@ if test "$CONFIG_MACH" != "y"; then
 	AC_MSG_ERROR([please select at least one machine.])
 fi
 
+# Add libcaca if needed
+if test "$CONFIG_VIDEO_CACA" == "y"; then
+PKG_CHECK_MODULES([CACA], [caca])
+fi
+
 # Add SDL if needed
 if test "$CONFIG_VIDEO_SDL" == "y"; then
 SDL_VERSION=1.2.0
@@ -45,6 +50,7 @@ AC_DEFUN([AX_DECLARE_CONFIG], [
 ])
 
 # Declare all our CONFIG_xxx variables
+AX_DECLARE_CONFIG([CONFIG_VIDEO_CACA])
 AX_DECLARE_CONFIG([CONFIG_VIDEO_SDL])
 AX_DECLARE_CONFIG([CONFIG_MACH_NES])
 

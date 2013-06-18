@@ -4,6 +4,13 @@ config VIDEO
 	bool
 	default n
 
+config VIDEO_CACA
+	bool "caca"
+	select VIDEO
+	default y
+	help
+		Enable libcaca video frontend
+
 config VIDEO_SDL
 	bool "sdl"
 	select VIDEO
