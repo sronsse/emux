@@ -1,0 +1,8 @@
+menu "Video frontend selection"
+
+config VIDEO
+	bool
+	default n
+
+endmenu
+

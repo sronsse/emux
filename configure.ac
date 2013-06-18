@@ -20,6 +20,11 @@ kconfig-mconf Kconfig <& AS_ORIGINAL_STDIN_FD
 # Set all CONFIG_xxx environment variables from the .config file if found
 source $srcdir/.config
 
+# Make sure at least one video frontend is selected
+if test "$CONFIG_VIDEO" != "y"; then
+	AC_MSG_ERROR([please select at least one video frontend.])
+fi
+
 # Make sure at least one machine is selected
 if test "$CONFIG_MACH" != "y"; then
 	AC_MSG_ERROR([please select at least one machine.])

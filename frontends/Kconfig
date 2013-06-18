@@ -1,0 +1,6 @@
+menu "Frontend selection"
+
+source frontends/video/Kconfig
+
+endmenu
+

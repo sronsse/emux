@@ -9,7 +9,8 @@ emux_SOURCES = main/clock.c \
 	main/machine.c \
 	main/main.c \
 	main/memory.c \
-	main/resource.c
+	main/resource.c \
+	main/video.c
 
 # Machines
 emux_SOURCES += mach/chip8.c

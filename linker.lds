@@ -1,4 +1,6 @@
 SECTIONS {
+  __video_frontends_begin = ADDR(video_frontends);
+  __video_frontends_end = __video_frontends_begin + SIZEOF(video_frontends);
   __machines_begin = ADDR(machines);
   __machines_end = __machines_begin + SIZEOF(machines);
   __cpus_begin = ADDR(cpus);
