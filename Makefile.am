@@ -1,7 +1,8 @@
 bin_PROGRAMS = emux
-emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror
+emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
+	$(SDL_CFLAGS)
 emux_LDFLAGS = -Tlinker.lds
-emux_LDADD = -lrt
+emux_LDADD = -lrt $(SDL_LIBS)
 emux_SOURCES = main/clock.c \
 	main/cmdline.c \
 	main/controller.c \
@@ -16,6 +17,11 @@ emux_SOURCES = main/clock.c \
 emux_SOURCES += mach/chip8.c
 if CONFIG_MACH_NES
 emux_SOURCES += mach/nes.c
+endif
+
+# Frontends
+if CONFIG_VIDEO_SDL
+emux_SOURCES += frontends/video/sdl_video.c
 endif
 
 # CPUs

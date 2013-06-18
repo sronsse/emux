@@ -30,6 +30,12 @@ if test "$CONFIG_MACH" != "y"; then
 	AC_MSG_ERROR([please select at least one machine.])
 fi
 
+# Add SDL if needed
+if test "$CONFIG_VIDEO_SDL" == "y"; then
+SDL_VERSION=1.2.0
+AM_PATH_SDL($SDL_VERSION, :, AC_MSG_ERROR([*** SDL $SDL_VERSION not found!]))
+fi
+
 # Helps defining CONFIG_xxx macros in config.h and automake conditionals
 AC_DEFUN([AX_DECLARE_CONFIG], [
 	AM_CONDITIONAL($1, test "$$1" = "y")
@@ -39,6 +45,7 @@ AC_DEFUN([AX_DECLARE_CONFIG], [
 ])
 
 # Declare all our CONFIG_xxx variables
+AX_DECLARE_CONFIG([CONFIG_VIDEO_SDL])
 AX_DECLARE_CONFIG([CONFIG_MACH_NES])
 
 AC_OUTPUT

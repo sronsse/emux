@@ -4,5 +4,12 @@ config VIDEO
 	bool
 	default n
 
+config VIDEO_SDL
+	bool "sdl"
+	select VIDEO
+	default y
+	help
+		Enable SDL (Simple DirectMedia Layer) video frontend
+
 endmenu
 
