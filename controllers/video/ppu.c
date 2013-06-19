@@ -1,10 +1,10 @@
 #include <controller.h>
 
-void ppu_init(machine_data_t *machine_data)
+void ppu_init(struct controller *controller)
 {
 }
 
-void ppu_deinit()
+void ppu_deinit(struct controller *controller)
 {
 }
 

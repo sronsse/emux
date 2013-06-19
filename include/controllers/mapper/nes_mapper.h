@@ -5,7 +5,6 @@
 
 struct nes_mapper_mach_data {
 	char *path;
-	uint8_t number;
 };
 
 #endif

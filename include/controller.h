@@ -14,11 +14,14 @@
 	};
 
 typedef void machine_data_t;
+typedef void controller_data_t;
 
 struct controller {
 	char *name;
-	void (*init)(machine_data_t *data);
-	void (*deinit)();
+	void (*init)(struct controller *controller);
+	void (*deinit)(struct controller *controller);
+	machine_data_t *mdata;
+	controller_data_t *cdata;
 };
 
 struct controller_link {
@@ -26,7 +29,7 @@ struct controller_link {
 	struct controller_link *next;
 };
 
-void controller_add(char *name, machine_data_t *data);
+void controller_add(char *name, machine_data_t *mdata);
 void controller_remove_all();
 
 #endif
