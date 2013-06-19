@@ -4,13 +4,14 @@
 #include <stdint.h>
 
 enum resource_type {
-	RESOURCE_MEM
+	RESOURCE_MEM,
+	RESOURCE_CLK
 };
 
 struct resource {
 	char *name;
-	uint16_t start;
-	uint16_t end;
+	uint64_t start;
+	uint64_t end;
 	enum resource_type type;
 	struct resource *children;
 	int num_children;
