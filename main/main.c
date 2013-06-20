@@ -67,8 +67,7 @@ void print_usage(bool error)
 	fprintf(stream, "  --machine=MACH    Selects machine to emulate\n");
 	fprintf(stream, "  --audio=AUDIO     Selects audio frontend\n");
 	fprintf(stream, "  --video=VIDEO     Selects video frontend\n");
-	fprintf(stream, "  --width=WIDTH     Overrides window width\n");
-	fprintf(stream, "  --height=HEIGHT   Overrides window height\n");
+	fprintf(stream, "  --scale=SCALE     Applies a screen scale ratio\n");
 	fprintf(stream, "  --help            Display this help and exit\n");
 	fprintf(stream, "\n");
 

@@ -90,8 +90,7 @@ RUNNING EMUX
     --machine=MACH    Selects machine to emulate
     --audio=AUDIO     Selects audio frontend
     --video=VIDEO     Selects video frontend
-    --width=WIDTH     Overrides window width
-    --height=HEIGHT   Overrides window height
+    --scale=SCALE     Applies a screen scale ratio
     --help            Displays help, available frontends and machines
 
   If you would like to run INVADERS (CHIP-8) using libcaca for graphics, SDL for
