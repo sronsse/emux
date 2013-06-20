@@ -160,9 +160,12 @@ bool nes_init()
 	memory_region_add(&wram_region);
 
 	/* Add CPU and controllers */
-	cpu_add(&rp2a03_instance);
-	controller_add(&ppu_instance);
-	controller_add(&nes_mapper_instance);
+	if (!cpu_add(&rp2a03_instance))
+		return false;
+	if (!controller_add(&ppu_instance))
+		return false;
+	if (!controller_add(&nes_mapper_instance))
+		return false;
 
 	return true;
 }
