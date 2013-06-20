@@ -130,7 +130,8 @@ bool chip8_init()
 	}
 	fclose(f);
 
-	cpu_add(&chip8_cpu_instance);
+	if (!cpu_add(&chip8_cpu_instance))
+		return false;
 
 	return true;
 }
