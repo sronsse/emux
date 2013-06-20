@@ -40,21 +40,24 @@ void cx_controllers()
 }
 #endif
 
-void controller_add(struct controller_instance *instance)
+bool controller_add(struct controller_instance *instance)
 {
 	struct controller *c;
 	for (c = controllers_begin; c < controllers_end; c++)
 		if (!strcmp(instance->controller_name, c->name)) {
 			instance->controller = c;
-			if ((c->init && c->init(instance)) || !c->init)
+			if ((c->init && c->init(instance)) || !c->init) {
 				list_insert(&machine->controller_instances,
 					instance);
-			return;
+				return true;
+			}
+			return false;
 		}
 
 	/* Warn as controller was not found */
 	fprintf(stderr, "Controller \"%s\" not recognized!\n",
 		instance->controller_name);
+	return false;
 }
 
 void controller_remove_all()

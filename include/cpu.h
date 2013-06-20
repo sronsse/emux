@@ -42,7 +42,7 @@ struct cpu_instance {
 	struct cpu *cpu;
 };
 
-void cpu_add(struct cpu_instance *instance);
+bool cpu_add(struct cpu_instance *instance);
 void cpu_remove_all();
 
 #endif

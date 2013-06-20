@@ -44,7 +44,7 @@ struct controller_instance {
 	struct controller *controller;
 };
 
-void controller_add(struct controller_instance *instance);
+bool controller_add(struct controller_instance *instance);
 void controller_remove_all();
 
 #endif

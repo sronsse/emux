@@ -40,19 +40,22 @@ void cx_cpus()
 }
 #endif
 
-void cpu_add(struct cpu_instance *instance)
+bool cpu_add(struct cpu_instance *instance)
 {
 	struct cpu *cpu;
 	for (cpu = cpus_begin; cpu < cpus_end; cpu++)
 		if (!strcmp(instance->cpu_name, cpu->name)) {
 			instance->cpu = cpu;
-			if ((cpu->init && cpu->init(instance)) || !cpu->init)
+			if ((cpu->init && cpu->init(instance)) || !cpu->init) {
 				list_insert(&machine->cpu_instances, instance);
-			return;
+				return true;
+			}
+			return false;
 		}
 
 	/* Warn as CPU was not found */
 	fprintf(stderr, "CPU \"%s\" not recognized!\n", instance->cpu_name);
+	return false;
 }
 
 void cpu_remove_all()
