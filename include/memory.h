@@ -23,10 +23,10 @@ struct region {
 
 void memory_region_add(struct region *region);
 void memory_region_remove_all();
-uint8_t memory_readb(uint16_t address);
-uint16_t memory_readw(uint16_t address);
-void memory_writeb(uint8_t b, uint16_t address);
-void memory_writew(uint16_t w, uint16_t address);
+uint8_t memory_readb(int bus_id, uint16_t address);
+uint16_t memory_readw(int bus_id, uint16_t address);
+void memory_writeb(int bus_id, uint8_t b, uint16_t address);
+void memory_writew(int bus_id, uint16_t w, uint16_t address);
 void *memory_map_file(char *path, int offset, int size);
 void memory_unmap_file(void *data, int size);
 

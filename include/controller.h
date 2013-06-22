@@ -36,6 +36,7 @@ struct controller {
 
 struct controller_instance {
 	char *controller_name;
+	int bus_id;
 	struct resource *resources;
 	int num_resources;
 	controller_mach_data_t *mach_data;

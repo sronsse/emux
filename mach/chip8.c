@@ -7,6 +7,8 @@
 #include <memory.h>
 #include <util.h>
 
+#define CPU_BUS_ID	0
+
 #define RAM_START	0x0000
 #define RAM_END		0x0FFF
 
@@ -19,13 +21,17 @@ static uint8_t ram_readb(region_data_t *data, uint16_t address);
 static void ram_writeb(region_data_t *data, uint8_t b, uint16_t address);
 
 static struct cpu_instance chip8_cpu_instance = {
-	.cpu_name = "chip8"
+	.cpu_name = "chip8",
+	.bus_id = CPU_BUS_ID
 };
 
 static struct resource ram_area = {
 	.name = "ram",
-	.start = RAM_START,
-	.end = RAM_END,
+	.mem = {
+		.bus_id = CPU_BUS_ID,
+		.start = RAM_START,
+		.end = RAM_END
+	},
 	.type = RESOURCE_MEM
 };
 

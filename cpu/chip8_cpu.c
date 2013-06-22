@@ -56,6 +56,7 @@ struct chip8 {
 	uint8_t ST;
 	union opcode opcode;
 	uint16_t stack[STACK_SIZE];
+	int bus_id;
 	struct clock cpu_clock;
 	struct clock counters_clock;
 	struct clock draw_clock;
@@ -271,7 +272,7 @@ void DRW_Vx_Vy_nibble(struct chip8 *chip8)
 	bool pixel;
 
 	for (i = 0; i < chip8->opcode.n; i++) {
-		b = memory_readb(chip8->I + i);
+		b = memory_readb(chip8->bus_id, chip8->I + i);
 		y = (chip8->V[chip8->opcode.y] + i) % SCREEN_HEIGHT;
 		for (j = 0; j < NUM_PIXELS_PER_BYTE; j++) {
 			x = (chip8->V[chip8->opcode.x] + j) % SCREEN_WIDTH;
@@ -339,23 +340,26 @@ void LD_F_Vx(struct chip8 *chip8)
 
 void LD_B_Vx(struct chip8 *chip8)
 {
-	memory_writeb(chip8->V[chip8->opcode.x] / 100, chip8->I);
-	memory_writeb((chip8->V[chip8->opcode.x] / 10) % 10, chip8->I + 1);
-	memory_writeb(chip8->V[chip8->opcode.x] % 10, chip8->I + 2);
+	memory_writeb(chip8->bus_id, chip8->V[chip8->opcode.x] / 100,
+		chip8->I);
+	memory_writeb(chip8->bus_id, (chip8->V[chip8->opcode.x] / 10) % 10,
+		chip8->I + 1);
+	memory_writeb(chip8->bus_id, chip8->V[chip8->opcode.x] % 10,
+		chip8->I + 2);
 }
 
 void LD_cI_Vx(struct chip8 *chip8)
 {
 	int i;
 	for (i = 0; i <= chip8->opcode.x; i++)
-		memory_writeb(chip8->V[i], chip8->I + i);
+		memory_writeb(chip8->bus_id, chip8->V[i], chip8->I + i);
 }
 
 void LD_Vx_cI(struct chip8 *chip8)
 {
 	int i;
 	for (i = 0; i <= chip8->opcode.x; i++)
-		chip8->V[i] = memory_readb(chip8->I + i);
+		chip8->V[i] = memory_readb(chip8->bus_id, chip8->I + i);
 }
 
 void opcode_0(struct chip8 *chip8)
@@ -497,6 +501,9 @@ bool chip8_init(struct cpu_instance *instance)
 	/* Initialize audio time */
 	chip8->audio_time = 0.0f;
 
+	/* Save bus ID for later use */
+	chip8->bus_id = instance->bus_id;
+
 	/* Add CPU clock */
 	chip8->cpu_clock.rate = CPU_CLOCK_RATE;
 	chip8->cpu_clock.data = chip8;
@@ -522,8 +529,8 @@ void chip8_tick(clock_data_t *data)
 	struct chip8 *chip8 = data;
 
 	/* Fetch opcode */
-	uint8_t o1 = memory_readb(chip8->PC++);
-	uint8_t o2 = memory_readb(chip8->PC++);
+	uint8_t o1 = memory_readb(chip8->bus_id, chip8->PC++);
+	uint8_t o2 = memory_readb(chip8->bus_id, chip8->PC++);
 	chip8->opcode.raw = (o1 << 8) | o2;
 
 	/* Execute opcode */

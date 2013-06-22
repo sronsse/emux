@@ -12,12 +12,17 @@
 #include <memory.h>
 #include <util.h>
 
-static struct region *memory_find_region(struct list_link **regions,
+#define WITHIN_REGION(bus_id, address, area) \
+	((bus_id == area->mem.bus_id) && \
+	(address >= area->mem.start) && (address <= area->mem.end))
+
+static struct region *memory_find_region(struct list_link **regions, int bus_id,
 	uint16_t *a);
 
 extern struct machine *machine;
 
-struct region *memory_find_region(struct list_link **regions, uint16_t *a)
+struct region *memory_find_region(struct list_link **regions, int bus_id,
+	uint16_t *a)
 {
 	struct region *r;
 	struct region *region = NULL;
@@ -26,22 +31,27 @@ struct region *memory_find_region(struct list_link **regions, uint16_t *a)
 	int i;
 
 	while ((r = list_get_next(regions))) {
-		/* Check region area */
 		area = r->area;
-		if ((*a >= area->start) && (*a <= area->end)) {
-			*a -= area->start;
+
+		/* Check region area first */
+		if (WITHIN_REGION(bus_id, *a, area)) {
+			/* Select region and update address */
+			*a -= area->mem.start;
 			region = r;
 		} else {
-			/* Check region mirrors */
+			/* Check region mirrors otherwise */
 			for (i = 0; i < area->num_children; i++) {
 				mirror = &area->children[i];
-				if ((*a >= mirror->start) &&
-					(*a <= mirror->end)) {
-					*a = (*a - mirror->start) %
-						(area->end - area->start + 1);
-					region = r;
-					break;
-				}
+	
+				/* Skip mirror if not within desired region */
+				if (!WITHIN_REGION(bus_id, *a, mirror))
+					continue;
+
+				/* Select region and update address */
+				*a = (*a - mirror->mem.start) %
+					(area->mem.end - area->mem.start + 1);
+				region = r;
+				break;
 			}
 		}
 
@@ -50,7 +60,7 @@ struct region *memory_find_region(struct list_link **regions, uint16_t *a)
 			break;
 	}
 
-	/* Region has not been found */
+	/* Return found region or NULL otherwise */
 	return region;
 }
 
@@ -64,13 +74,13 @@ void memory_region_remove_all()
 	list_remove_all(&machine->regions);
 }
 
-uint8_t memory_readb(uint16_t address)
+uint8_t memory_readb(int bus_id, uint16_t address)
 {
 	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
 
-	while ((region = memory_find_region(&regions, &a))) {
+	while ((region = memory_find_region(&regions, bus_id, &a))) {
 		if (region->mops->readb)
 			return region->mops->readb(region->data, a);
 		a = address;
@@ -78,13 +88,13 @@ uint8_t memory_readb(uint16_t address)
 	return 0;
 }
 
-uint16_t memory_readw(uint16_t address)
+uint16_t memory_readw(int bus_id, uint16_t address)
 {
 	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
 
-	while ((region = memory_find_region(&regions, &a))) {
+	while ((region = memory_find_region(&regions, bus_id, &a))) {
 		if (region->mops->readw)
 			return region->mops->readw(region->data, a);
 		a = address;
@@ -92,26 +102,26 @@ uint16_t memory_readw(uint16_t address)
 	return 0;
 }
 
-void memory_writeb(uint8_t b, uint16_t address)
+void memory_writeb(int bus_id, uint8_t b, uint16_t address)
 {
 	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
 
-	while ((region = memory_find_region(&regions, &a))) {
+	while ((region = memory_find_region(&regions, bus_id, &a))) {
 		if (region->mops->writeb)
 			region->mops->writeb(region->data, b, a);
 		a = address;
 	}
 }
 
-void memory_writew(uint16_t w, uint16_t address)
+void memory_writew(int bus_id, uint16_t w, uint16_t address)
 {
 	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
 
-	while ((region = memory_find_region(&regions, &a))) {
+	while ((region = memory_find_region(&regions, bus_id, &a))) {
 		if (region->mops->writew)
 			region->mops->writew(region->data, w, a);
 		a = address;

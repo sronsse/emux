@@ -10,6 +10,9 @@
 #include <util.h>
 #include <controllers/mapper/nes_mapper.h>
 
+#define CPU_BUS_ID			0
+#define PPU_BUS_ID			1
+
 #define WORK_RAM_START			0x0000
 #define WORK_RAM_END			0x07FF
 #define WORK_RAM_MIRROR_START		0x0800
@@ -30,11 +33,13 @@ static void wram_writeb(region_data_t *data, uint8_t b, uint16_t address);
 static void wram_writew(region_data_t *data, uint16_t w, uint16_t address);
 
 static struct cpu_instance rp2a03_instance = {
-	.cpu_name = "rp2a03"
+	.cpu_name = "rp2a03",
+	.bus_id = CPU_BUS_ID
 };
 
 static struct controller_instance ppu_instance = {
-	.controller_name = "ppu"
+	.controller_name = "ppu",
+	.bus_id = PPU_BUS_ID
 };
 
 static struct nes_mapper_mach_data nes_mapper_mach_data;
@@ -42,20 +47,29 @@ static struct nes_mapper_mach_data nes_mapper_mach_data;
 static struct resource nes_mapper_resources[] = {
 	{
 		.name = "expansion",
-		.start = CART_EXPANSION_AREA_START,
-		.end = CART_EXPANSION_AREA_END,
+		.mem = {
+			.bus_id = CPU_BUS_ID,
+			.start = CART_EXPANSION_AREA_START,
+			.end = CART_EXPANSION_AREA_END
+		},
 		.type = RESOURCE_MEM
 	},
 	{
 		.name = "sram",
-		.start = CART_SRAM_AREA_START,
-		.end = CART_SRAM_AREA_END,
+		.mem = {
+			.bus_id = CPU_BUS_ID,
+			.start = CART_SRAM_AREA_START,
+			.end = CART_SRAM_AREA_END
+		},
 		.type = RESOURCE_MEM
 	},
 	{
 		.name = "prg_rom",
-		.start = CART_PRG_ROM_AREA_START,
-		.end = CART_PRG_ROM_AREA_END,
+		.mem = {
+			.bus_id = CPU_BUS_ID,
+			.start = CART_PRG_ROM_AREA_START,
+			.end = CART_PRG_ROM_AREA_END
+		},
 		.type = RESOURCE_MEM
 	}
 };
@@ -69,15 +83,21 @@ static struct controller_instance nes_mapper_instance = {
 
 static struct resource wram_mirror = {
 	.name = "wram_mirror",
-	.start = WORK_RAM_MIRROR_START,
-	.end = WORK_RAM_MIRROR_END,
+	.mem = {
+		.bus_id = CPU_BUS_ID,
+		.start = WORK_RAM_MIRROR_START,
+		.end = WORK_RAM_MIRROR_END
+	},
 	.type = RESOURCE_MEM
 };
 
 static struct resource wram_area = {
 	.name = "wram",
-	.start = WORK_RAM_START,
-	.end = WORK_RAM_END,
+	.mem = {
+		.bus_id = CPU_BUS_ID,
+		.start = WORK_RAM_START,
+		.end = WORK_RAM_END
+	},
 	.type = RESOURCE_MEM,
 	.children = &wram_mirror,
 	.num_children = 1

@@ -34,6 +34,7 @@ struct cpu {
 
 struct cpu_instance {
 	char *cpu_name;
+	int bus_id;
 	struct resource *resources;
 	int num_resources;
 	cpu_mach_data_t *mach_data;

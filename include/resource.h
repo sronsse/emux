@@ -10,8 +10,14 @@ enum resource_type {
 
 struct resource {
 	char *name;
-	uint64_t start;
-	uint64_t end;
+	union {
+		struct {
+			int bus_id;
+			uint16_t start;
+			uint16_t end;
+		} mem;
+		uint64_t rate;
+	};
 	enum resource_type type;
 	struct resource *children;
 	int num_children;
