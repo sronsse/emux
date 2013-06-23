@@ -5,6 +5,7 @@
 
 enum resource_type {
 	RESOURCE_MEM,
+	RESOURCE_IRQ,
 	RESOURCE_CLK
 };
 
@@ -16,6 +17,7 @@ struct resource {
 			uint16_t start;
 			uint16_t end;
 		} mem;
+		int irq;
 		uint64_t rate;
 	};
 	enum resource_type type;
