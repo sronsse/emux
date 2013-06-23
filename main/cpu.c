@@ -58,6 +58,17 @@ bool cpu_add(struct cpu_instance *instance)
 	return false;
 }
 
+void cpu_interrupt(int irq)
+{
+	struct cpu_instance *instance;
+	struct list_link *link = machine->cpu_instances;
+
+	/* Interrupt first CPU only */
+	instance = list_get_next(&link);
+	if (instance->cpu && instance->cpu->interrupt)
+		instance->cpu->interrupt(instance, irq);
+}
+
 void cpu_remove_all()
 {
 	struct list_link *link = machine->cpu_instances;

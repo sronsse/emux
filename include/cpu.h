@@ -29,6 +29,7 @@ struct cpu_instance;
 struct cpu {
 	char *name;
 	bool (*init)(struct cpu_instance *instance);
+	void (*interrupt)(struct cpu_instance *instance, int irq);
 	void (*deinit)(struct cpu_instance *instance);
 };
 
@@ -43,6 +44,7 @@ struct cpu_instance {
 };
 
 bool cpu_add(struct cpu_instance *instance);
+void cpu_interrupt(int irq);
 void cpu_remove_all();
 
 #endif
