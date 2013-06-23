@@ -2058,7 +2058,7 @@ void rp2a03_tick(clock_data_t *data)
 bool rp2a03_init(struct cpu_instance *instance)
 {
 	struct rp2a03 *rp2a03;
-	struct resource *clk = resource_get("cpu_clk",
+	struct resource *clk = resource_get("clk",
 		RESOURCE_CLK,
 		instance->resources,
 		instance->num_resources);

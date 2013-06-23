@@ -41,7 +41,7 @@ static void wram_writeb(region_data_t *data, uint8_t b, uint16_t address);
 static void wram_writew(region_data_t *data, uint16_t w, uint16_t address);
 
 static struct resource rp2a03_clock = {
-	.name = "cpu_clk",
+	.name = "clk",
 	.rate = CPU_CLOCK_RATE,
 	.type = RESOURCE_CLK
 };
@@ -54,7 +54,6 @@ static struct cpu_instance rp2a03_instance = {
 };
 
 static struct resource ppu_mirror = {
-	.name = "ppu_mirror",
 	.mem = {
 		.bus_id = CPU_BUS_ID,
 		.start = PPU_MIRROR_START,
@@ -65,7 +64,7 @@ static struct resource ppu_mirror = {
 
 static struct resource ppu_resources[] = {
 	{
-		.name = "ppu",
+		.name = "mem",
 		.mem = {
 			.bus_id = CPU_BUS_ID,
 			.start = PPU_START,
@@ -76,7 +75,7 @@ static struct resource ppu_resources[] = {
 		.num_children = 1
 	},
 	{
-		.name = "dot_clk",
+		.name = "clk",
 		.rate = PPU_CLOCK_RATE,
 		.type = RESOURCE_CLK
 	}
@@ -129,7 +128,6 @@ static struct controller_instance nes_mapper_instance = {
 };
 
 static struct resource wram_mirror = {
-	.name = "wram_mirror",
 	.mem = {
 		.bus_id = CPU_BUS_ID,
 		.start = WORK_RAM_MIRROR_START,

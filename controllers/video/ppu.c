@@ -176,7 +176,7 @@ bool ppu_init(struct controller_instance *instance)
 {
 	struct ppu *ppu;
 	struct region *region;
-	struct resource *clk = resource_get("dot_clk",
+	struct resource *clk = resource_get("clk",
 		RESOURCE_CLK,
 		instance->resources,
 		instance->num_resources);
@@ -195,7 +195,7 @@ bool ppu_init(struct controller_instance *instance)
 
 	/* Set up PPU memory region */
 	region = &ppu->region;
-	region->area = resource_get("ppu",
+	region->area = resource_get("mem",
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
