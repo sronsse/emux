@@ -159,12 +159,14 @@ bool nes_init()
 	wram_region.data = malloc(WORK_RAM_END - WORK_RAM_START + 1);
 	memory_region_add(&wram_region);
 
-	/* Add CPU and controllers */
-	if (!cpu_add(&rp2a03_instance))
+	/* Add controllers */
+	if (!controller_add(&nes_mapper_instance))
 		return false;
 	if (!controller_add(&ppu_instance))
 		return false;
-	if (!controller_add(&nes_mapper_instance))
+
+	/* Add main CPU */
+	if (!cpu_add(&rp2a03_instance))
 		return false;
 
 	return true;
