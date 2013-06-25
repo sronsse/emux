@@ -30,5 +30,7 @@ void memory_writew(int bus_id, uint16_t w, uint16_t address);
 void *memory_map_file(char *path, int offset, int size);
 void memory_unmap_file(void *data, int size);
 
+extern struct mops ram_mops;
+
 #endif
 

@@ -16,10 +16,46 @@
 	((bus_id == area->mem.bus_id) && \
 	(address >= area->mem.start) && (address <= area->mem.end))
 
+static uint8_t ram_readb(region_data_t *data, uint16_t address);
+static uint16_t ram_readw(region_data_t *data, uint16_t address);
+static void ram_writeb(region_data_t *data, uint8_t b, uint16_t address);
+static void ram_writew(region_data_t *data, uint16_t w, uint16_t address);
 static struct region *memory_find_region(struct list_link **regions, int bus_id,
 	uint16_t *a);
 
 extern struct machine *machine;
+
+struct mops ram_mops = {
+	.readb = ram_readb,
+	.readw = ram_readw,
+	.writeb = ram_writeb,
+	.writew = ram_writew
+};
+
+uint8_t ram_readb(region_data_t *data, uint16_t address)
+{
+	uint8_t *mem = (uint8_t *)data + address;
+	return *mem;
+}
+
+uint16_t ram_readw(region_data_t *data, uint16_t address)
+{
+	uint8_t *mem = (uint8_t *)data + address;
+	return (*(mem + 1) << 8) | *mem;
+}
+
+void ram_writeb(region_data_t *data, uint8_t b, uint16_t address)
+{
+	uint8_t *mem = (uint8_t *)data + address;
+	*mem = b;
+}
+
+void ram_writew(region_data_t *data, uint16_t w, uint16_t address)
+{
+	uint8_t *mem = (uint8_t *)data + address;
+	*mem++ = w;
+	*mem = w >> 8;
+}
 
 struct region *memory_find_region(struct list_link **regions, int bus_id,
 	uint16_t *a)
