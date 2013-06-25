@@ -121,6 +121,9 @@ uint8_t memory_readb(int bus_id, uint16_t address)
 			return region->mops->readb(region->data, a);
 		a = address;
 	}
+
+	fprintf(stderr, "Error: no region found at (%u, %04x)!\n",
+		bus_id, address);
 	return 0;
 }
 
@@ -135,6 +138,9 @@ uint16_t memory_readw(int bus_id, uint16_t address)
 			return region->mops->readw(region->data, a);
 		a = address;
 	}
+
+	fprintf(stderr, "Error: no region found at (%u, %04x)!\n",
+		bus_id, address);
 	return 0;
 }
 
@@ -143,12 +149,18 @@ void memory_writeb(int bus_id, uint8_t b, uint16_t address)
 	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
+	bool found = false;
 
 	while ((region = memory_find_region(&regions, bus_id, &a))) {
 		if (region->mops->writeb)
 			region->mops->writeb(region->data, b, a);
 		a = address;
+		found = true;
 	}
+
+	if (!found)
+		fprintf(stderr, "Error: no region found at (%u, %04x)!\n",
+			bus_id, address);
 }
 
 void memory_writew(int bus_id, uint16_t w, uint16_t address)
@@ -156,12 +168,18 @@ void memory_writew(int bus_id, uint16_t w, uint16_t address)
 	struct list_link *regions = machine->regions;
 	struct region *region;
 	uint16_t a = address;
+	bool found = false;
 
 	while ((region = memory_find_region(&regions, bus_id, &a))) {
 		if (region->mops->writew)
 			region->mops->writew(region->data, w, a);
 		a = address;
+		found = true;
 	}
+
+	if (!found)
+		fprintf(stderr, "Error: no region found at (%u, %04x)!\n",
+			bus_id, address);
 }
 
 void *memory_map_file(char *path, int offset, int size)
