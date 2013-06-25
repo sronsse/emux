@@ -33,10 +33,12 @@ struct rp2a03 {
 	};
 	int bus_id;
 	uint8_t n_cycles;
+	int nmi;
 	struct clock clock;
 };
 
 static bool rp2a03_init(struct cpu_instance *instance);
+static void rp2a03_interrupt(struct cpu_instance *instance, int irq);
 static void rp2a03_deinit(struct cpu_instance *instance);
 static void rp2a03_tick(clock_data_t *data);
 static inline void ADC_A(struct rp2a03 *rp2a03);
@@ -538,13 +540,20 @@ void BPL(struct rp2a03 *rp2a03)
 
 void BRK(struct rp2a03 *rp2a03)
 {
-	memory_writeb(rp2a03->bus_id, rp2a03->PC >> 8,
-		STACK_START + rp2a03->S--);
-	memory_writeb(rp2a03->bus_id, rp2a03->PC & 0xFF,
-		STACK_START + rp2a03->S--);
+	/* Save PC */
+	memory_writeb(rp2a03->bus_id, rp2a03->PC >> 8, STACK_START +
+		rp2a03->S--);
+	memory_writeb(rp2a03->bus_id, rp2a03->PC & 0xFF, STACK_START +
+		rp2a03->S--);
+
+	/* Push flags */
 	rp2a03->B = 1;
 	memory_writeb(rp2a03->bus_id, rp2a03->P, STACK_START + rp2a03->S--);
+
+	/* Interrupt is now active */
 	rp2a03->I = 1;
+
+	/* Set new PC to value written at the interrupt vector address */
 	rp2a03->PC = memory_readw(rp2a03->bus_id, INTERRUPT_VECTOR);
 	rp2a03->n_cycles += 7;
 }
@@ -2058,10 +2067,7 @@ void rp2a03_tick(clock_data_t *data)
 bool rp2a03_init(struct cpu_instance *instance)
 {
 	struct rp2a03 *rp2a03;
-	struct resource *clk = resource_get("clk",
-		RESOURCE_CLK,
-		instance->resources,
-		instance->num_resources);
+	struct resource *res;
 
 	/* Allocate rp2a03 structure and set private data */
 	rp2a03 = malloc(sizeof(struct rp2a03));
@@ -2074,13 +2080,49 @@ bool rp2a03_init(struct cpu_instance *instance)
 	rp2a03->unused = 1;
 	rp2a03->n_cycles = 1;
 
+	/* Save NMI IRQ number */
+	res = resource_get("nmi",
+		RESOURCE_IRQ,
+		instance->resources,
+		instance->num_resources);
+	rp2a03->nmi = res->irq;
+
 	/* Add CPU clock */
-	rp2a03->clock.rate = clk->rate;
+	res = resource_get("clk",
+		RESOURCE_CLK,
+		instance->resources,
+		instance->num_resources);
+	rp2a03->clock.rate = res->rate;
 	rp2a03->clock.data = rp2a03;
 	rp2a03->clock.tick = rp2a03_tick;
 	clock_add(&rp2a03->clock);
 
 	return true;
+}
+
+void rp2a03_interrupt(struct cpu_instance *instance, int irq)
+{
+	struct rp2a03 *rp2a03 = instance->priv_data;
+
+	/* Make sure we handle NMIs only */
+	if (irq != rp2a03->nmi)
+		return;
+
+	/* Save PC */
+	memory_writeb(rp2a03->bus_id, rp2a03->PC >> 8, STACK_START +
+		rp2a03->S--);
+	memory_writeb(rp2a03->bus_id, rp2a03->PC & 0xFF, STACK_START +
+		rp2a03->S--);
+
+	/* Push flags */
+	memory_writeb(rp2a03->bus_id, rp2a03->P, STACK_START + rp2a03->S--);
+
+	/* Interrupt is now active */
+	rp2a03->I = 1;
+
+	/* Set new PC to value written at the interrupt vector address */
+	rp2a03->PC = memory_readw(rp2a03->bus_id, NMI_VECTOR);
+	rp2a03->n_cycles += 7;
 }
 
 void rp2a03_deinit(struct cpu_instance *instance)
@@ -2091,6 +2133,7 @@ void rp2a03_deinit(struct cpu_instance *instance)
 
 CPU_START(rp2a03)
 	.init = rp2a03_init,
+	.interrupt = rp2a03_interrupt,
 	.deinit = rp2a03_deinit
 CPU_END
 

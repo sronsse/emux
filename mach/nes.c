@@ -13,6 +13,8 @@
 #define CPU_BUS_ID			0
 #define PPU_BUS_ID			1
 
+#define NMI_IRQ				0
+
 #define MASTER_CLOCK_RATE		21477264
 #define CPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 12)
 #define PPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 4)
@@ -40,17 +42,24 @@ static uint16_t wram_readw(region_data_t *data, uint16_t address);
 static void wram_writeb(region_data_t *data, uint8_t b, uint16_t address);
 static void wram_writew(region_data_t *data, uint16_t w, uint16_t address);
 
-static struct resource rp2a03_clock = {
-	.name = "clk",
-	.rate = CPU_CLOCK_RATE,
-	.type = RESOURCE_CLK
+static struct resource rp2a03_resources[] = {
+	{
+		.name = "nmi",
+		.irq = NMI_IRQ,
+		.type = RESOURCE_IRQ
+	},
+	{
+		.name = "clk",
+		.rate = CPU_CLOCK_RATE,
+		.type = RESOURCE_CLK
+	}
 };
 
 static struct cpu_instance rp2a03_instance = {
 	.cpu_name = "rp2a03",
 	.bus_id = CPU_BUS_ID,
-	.resources = &rp2a03_clock,
-	.num_resources = 1
+	.resources = rp2a03_resources,
+	.num_resources = ARRAY_SIZE(rp2a03_resources)
 };
 
 static struct resource ppu_mirror = {
