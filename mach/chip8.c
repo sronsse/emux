@@ -17,8 +17,6 @@
 static bool chip8_init();
 static void chip8_deinit();
 static void chip8_print_usage();
-static uint8_t ram_readb(region_data_t *data, uint16_t address);
-static void ram_writeb(region_data_t *data, uint8_t b, uint16_t address);
 
 static struct cpu_instance chip8_cpu_instance = {
 	.cpu_name = "chip8",
@@ -33,11 +31,6 @@ static struct resource ram_area = {
 		.end = RAM_END
 	},
 	.type = RESOURCE_MEM
-};
-
-static struct mops ram_mops = {
-	.readb = ram_readb,
-	.writeb = ram_writeb
 };
 
 static struct region ram_region = {
@@ -63,18 +56,6 @@ static uint8_t char_mem[] = {
 	0xF0, 0x80, 0xF0, 0x80, 0xF0,
 	0xF0, 0x80, 0xF0, 0x80, 0x80
 };
-
-uint8_t ram_readb(region_data_t *data, uint16_t address)
-{
-	uint8_t *mem = (uint8_t *)data + address;
-	return *(uint8_t *)mem;
-}
-
-void ram_writeb(region_data_t *data, uint8_t b, uint16_t address)
-{
-	uint8_t *mem = (uint8_t *)data + address;
-	*mem = b;
-}
 
 void chip8_print_usage()
 {

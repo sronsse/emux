@@ -37,10 +37,6 @@
 static bool nes_init();
 static void nes_deinit();
 static void nes_print_usage();
-static uint8_t wram_readb(region_data_t *data, uint16_t address);
-static uint16_t wram_readw(region_data_t *data, uint16_t address);
-static void wram_writeb(region_data_t *data, uint8_t b, uint16_t address);
-static void wram_writew(region_data_t *data, uint16_t w, uint16_t address);
 
 static struct resource rp2a03_resources[] = {
 	{
@@ -162,42 +158,10 @@ static struct resource wram_area = {
 	.num_children = 1
 };
 
-static struct mops wram_mops = {
-	.readb = wram_readb,
-	.readw = wram_readw,
-	.writeb = wram_writeb,
-	.writew = wram_writew
-};
-
 static struct region wram_region = {
 	.area = &wram_area,
-	.mops = &wram_mops
+	.mops = &ram_mops
 };
-
-uint8_t wram_readb(region_data_t *data, uint16_t address)
-{
-	uint8_t *mem = (uint8_t *)data + address;
-	return *mem;
-}
-
-uint16_t wram_readw(region_data_t *data, uint16_t address)
-{
-	uint8_t *mem = (uint8_t *)data + address;
-	return (*(mem + 1) << 8) | *mem;
-}
-
-void wram_writeb(region_data_t *data, uint8_t b, uint16_t address)
-{
-	uint8_t *mem = (uint8_t *)data + address;
-	*mem = b;
-}
-
-void wram_writew(region_data_t *data, uint16_t w, uint16_t address)
-{
-	uint8_t *mem = (uint8_t *)data + address;
-	*mem++ = w;
-	*mem = w >> 8;
-}
 
 void nes_print_usage()
 {
