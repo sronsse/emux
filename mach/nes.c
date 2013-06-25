@@ -84,6 +84,11 @@ static struct resource ppu_resources[] = {
 		.num_children = 1
 	},
 	{
+		.name = "irq",
+		.irq = NMI_IRQ,
+		.type = RESOURCE_IRQ
+	},
+	{
 		.name = "clk",
 		.rate = PPU_CLOCK_RATE,
 		.type = RESOURCE_CLK

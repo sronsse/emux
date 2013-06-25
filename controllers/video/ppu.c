@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <clock.h>
 #include <controller.h>
+#include <cpu.h>
 #include <memory.h>
 #include <resource.h>
 #include <util.h>
@@ -78,6 +79,7 @@ struct ppu {
 	uint8_t horizontal_scroll_origin;
 	uint8_t vertical_scroll_origin;
 	uint16_t vram_address;
+	int irq;
 	struct region region;
 	struct clock clock;
 };
@@ -176,10 +178,7 @@ bool ppu_init(struct controller_instance *instance)
 {
 	struct ppu *ppu;
 	struct region *region;
-	struct resource *clk = resource_get("clk",
-		RESOURCE_CLK,
-		instance->resources,
-		instance->num_resources);
+	struct resource *res;
 
 	/* Allocate PPU structure */
 	instance->priv_data = malloc(sizeof(struct ppu));
@@ -203,8 +202,19 @@ bool ppu_init(struct controller_instance *instance)
 	region->data = instance->priv_data;
 	memory_region_add(region);
 
+	/* Get IRQ number */
+	res = resource_get("irq",
+		RESOURCE_IRQ,
+		instance->resources,
+		instance->num_resources);
+	ppu->irq = res->irq;
+
 	/* Set up clock */
-	ppu->clock.rate = clk->rate;
+	res = resource_get("clk",
+		RESOURCE_CLK,
+		instance->resources,
+		instance->num_resources);
+	ppu->clock.rate = res->rate;
 	ppu->clock.data = ppu;
 	ppu->clock.tick = ppu_tick;
 	clock_add(&ppu->clock);
@@ -230,6 +240,8 @@ void ppu_tick(clock_data_t *data)
 		if (++ppu->current_scanline == N_SCANLINES) {
 			ppu->current_scanline = 0;
 			ppu->status_reg.vblank_flag = 1;
+			if (ppu->control_reg_1.execute_nmi_on_vblank)
+				cpu_interrupt(ppu->irq);
 		}
 	}
 }
