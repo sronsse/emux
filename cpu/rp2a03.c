@@ -2085,14 +2085,14 @@ bool rp2a03_init(struct cpu_instance *instance)
 		RESOURCE_IRQ,
 		instance->resources,
 		instance->num_resources);
-	rp2a03->nmi = res->irq;
+	rp2a03->nmi = res->irq.id;
 
 	/* Add CPU clock */
 	res = resource_get("clk",
 		RESOURCE_CLK,
 		instance->resources,
 		instance->num_resources);
-	rp2a03->clock.rate = res->rate;
+	rp2a03->clock.rate = res->clk.rate;
 	rp2a03->clock.data = rp2a03;
 	rp2a03->clock.tick = rp2a03_tick;
 	clock_add(&rp2a03->clock);
