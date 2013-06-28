@@ -19,36 +19,51 @@
 #define CPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 12)
 #define PPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 4)
 
-#define WORK_RAM_START			0x0000
-#define WORK_RAM_END			0x07FF
-#define WORK_RAM_MIRROR_START		0x0800
-#define WORK_RAM_MIRROR_END		0x1FFF
+#define WRAM_SIZE			KB(2)
+
+#define WRAM_START			0x0000
+#define WRAM_END			0x07FF
+#define WRAM_MIRROR_START		0x0800
+#define WRAM_MIRROR_END			0x1FFF
 #define PPU_START			0x2000
 #define PPU_END				0x2007
 #define PPU_MIRROR_START		0x2008
 #define PPU_MIRROR_END			0x3FFF
-#define CART_EXPANSION_AREA_START	0x4018
-#define CART_EXPANSION_AREA_END		0x5FFF
-#define CART_SRAM_AREA_START		0x6000
-#define CART_SRAM_AREA_END		0x7FFF
-#define CART_PRG_ROM_AREA_START		0x8000
-#define CART_PRG_ROM_AREA_END		0xFFFF
+#define EXPANSION_START			0x4018
+#define EXPANSION_END			0x5FFF
+#define SRAM_START			0x6000
+#define SRAM_END			0x7FFF
+#define PRG_ROM_START			0x8000
+#define PRG_ROM_END			0xFFFF
 
 static bool nes_init();
 static void nes_deinit();
 static void nes_print_usage();
 
+/* Internal memory */
+static uint8_t wram[WRAM_SIZE];
+
+/* WRAM area */
+static struct resource wram_mirror =
+	MEM_START("mem_mirror", CPU_BUS_ID, WRAM_MIRROR_START, WRAM_MIRROR_END)
+	MEM_END;
+
+static struct resource wram_area =
+	MEM_START("mem", CPU_BUS_ID, WRAM_START, WRAM_END)
+		.children = &wram_mirror,
+		.num_children = 1
+	MEM_END;
+
+static struct region wram_region = {
+	.area = &wram_area,
+	.mops = &ram_mops,
+	.data = wram
+};
+
+/* RP2A03 CPU */
 static struct resource rp2a03_resources[] = {
-	{
-		.name = "nmi",
-		.irq = NMI_IRQ,
-		.type = RESOURCE_IRQ
-	},
-	{
-		.name = "clk",
-		.rate = CPU_CLOCK_RATE,
-		.type = RESOURCE_CLK
-	}
+	IRQ("nmi", NMI_IRQ),
+	CLK("clk", CPU_CLOCK_RATE)
 };
 
 static struct cpu_instance rp2a03_instance = {
@@ -58,37 +73,18 @@ static struct cpu_instance rp2a03_instance = {
 	.num_resources = ARRAY_SIZE(rp2a03_resources)
 };
 
-static struct resource ppu_mirror = {
-	.mem = {
-		.bus_id = CPU_BUS_ID,
-		.start = PPU_MIRROR_START,
-		.end = PPU_MIRROR_END
-	},
-	.type = RESOURCE_MEM
-};
+/* PPU controller */
+static struct resource ppu_mirror =
+	MEM_START("mem_mirror", CPU_BUS_ID, PPU_MIRROR_START, PPU_MIRROR_END)
+	MEM_END;
 
 static struct resource ppu_resources[] = {
-	{
-		.name = "mem",
-		.mem = {
-			.bus_id = CPU_BUS_ID,
-			.start = PPU_START,
-			.end = PPU_END
-		},
-		.type = RESOURCE_MEM,
+	MEM_START("mem", CPU_BUS_ID, PPU_START, PPU_END)
 		.children = &ppu_mirror,
 		.num_children = 1
-	},
-	{
-		.name = "irq",
-		.irq = NMI_IRQ,
-		.type = RESOURCE_IRQ
-	},
-	{
-		.name = "clk",
-		.rate = PPU_CLOCK_RATE,
-		.type = RESOURCE_CLK
-	}
+	MEM_END,
+	IRQ("irq", NMI_IRQ),
+	CLK("clk", PPU_CLOCK_RATE)
 };
 
 static struct controller_instance ppu_instance = {
@@ -98,36 +94,16 @@ static struct controller_instance ppu_instance = {
 	.num_resources = ARRAY_SIZE(ppu_resources)
 };
 
+/* NES mapper controller */
 static struct nes_mapper_mach_data nes_mapper_mach_data;
 
 static struct resource nes_mapper_resources[] = {
-	{
-		.name = "expansion",
-		.mem = {
-			.bus_id = CPU_BUS_ID,
-			.start = CART_EXPANSION_AREA_START,
-			.end = CART_EXPANSION_AREA_END
-		},
-		.type = RESOURCE_MEM
-	},
-	{
-		.name = "sram",
-		.mem = {
-			.bus_id = CPU_BUS_ID,
-			.start = CART_SRAM_AREA_START,
-			.end = CART_SRAM_AREA_END
-		},
-		.type = RESOURCE_MEM
-	},
-	{
-		.name = "prg_rom",
-		.mem = {
-			.bus_id = CPU_BUS_ID,
-			.start = CART_PRG_ROM_AREA_START,
-			.end = CART_PRG_ROM_AREA_END
-		},
-		.type = RESOURCE_MEM
-	}
+	MEM_START("expansion", CPU_BUS_ID, EXPANSION_START, EXPANSION_END)
+	MEM_END,
+	MEM_START("sram", CPU_BUS_ID, SRAM_START, SRAM_END)
+	MEM_END,
+	MEM_START("prg_rom", CPU_BUS_ID, PRG_ROM_START, PRG_ROM_END)
+	MEM_END
 };
 
 static struct controller_instance nes_mapper_instance = {
@@ -135,32 +111,6 @@ static struct controller_instance nes_mapper_instance = {
 	.resources = nes_mapper_resources,
 	.num_resources = ARRAY_SIZE(nes_mapper_resources),
 	.mach_data = &nes_mapper_mach_data
-};
-
-static struct resource wram_mirror = {
-	.mem = {
-		.bus_id = CPU_BUS_ID,
-		.start = WORK_RAM_MIRROR_START,
-		.end = WORK_RAM_MIRROR_END
-	},
-	.type = RESOURCE_MEM
-};
-
-static struct resource wram_area = {
-	.name = "wram",
-	.mem = {
-		.bus_id = CPU_BUS_ID,
-		.start = WORK_RAM_START,
-		.end = WORK_RAM_END
-	},
-	.type = RESOURCE_MEM,
-	.children = &wram_mirror,
-	.num_children = 1
-};
-
-static struct region wram_region = {
-	.area = &wram_area,
-	.mops = &ram_mops
 };
 
 void nes_print_usage()
@@ -179,7 +129,6 @@ bool nes_init()
 	}
 
 	/* Add work ram region */
-	wram_region.data = malloc(WORK_RAM_END - WORK_RAM_START + 1);
 	memory_region_add(&wram_region);
 
 	/* Add controllers */
@@ -197,7 +146,6 @@ bool nes_init()
 
 void nes_deinit()
 {
-	free(wram_region.data);
 }
 
 MACHINE_START(nes, "Nintendo Entertainment System")

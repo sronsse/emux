@@ -23,15 +23,9 @@ static struct cpu_instance chip8_cpu_instance = {
 	.bus_id = CPU_BUS_ID
 };
 
-static struct resource ram_area = {
-	.name = "ram",
-	.mem = {
-		.bus_id = CPU_BUS_ID,
-		.start = RAM_START,
-		.end = RAM_END
-	},
-	.type = RESOURCE_MEM
-};
+static struct resource ram_area =
+	MEM_START("mem", CPU_BUS_ID, RAM_START, RAM_END)
+	MEM_END;
 
 static struct region ram_region = {
 	.area = &ram_area,
