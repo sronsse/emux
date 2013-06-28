@@ -13,8 +13,8 @@
 #include <util.h>
 
 #define WITHIN_REGION(bus_id, address, area) \
-	((bus_id == area->mem.bus_id) && \
-	(address >= area->mem.start) && (address <= area->mem.end))
+	((bus_id == area->data.mem.bus_id) && \
+	(address >= area->data.mem.start) && (address <= area->data.mem.end))
 
 static uint8_t ram_readb(region_data_t *data, uint16_t address);
 static uint16_t ram_readw(region_data_t *data, uint16_t address);
@@ -72,7 +72,7 @@ struct region *memory_find_region(struct list_link **regions, int bus_id,
 		/* Check region area first */
 		if (WITHIN_REGION(bus_id, *a, area)) {
 			/* Select region and update address */
-			*a -= area->mem.start;
+			*a -= area->data.mem.start;
 			region = r;
 		} else {
 			/* Check region mirrors otherwise */
@@ -84,8 +84,8 @@ struct region *memory_find_region(struct list_link **regions, int bus_id,
 					continue;
 
 				/* Select region and update address */
-				*a = (*a - mirror->mem.start) %
-					(area->mem.end - area->mem.start + 1);
+				*a = (*a - mirror->data.mem.start) %
+					(area->data.mem.end - area->data.mem.start + 1);
 				region = r;
 				break;
 			}

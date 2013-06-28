@@ -216,14 +216,14 @@ bool ppu_init(struct controller_instance *instance)
 		RESOURCE_IRQ,
 		instance->resources,
 		instance->num_resources);
-	ppu->irq = res->irq.id;
+	ppu->irq = res->data.irq;
 
 	/* Set up clock */
 	res = resource_get("clk",
 		RESOURCE_CLK,
 		instance->resources,
 		instance->num_resources);
-	ppu->clock.rate = res->clk.rate;
+	ppu->clock.rate = res->data.clk;
 	ppu->clock.data = ppu;
 	ppu->clock.tick = ppu_tick;
 	clock_add(&ppu->clock);

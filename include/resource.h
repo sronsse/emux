@@ -6,7 +6,7 @@
 #define MEM_START(_name, _bus_id, _start, _end) \
 	{ \
 		.name = _name, \
-		.mem = { \
+		.data.mem = { \
 			.bus_id = _bus_id, \
 			.start = _start, \
 			.end = _end \
@@ -15,21 +15,17 @@
 #define MEM_END \
 	}
 
-#define IRQ(_name, _id) \
+#define IRQ(_name, _irq) \
 	{ \
 		.name = _name, \
-		.irq = { \
-			.id = _id \
-		}, \
+		.data.irq = _irq, \
 		.type = RESOURCE_IRQ \
 	}
 
-#define CLK(_name, _rate) \
+#define CLK(_name, _clk) \
 	{ \
 		.name = _name, \
-		.clk = { \
-			.rate = _rate \
-		}, \
+		.data.clk = _clk, \
 		.type = RESOURCE_CLK \
 	}
 
@@ -47,13 +43,9 @@ struct resource {
 			uint16_t start;
 			uint16_t end;
 		} mem;
-		struct {
-			int id;
-		} irq;
-		struct {
-			uint64_t rate;
-		} clk;
-	};
+		int irq;
+		uint64_t clk;
+	} data;
 	enum resource_type type;
 	struct resource *children;
 	int num_children;
