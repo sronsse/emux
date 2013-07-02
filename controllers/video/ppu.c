@@ -7,6 +7,7 @@
 #include <memory.h>
 #include <resource.h>
 #include <util.h>
+#include <video.h>
 
 #define N_REGS				8
 #define CONTROL_REG_1_ADDR		0
@@ -18,6 +19,8 @@
 #define VRAM_ADDR_REG_ADDR		6
 #define VRAM_READ_WRITE_DATA_REG_ADDR	7
 
+#define SCREEN_WIDTH			256
+#define SCREEN_HEIGHT			240
 #define VRAM_ADDR_MSB_MASK		0x3F
 #define N_DOTS_PER_SCANLINE		341
 #define N_SCANLINES			262
@@ -179,6 +182,10 @@ bool ppu_init(struct controller_instance *instance)
 	struct region *region;
 	struct resource *res;
 
+	/* Initialize video frontend */
+	if (!video_init(SCREEN_WIDTH, SCREEN_HEIGHT))
+		return false;
+
 	/* Allocate PPU structure */
 	instance->priv_data = malloc(sizeof(struct ppu));
 	ppu = instance->priv_data;
@@ -244,6 +251,7 @@ void ppu_tick(clock_data_t *data)
 			ppu->status_reg.vblank_flag = 1;
 			if (ppu->control_reg_1.execute_nmi_on_vblank)
 				cpu_interrupt(ppu->irq);
+			video_update();
 		}
 	}
 }
