@@ -17,7 +17,6 @@
 #define BG_SCROLLING_OFFSET_ADDR	5
 #define VRAM_ADDR_REG_ADDR		6
 #define VRAM_READ_WRITE_DATA_REG_ADDR	7
-#define VRAM_SIZE			0x4000
 
 #define VRAM_ADDR_MSB_MASK		0x3F
 #define N_DOTS_PER_SCANLINE		341
@@ -70,7 +69,6 @@ struct ppu {
 			uint8_t vram_read_write_data_reg;
 		};
 	};
-	uint8_t vram[VRAM_SIZE];
 	int current_dot;
 	int current_scanline;
 	bool first_frame;
@@ -79,6 +77,7 @@ struct ppu {
 	uint8_t horizontal_scroll_origin;
 	uint8_t vertical_scroll_origin;
 	uint16_t vram_address;
+	int bus_id;
 	int irq;
 	struct region region;
 	struct clock clock;
@@ -117,8 +116,8 @@ uint8_t ppu_readb(region_data_t *data, uint16_t address)
 		if (ppu->status_reg.vblank_flag)
 			ppu->status_reg.vblank_flag = 0;
 	} else if (address == VRAM_READ_WRITE_DATA_REG_ADDR) {
-		/* Read from VRAM increasing address pointer accordingly */
-		b = ppu->vram[ppu->vram_address];
+		/* Read from VRAM increasing address accordingly */
+		b = memory_readb(ppu->bus_id, ppu->vram_address);
 		ppu->vram_address +=
 			ppu->control_reg_1.port_2007_vram_addr_increment ?
 			32 : 1;
@@ -163,8 +162,8 @@ void ppu_writeb(region_data_t *data, uint8_t b, uint16_t address)
 		ppu->flipflop_first_write = true;
 		return;
 	} else if (address == VRAM_READ_WRITE_DATA_REG_ADDR) {
-		/* Write to stored VRAM address and increment pointer */
-		ppu->vram[ppu->vram_address] = b;
+		/* Write to stored VRAM address and increment accordingly */
+		memory_writeb(ppu->bus_id, b, ppu->vram_address);
 		ppu->vram_address +=
 			ppu->control_reg_1.port_2007_vram_addr_increment ?
 			32 : 1;
@@ -201,6 +200,9 @@ bool ppu_init(struct controller_instance *instance)
 	region->mops = &ppu_mops;
 	region->data = instance->priv_data;
 	memory_region_add(region);
+
+	/* Save bus ID for later use */
+	ppu->bus_id = instance->bus_id;
 
 	/* Get IRQ number */
 	res = resource_get("irq",

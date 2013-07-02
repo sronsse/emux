@@ -20,7 +20,9 @@
 #define PPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 4)
 
 #define WRAM_SIZE			KB(2)
+#define VRAM_SIZE			KB(2)
 
+/* CPU memory map */
 #define WRAM_START			0x0000
 #define WRAM_END			0x07FF
 #define WRAM_MIRROR_START		0x0800
@@ -36,12 +38,19 @@
 #define PRG_ROM_START			0x8000
 #define PRG_ROM_END			0xFFFF
 
+/* PPU memory map */
+#define VRAM_START			0x2000
+#define VRAM_END			0x2FFF
+#define VRAM_MIRROR_START		0x3000
+#define VRAM_MIRROR_END			0x3EFF
+
 static bool nes_init();
 static void nes_deinit();
 static void nes_print_usage();
 
 /* Internal memory */
 static uint8_t wram[WRAM_SIZE];
+static uint8_t vram[VRAM_SIZE];
 
 /* WRAM area */
 static struct resource wram_mirror =
@@ -97,12 +106,20 @@ static struct controller_instance ppu_instance = {
 /* NES mapper controller */
 static struct nes_mapper_mach_data nes_mapper_mach_data;
 
+static struct resource vram_mirror =
+	MEM_START("vram", PPU_BUS_ID, VRAM_MIRROR_START, VRAM_MIRROR_END)
+	MEM_END;
+
 static struct resource nes_mapper_resources[] = {
 	MEM_START("expansion", CPU_BUS_ID, EXPANSION_START, EXPANSION_END)
 	MEM_END,
 	MEM_START("sram", CPU_BUS_ID, SRAM_START, SRAM_END)
 	MEM_END,
 	MEM_START("prg_rom", CPU_BUS_ID, PRG_ROM_START, PRG_ROM_END)
+	MEM_END,
+	MEM_START("vram", PPU_BUS_ID, VRAM_START, VRAM_END)
+		.children = &vram_mirror,
+		.num_children = 1
 	MEM_END
 };
 
@@ -130,6 +147,9 @@ bool nes_init()
 
 	/* Add work ram region */
 	memory_region_add(&wram_region);
+
+	/* NES cart controls VRAM address lines so let the mapper handle it */
+	nes_mapper_mach_data.vram = vram;
 
 	/* Add controllers */
 	if (!controller_add(&nes_mapper_instance))

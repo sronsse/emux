@@ -5,6 +5,7 @@
 
 struct nes_mapper_mach_data {
 	char *path;
+	uint8_t *vram;
 };
 
 struct cart_header {
@@ -16,6 +17,7 @@ struct cart_header {
 	uint8_t prg_ram_size;
 	uint8_t flags9;
 	uint8_t flags10;
+	uint8_t unused[5];
 };
 
 #endif
