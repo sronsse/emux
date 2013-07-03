@@ -7,9 +7,12 @@ struct nrom {
 	bool vertical_mirroring;
 	struct region vram_region;
 	struct region prg_rom_region;
+	struct region chr_rom_region;
 	uint8_t *vram;
 	uint8_t *prg_rom;
 	int prg_rom_size;
+	uint8_t *chr_rom;
+	int chr_rom_size;
 };
 
 static bool nrom_init(struct controller_instance *instance);
@@ -137,7 +140,7 @@ bool nrom_init(struct controller_instance *instance)
 	region->data = nrom;
 	memory_region_add(region);
 
-	/* Allocate and fill region data */
+	/* Allocate and fill PRG ROM data */
 	nrom->prg_rom_size = PRG_ROM_SIZE(cart_header);
 	nrom->prg_rom = memory_map_file(mach_data->path,
 		PRG_ROM_OFFSET(cart_header),
@@ -153,6 +156,22 @@ bool nrom_init(struct controller_instance *instance)
 	region->data = nrom;
 	memory_region_add(region);
 
+	/* Allocate and fill CHR ROM data */
+	nrom->chr_rom_size = CHR_ROM_SIZE(cart_header);
+	nrom->chr_rom = memory_map_file(mach_data->path,
+		CHR_ROM_OFFSET(cart_header),
+		nrom->chr_rom_size);
+
+	/* Fill and add PRG ROM region */
+	region = &nrom->chr_rom_region;
+	region->area = resource_get("chr",
+		RESOURCE_MEM,
+		instance->resources,
+		instance->num_resources);
+	region->mops = &rom_mops;
+	region->data = nrom->chr_rom;
+	memory_region_add(region);
+
 	/* Unmap cart header */
 	memory_unmap_file(cart_header, sizeof(struct cart_header));
 
@@ -162,6 +181,7 @@ bool nrom_init(struct controller_instance *instance)
 void nrom_deinit(struct controller_instance *instance)
 {
 	struct nrom *nrom = instance->priv_data;
+	memory_unmap_file(nrom->chr_rom, nrom->chr_rom_size);
 	memory_unmap_file(nrom->prg_rom, nrom->prg_rom_size);
 	free(nrom);
 }

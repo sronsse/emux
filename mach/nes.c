@@ -39,6 +39,8 @@
 #define PRG_ROM_END			0xFFFF
 
 /* PPU memory map */
+#define CHR_START			0x0000
+#define CHR_END				0x1FFF
 #define VRAM_START			0x2000
 #define VRAM_END			0x2FFF
 #define VRAM_MIRROR_START		0x3000
@@ -105,6 +107,7 @@ static struct resource nes_mapper_resources[] = {
 	MEM("expansion", CPU_BUS_ID, EXPANSION_START, EXPANSION_END),
 	MEM("sram", CPU_BUS_ID, SRAM_START, SRAM_END),
 	MEM("prg_rom", CPU_BUS_ID, PRG_ROM_START, PRG_ROM_END),
+	MEM("chr", PPU_BUS_ID, CHR_START, CHR_END),
 	MEMX("vram", PPU_BUS_ID, VRAM_START, VRAM_END, &vram_mirror, 1)
 };
 
