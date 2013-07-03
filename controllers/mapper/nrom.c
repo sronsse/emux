@@ -138,9 +138,9 @@ bool nrom_init(struct controller_instance *instance)
 	memory_region_add(region);
 
 	/* Allocate and fill region data */
-	nrom->prg_rom_size = cart_header->prg_rom_size * KB(16);
+	nrom->prg_rom_size = PRG_ROM_SIZE(cart_header);
 	nrom->prg_rom = memory_map_file(mach_data->path,
-		sizeof(struct cart_header),
+		PRG_ROM_OFFSET(cart_header),
 		nrom->prg_rom_size);
 
 	/* Fill and add PRG ROM region */
