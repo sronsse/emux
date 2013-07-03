@@ -54,14 +54,10 @@ static uint8_t vram[VRAM_SIZE];
 
 /* WRAM area */
 static struct resource wram_mirror =
-	MEM_START("mem_mirror", CPU_BUS_ID, WRAM_MIRROR_START, WRAM_MIRROR_END)
-	MEM_END;
+	MEM("mem_mirror", CPU_BUS_ID, WRAM_MIRROR_START, WRAM_MIRROR_END);
 
 static struct resource wram_area =
-	MEM_START("mem", CPU_BUS_ID, WRAM_START, WRAM_END)
-		.children = &wram_mirror,
-		.num_children = 1
-	MEM_END;
+	MEMX("mem", CPU_BUS_ID, WRAM_START, WRAM_END, &wram_mirror, 1);
 
 static struct region wram_region = {
 	.area = &wram_area,
@@ -84,14 +80,10 @@ static struct cpu_instance rp2a03_instance = {
 
 /* PPU controller */
 static struct resource ppu_mirror =
-	MEM_START("mem_mirror", CPU_BUS_ID, PPU_MIRROR_START, PPU_MIRROR_END)
-	MEM_END;
+	MEM("mem_mirror", CPU_BUS_ID, PPU_MIRROR_START, PPU_MIRROR_END);
 
 static struct resource ppu_resources[] = {
-	MEM_START("mem", CPU_BUS_ID, PPU_START, PPU_END)
-		.children = &ppu_mirror,
-		.num_children = 1
-	MEM_END,
+	MEMX("mem", CPU_BUS_ID, PPU_START, PPU_END, &ppu_mirror, 1),
 	IRQ("irq", NMI_IRQ),
 	CLK("clk", PPU_CLOCK_RATE)
 };
@@ -107,20 +99,13 @@ static struct controller_instance ppu_instance = {
 static struct nes_mapper_mach_data nes_mapper_mach_data;
 
 static struct resource vram_mirror =
-	MEM_START("vram", PPU_BUS_ID, VRAM_MIRROR_START, VRAM_MIRROR_END)
-	MEM_END;
+	MEM("vram", PPU_BUS_ID, VRAM_MIRROR_START, VRAM_MIRROR_END);
 
 static struct resource nes_mapper_resources[] = {
-	MEM_START("expansion", CPU_BUS_ID, EXPANSION_START, EXPANSION_END)
-	MEM_END,
-	MEM_START("sram", CPU_BUS_ID, SRAM_START, SRAM_END)
-	MEM_END,
-	MEM_START("prg_rom", CPU_BUS_ID, PRG_ROM_START, PRG_ROM_END)
-	MEM_END,
-	MEM_START("vram", PPU_BUS_ID, VRAM_START, VRAM_END)
-		.children = &vram_mirror,
-		.num_children = 1
-	MEM_END
+	MEM("expansion", CPU_BUS_ID, EXPANSION_START, EXPANSION_END),
+	MEM("sram", CPU_BUS_ID, SRAM_START, SRAM_END),
+	MEM("prg_rom", CPU_BUS_ID, PRG_ROM_START, PRG_ROM_END),
+	MEMX("vram", PPU_BUS_ID, VRAM_START, VRAM_END, &vram_mirror, 1)
 };
 
 static struct controller_instance nes_mapper_instance = {

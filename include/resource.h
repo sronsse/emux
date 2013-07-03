@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MEM_START(_name, _bus_id, _start, _end) \
+#define MEMX(_name, _bus_id, _start, _end, _children, _num_children) \
 	{ \
 		.name = _name, \
 		.data.mem = { \
@@ -11,9 +11,12 @@
 			.start = _start, \
 			.end = _end \
 		}, \
-		.type = RESOURCE_MEM,
-#define MEM_END \
+		.type = RESOURCE_MEM, \
+		.children = _children, \
+		.num_children = _num_children \
 	}
+#define MEM(_name, _bus_id, _start, _end) \
+	MEMX(_name, _bus_id, _start, _end, NULL, 0)
 
 #define IRQ(_name, _irq) \
 	{ \
