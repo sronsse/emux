@@ -21,6 +21,7 @@
 
 #define WRAM_SIZE			KB(2)
 #define VRAM_SIZE			KB(2)
+#define PALETTE_SIZE			32
 
 /* CPU memory map */
 #define WRAM_START			0x0000
@@ -45,6 +46,10 @@
 #define VRAM_END			0x2FFF
 #define VRAM_MIRROR_START		0x3000
 #define VRAM_MIRROR_END			0x3EFF
+#define PALETTE_START			0x3F00
+#define PALETTE_END			0x3F1F
+#define PALETTE_MIRROR_START		0x3F20
+#define PALETTE_MIRROR_END		0x3FFF
 
 static bool nes_init();
 static void nes_deinit();
@@ -53,6 +58,7 @@ static void nes_print_usage();
 /* Internal memory */
 static uint8_t wram[WRAM_SIZE];
 static uint8_t vram[VRAM_SIZE];
+static uint8_t palette[PALETTE_SIZE];
 
 /* WRAM area */
 static struct resource wram_mirror =
@@ -65,6 +71,19 @@ static struct region wram_region = {
 	.area = &wram_area,
 	.mops = &ram_mops,
 	.data = wram
+};
+
+/* Palette area */
+static struct resource palette_mirror =
+	MEM("mem_mirror", PPU_BUS_ID, PALETTE_MIRROR_START, PALETTE_MIRROR_END);
+
+static struct resource palette_area =
+	MEMX("mem", PPU_BUS_ID, PALETTE_START, PALETTE_END, &palette_mirror, 1);
+
+static struct region palette_region = {
+	.area = &palette_area,
+	.mops = &ram_mops,
+	.data = palette
 };
 
 /* RP2A03 CPU */
@@ -133,8 +152,9 @@ bool nes_init()
 		return false;
 	}
 
-	/* Add work ram region */
+	/* Add memory regions */
 	memory_region_add(&wram_region);
+	memory_region_add(&palette_region);
 
 	/* NES cart controls VRAM address lines so let the mapper handle it */
 	nes_mapper_mach_data.vram = vram;
