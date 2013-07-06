@@ -254,6 +254,9 @@ void ppu_tick(clock_data_t *data)
 			video_update();
 		}
 	}
+
+	/* Report cycle consumption */
+	clock_consume(1);
 }
 
 void ppu_deinit(struct controller_instance *instance)

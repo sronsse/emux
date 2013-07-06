@@ -5,6 +5,7 @@
 #include <clock.h>
 #include <cpu.h>
 #include <memory.h>
+#include <util.h>
 
 #define NMI_VECTOR		0xFFFA
 #define RESET_VECTOR		0xFFFC
@@ -31,8 +32,8 @@ struct rp2a03 {
 			uint8_t N:1;
 		};
 	};
+	bool interrupted;
 	int bus_id;
-	uint8_t n_cycles;
 	int nmi;
 	struct clock clock;
 };
@@ -218,7 +219,7 @@ void ADC_A(struct rp2a03 *rp2a03)
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void ADC_AX(struct rp2a03 *rp2a03)
@@ -232,7 +233,7 @@ void ADC_AX(struct rp2a03 *rp2a03)
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void ADC_AY(struct rp2a03 *rp2a03)
@@ -246,7 +247,7 @@ void ADC_AY(struct rp2a03 *rp2a03)
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void ADC_I(struct rp2a03 *rp2a03)
@@ -258,7 +259,7 @@ void ADC_I(struct rp2a03 *rp2a03)
 	rp2a03->V = ((~(rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void ADC_IX(struct rp2a03 *rp2a03)
@@ -273,7 +274,7 @@ void ADC_IX(struct rp2a03 *rp2a03)
 	rp2a03->V = ((~(rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void ADC_IY(struct rp2a03 *rp2a03)
@@ -288,7 +289,7 @@ void ADC_IY(struct rp2a03 *rp2a03)
 	rp2a03->V = ((~(rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void ADC_ZP(struct rp2a03 *rp2a03)
@@ -301,7 +302,7 @@ void ADC_ZP(struct rp2a03 *rp2a03)
 	rp2a03->V = ((~(rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void ADC_ZPX(struct rp2a03 *rp2a03)
@@ -314,7 +315,7 @@ void ADC_ZPX(struct rp2a03 *rp2a03)
 	rp2a03->V = ((~(rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void AND(struct rp2a03 *rp2a03, uint8_t b)
@@ -330,7 +331,7 @@ void AND_A(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	AND(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void AND_AX(struct rp2a03 *rp2a03)
@@ -339,7 +340,7 @@ void AND_AX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	AND(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void AND_AY(struct rp2a03 *rp2a03)
@@ -348,14 +349,14 @@ void AND_AY(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	AND(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void AND_I(struct rp2a03 *rp2a03)
 {
 	uint8_t b = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	AND(rp2a03, b);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void AND_IX(struct rp2a03 *rp2a03)
@@ -365,7 +366,7 @@ void AND_IX(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address);
 	AND(rp2a03, b);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void AND_IY(struct rp2a03 *rp2a03)
@@ -375,7 +376,7 @@ void AND_IY(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address + rp2a03->Y);
 	AND(rp2a03, b);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void AND_ZP(struct rp2a03 *rp2a03)
@@ -383,7 +384,7 @@ void AND_ZP(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
 	AND(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void AND_ZPX(struct rp2a03 *rp2a03)
@@ -391,7 +392,7 @@ void AND_ZPX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->X) % ZP_SIZE);
 	AND(rp2a03, b);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void ASL_ACC(struct rp2a03 *rp2a03)
@@ -400,7 +401,7 @@ void ASL_ACC(struct rp2a03 *rp2a03)
 	rp2a03->A <<= 1;
 	rp2a03->Z = (rp2a03->A == 0);
 	rp2a03->N = ((rp2a03->A & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void ASL_A(struct rp2a03 *rp2a03)
@@ -413,7 +414,7 @@ void ASL_A(struct rp2a03 *rp2a03)
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void ASL_AX(struct rp2a03 *rp2a03)
@@ -426,7 +427,7 @@ void ASL_AX(struct rp2a03 *rp2a03)
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 7;
+	clock_consume(7);
 }
 
 void ASL_ZP(struct rp2a03 *rp2a03)
@@ -438,7 +439,7 @@ void ASL_ZP(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, b, address);
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void ASL_ZPX(struct rp2a03 *rp2a03)
@@ -451,37 +452,37 @@ void ASL_ZPX(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, b, address);
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void BCC(struct rp2a03 *rp2a03)
 {
 	if (!rp2a03->C) {
 		rp2a03->PC += (int8_t)memory_readb(rp2a03->bus_id, rp2a03->PC);
-		rp2a03->n_cycles++;
+		clock_consume(1);
 	}
 	rp2a03->PC++;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void BCS(struct rp2a03 *rp2a03)
 {
 	if (rp2a03->C) {
 		rp2a03->PC += (int8_t)memory_readb(rp2a03->bus_id, rp2a03->PC);
-		rp2a03->n_cycles++;
+		clock_consume(1);
 	}
 	rp2a03->PC++;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void BEQ(struct rp2a03 *rp2a03)
 {
 	if (rp2a03->Z) {
 		rp2a03->PC += (int8_t)memory_readb(rp2a03->bus_id, rp2a03->PC);
-		rp2a03->n_cycles++;
+		clock_consume(1);
 	}
 	rp2a03->PC++;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void BIT(struct rp2a03 *rp2a03, uint8_t b)
@@ -497,7 +498,7 @@ void BIT_A(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	BIT(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void BIT_ZP(struct rp2a03 *rp2a03)
@@ -505,37 +506,37 @@ void BIT_ZP(struct rp2a03 *rp2a03)
 	uint16_t address = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	BIT(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void BMI(struct rp2a03 *rp2a03)
 {
 	if (rp2a03->N) {
 		rp2a03->PC += (int8_t)memory_readb(rp2a03->bus_id, rp2a03->PC);
-		rp2a03->n_cycles++;
+		clock_consume(1);
 	}
 	rp2a03->PC++;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void BNE(struct rp2a03 *rp2a03)
 {
 	if (!rp2a03->Z) {
 		rp2a03->PC += (int8_t)memory_readb(rp2a03->bus_id, rp2a03->PC);
-		rp2a03->n_cycles++;
+		clock_consume(1);
 	}
 	rp2a03->PC++;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void BPL(struct rp2a03 *rp2a03)
 {
 	if (!rp2a03->N) {
 		rp2a03->PC += (int8_t)memory_readb(rp2a03->bus_id, rp2a03->PC);
-		rp2a03->n_cycles++;
+		clock_consume(1);
 	}
 	rp2a03->PC++;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void BRK(struct rp2a03 *rp2a03)
@@ -555,45 +556,45 @@ void BRK(struct rp2a03 *rp2a03)
 
 	/* Set new PC to value written at the interrupt vector address */
 	rp2a03->PC = memory_readw(rp2a03->bus_id, INTERRUPT_VECTOR);
-	rp2a03->n_cycles += 7;
+	clock_consume(7);
 }
 
 void BVC(struct rp2a03 *rp2a03)
 {
 	if (!rp2a03->V) {
 		rp2a03->PC += (int8_t)memory_readb(rp2a03->bus_id, rp2a03->PC);
-		rp2a03->n_cycles++;
+		clock_consume(1);
 	}
 	rp2a03->PC++;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void BVS(struct rp2a03 *rp2a03)
 {
 	if (rp2a03->V) {
 		rp2a03->PC += (int8_t)memory_readb(rp2a03->bus_id, rp2a03->PC);
-		rp2a03->n_cycles++;
+		clock_consume(1);
 	}
 	rp2a03->PC++;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void CLC(struct rp2a03 *rp2a03)
 {
 	rp2a03->C = 0;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void CLD(struct rp2a03 *rp2a03)
 {
 	rp2a03->D = 0;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void CLV(struct rp2a03 *rp2a03)
 {
 	rp2a03->V = 0;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void CMP(struct rp2a03 *rp2a03, uint8_t b)
@@ -609,7 +610,7 @@ void CMP_A(struct rp2a03 *rp2a03)
 		rp2a03->PC));
 	CMP(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void CMP_AX(struct rp2a03 *rp2a03)
@@ -618,7 +619,7 @@ void CMP_AX(struct rp2a03 *rp2a03)
 		rp2a03->PC) + rp2a03->X);
 	CMP(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void CMP_AY(struct rp2a03 *rp2a03)
@@ -627,14 +628,14 @@ void CMP_AY(struct rp2a03 *rp2a03)
 		rp2a03->PC) + rp2a03->Y);
 	CMP(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void CMP_I(struct rp2a03 *rp2a03)
 {
 	uint8_t b = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	CMP(rp2a03, b);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void CMP_IX(struct rp2a03 *rp2a03)
@@ -644,7 +645,7 @@ void CMP_IX(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address);
 	CMP(rp2a03, b);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void CMP_IY(struct rp2a03 *rp2a03)
@@ -654,7 +655,7 @@ void CMP_IY(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address + rp2a03->Y);
 	CMP(rp2a03, b);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void CMP_ZP(struct rp2a03 *rp2a03)
@@ -662,7 +663,7 @@ void CMP_ZP(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
 	CMP(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void CMP_ZPX(struct rp2a03 *rp2a03)
@@ -670,7 +671,7 @@ void CMP_ZPX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->X) % ZP_SIZE);
 	CMP(rp2a03, b);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void CPX(struct rp2a03 *rp2a03, uint8_t b)
@@ -686,14 +687,14 @@ void CPX_A(struct rp2a03 *rp2a03)
 		rp2a03->PC));
 	CPX(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void CPX_I(struct rp2a03 *rp2a03)
 {
 	uint8_t b = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	CPX(rp2a03, b);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void CPX_ZP(struct rp2a03 *rp2a03)
@@ -701,7 +702,7 @@ void CPX_ZP(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
 	CPX(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void CPY(struct rp2a03 *rp2a03, uint8_t b)
@@ -717,14 +718,14 @@ void CPY_A(struct rp2a03 *rp2a03)
 		rp2a03->PC));
 	CPY(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void CPY_I(struct rp2a03 *rp2a03)
 {
 	uint8_t b = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	CPY(rp2a03, b);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void CPY_ZP(struct rp2a03 *rp2a03)
@@ -732,7 +733,7 @@ void CPY_ZP(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
 	CPY(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void DEC(struct rp2a03 *rp2a03, uint16_t address)
@@ -748,7 +749,7 @@ void DEC_A(struct rp2a03 *rp2a03)
 	uint16_t address = memory_readw(rp2a03->bus_id, rp2a03->PC);
 	DEC(rp2a03, address);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void DEC_AX(struct rp2a03 *rp2a03)
@@ -756,14 +757,14 @@ void DEC_AX(struct rp2a03 *rp2a03)
 	uint16_t address = memory_readw(rp2a03->bus_id, rp2a03->PC) + rp2a03->X;
 	DEC(rp2a03, address);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 7;
+	clock_consume(7);
 }
 
 void DEC_ZP(struct rp2a03 *rp2a03)
 {
 	uint16_t address = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	DEC(rp2a03, address);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void DEC_ZPX(struct rp2a03 *rp2a03)
@@ -771,7 +772,7 @@ void DEC_ZPX(struct rp2a03 *rp2a03)
 	uint16_t address = (memory_readb(rp2a03->bus_id, rp2a03->PC++) +
 		rp2a03->X) % ZP_SIZE;
 	DEC(rp2a03, address);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void DEX(struct rp2a03 *rp2a03)
@@ -779,7 +780,7 @@ void DEX(struct rp2a03 *rp2a03)
 	rp2a03->X--;
 	rp2a03->Z = (rp2a03->X == 0);
 	rp2a03->N = ((rp2a03->X & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void DEY(struct rp2a03 *rp2a03)
@@ -787,7 +788,7 @@ void DEY(struct rp2a03 *rp2a03)
 	rp2a03->Y--;
 	rp2a03->Z = (rp2a03->Y == 0);
 	rp2a03->N = ((rp2a03->Y & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void EOR(struct rp2a03 *rp2a03, uint8_t b)
@@ -803,7 +804,7 @@ void EOR_A(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	EOR(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void EOR_AX(struct rp2a03 *rp2a03)
@@ -812,7 +813,7 @@ void EOR_AX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	EOR(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void EOR_AY(struct rp2a03 *rp2a03)
@@ -821,14 +822,14 @@ void EOR_AY(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	EOR(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void EOR_I(struct rp2a03 *rp2a03)
 {
 	uint8_t b = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	EOR(rp2a03, b);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void EOR_IX(struct rp2a03 *rp2a03)
@@ -838,7 +839,7 @@ void EOR_IX(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address);
 	EOR(rp2a03, b);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void EOR_IY(struct rp2a03 *rp2a03)
@@ -848,7 +849,7 @@ void EOR_IY(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address + rp2a03->Y);
 	EOR(rp2a03, b);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void EOR_ZP(struct rp2a03 *rp2a03)
@@ -856,7 +857,7 @@ void EOR_ZP(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
 	EOR(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void EOR_ZPX(struct rp2a03 *rp2a03)
@@ -864,7 +865,7 @@ void EOR_ZPX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->X) % ZP_SIZE);
 	EOR(rp2a03, b);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void INC(struct rp2a03 *rp2a03, uint16_t address)
@@ -880,7 +881,7 @@ void INC_A(struct rp2a03 *rp2a03)
 	uint16_t address = memory_readw(rp2a03->bus_id, rp2a03->PC);
 	INC(rp2a03, address);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void INC_AX(struct rp2a03 *rp2a03)
@@ -888,14 +889,14 @@ void INC_AX(struct rp2a03 *rp2a03)
 	uint16_t address = memory_readw(rp2a03->bus_id, rp2a03->PC) + rp2a03->X;
 	INC(rp2a03, address);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 7;
+	clock_consume(7);
 }
 
 void INC_ZP(struct rp2a03 *rp2a03)
 {
 	uint16_t address = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	INC(rp2a03, address);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void INC_ZPX(struct rp2a03 *rp2a03)
@@ -903,7 +904,7 @@ void INC_ZPX(struct rp2a03 *rp2a03)
 	uint16_t address = (memory_readb(rp2a03->bus_id, rp2a03->PC++) +
 		rp2a03->X) % ZP_SIZE;
 	INC(rp2a03, address);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void INX(struct rp2a03 *rp2a03)
@@ -911,7 +912,7 @@ void INX(struct rp2a03 *rp2a03)
 	rp2a03->X++;
 	rp2a03->Z = (rp2a03->X == 0);
 	rp2a03->N = ((rp2a03->X & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void INY(struct rp2a03 *rp2a03)
@@ -919,7 +920,7 @@ void INY(struct rp2a03 *rp2a03)
 	rp2a03->Y++;
 	rp2a03->Z = (rp2a03->Y == 0);
 	rp2a03->N = ((rp2a03->Y & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void JMP(struct rp2a03 *rp2a03, uint16_t address)
@@ -931,7 +932,7 @@ void JMP_A(struct rp2a03 *rp2a03)
 {
 	uint16_t address = memory_readw(rp2a03->bus_id, rp2a03->PC);
 	JMP(rp2a03, address);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void JMP_I(struct rp2a03 *rp2a03)
@@ -941,7 +942,7 @@ void JMP_I(struct rp2a03 *rp2a03)
 	uint16_t address = memory_readb(rp2a03->bus_id, address_1) |
 		(memory_readb(rp2a03->bus_id, address_2) << 8);
 	JMP(rp2a03, address);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void JSR(struct rp2a03 *rp2a03)
@@ -951,7 +952,7 @@ void JSR(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, (rp2a03->PC + 1) & 0xFF,
 		STACK_START + rp2a03->S--);
 	rp2a03->PC = memory_readw(rp2a03->bus_id, rp2a03->PC);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void LDA(struct rp2a03 *rp2a03, uint8_t b)
@@ -967,7 +968,7 @@ void LDA_A(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	LDA(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LDA_AX(struct rp2a03 *rp2a03)
@@ -976,7 +977,7 @@ void LDA_AX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	LDA(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LDA_AY(struct rp2a03 *rp2a03)
@@ -985,14 +986,14 @@ void LDA_AY(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	LDA(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LDA_I(struct rp2a03 *rp2a03)
 {
 	uint8_t b = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	LDA(rp2a03, b);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void LDA_IX(struct rp2a03 *rp2a03)
@@ -1002,7 +1003,7 @@ void LDA_IX(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address);
 	LDA(rp2a03, b);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void LDA_IY(struct rp2a03 *rp2a03)
@@ -1012,7 +1013,7 @@ void LDA_IY(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address + rp2a03->Y);
 	LDA(rp2a03, b);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void LDA_ZPX(struct rp2a03 *rp2a03)
@@ -1020,7 +1021,7 @@ void LDA_ZPX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->X) % ZP_SIZE);
 	LDA(rp2a03, b);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LDA_ZP(struct rp2a03 *rp2a03)
@@ -1028,7 +1029,7 @@ void LDA_ZP(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
 	LDA(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void LDX(struct rp2a03 *rp2a03, uint8_t b)
@@ -1044,7 +1045,7 @@ void LDX_A(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	LDX(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LDX_AY(struct rp2a03 *rp2a03)
@@ -1053,14 +1054,14 @@ void LDX_AY(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	LDX(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LDX_I(struct rp2a03 *rp2a03)
 {
 	uint8_t b = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	LDX(rp2a03, b);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void LDX_ZP(struct rp2a03 *rp2a03)
@@ -1068,7 +1069,7 @@ void LDX_ZP(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
 	LDX(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void LDX_ZPY(struct rp2a03 *rp2a03)
@@ -1076,7 +1077,7 @@ void LDX_ZPY(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->Y) % ZP_SIZE);
 	LDX(rp2a03, b);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LDY(struct rp2a03 *rp2a03, uint8_t b)
@@ -1092,7 +1093,7 @@ void LDY_A(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	LDY(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LDY_AX(struct rp2a03 *rp2a03)
@@ -1101,14 +1102,14 @@ void LDY_AX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	LDY(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LDY_I(struct rp2a03 *rp2a03)
 {
 	uint8_t b = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	LDY(rp2a03, b);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void LDY_ZP(struct rp2a03 *rp2a03)
@@ -1116,7 +1117,7 @@ void LDY_ZP(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
 	LDY(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void LDY_ZPX(struct rp2a03 *rp2a03)
@@ -1124,7 +1125,7 @@ void LDY_ZPX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->X) % ZP_SIZE);
 	LDY(rp2a03, b);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void LSR_ACC(struct rp2a03 *rp2a03)
@@ -1133,7 +1134,7 @@ void LSR_ACC(struct rp2a03 *rp2a03)
 	rp2a03->A >>= 1;
 	rp2a03->Z = (rp2a03->A == 0);
 	rp2a03->N = 0;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void LSR_A(struct rp2a03 *rp2a03)
@@ -1146,7 +1147,7 @@ void LSR_A(struct rp2a03 *rp2a03)
 	rp2a03->Z = (b == 0);
 	rp2a03->N = 0;
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void LSR_AX(struct rp2a03 *rp2a03)
@@ -1159,7 +1160,7 @@ void LSR_AX(struct rp2a03 *rp2a03)
 	rp2a03->Z = (b == 0);
 	rp2a03->N = 0;
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 7;
+	clock_consume(7);
 }
 
 void LSR_ZP(struct rp2a03 *rp2a03)
@@ -1171,7 +1172,7 @@ void LSR_ZP(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, b, address);
 	rp2a03->Z = (b == 0);
 	rp2a03->N = 0;
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void LSR_ZPX(struct rp2a03 *rp2a03)
@@ -1184,24 +1185,24 @@ void LSR_ZPX(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, b, address);
 	rp2a03->Z = (b == 0);
 	rp2a03->N = 0;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
-void NOP(struct rp2a03 *rp2a03)
+void NOP(struct rp2a03 *UNUSED(rp2a03))
 {
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void NOP_A(struct rp2a03 *rp2a03)
 {
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void NOP_D(struct rp2a03 *rp2a03)
 {
 	rp2a03->PC++;
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void ORA(struct rp2a03 *rp2a03, uint8_t b)
@@ -1217,7 +1218,7 @@ void ORA_A(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	ORA(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void ORA_AX(struct rp2a03 *rp2a03)
@@ -1226,7 +1227,7 @@ void ORA_AX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	ORA(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void ORA_AY(struct rp2a03 *rp2a03)
@@ -1235,14 +1236,14 @@ void ORA_AY(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, address);
 	ORA(rp2a03, b);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void ORA_I(struct rp2a03 *rp2a03)
 {
 	uint8_t b = memory_readb(rp2a03->bus_id, rp2a03->PC++);
 	ORA(rp2a03, b);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void ORA_IX(struct rp2a03 *rp2a03)
@@ -1252,7 +1253,7 @@ void ORA_IX(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address);
 	ORA(rp2a03, b);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void ORA_IY(struct rp2a03 *rp2a03)
@@ -1262,7 +1263,7 @@ void ORA_IY(struct rp2a03 *rp2a03)
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	b = memory_readb(rp2a03->bus_id, address + rp2a03->Y);
 	ORA(rp2a03, b);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void ORA_ZP(struct rp2a03 *rp2a03)
@@ -1270,7 +1271,7 @@ void ORA_ZP(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
 	ORA(rp2a03, b);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void ORA_ZPX(struct rp2a03 *rp2a03)
@@ -1278,13 +1279,13 @@ void ORA_ZPX(struct rp2a03 *rp2a03)
 	uint8_t b = memory_readb(rp2a03->bus_id, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->X) % ZP_SIZE);
 	ORA(rp2a03, b);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void PHA(struct rp2a03 *rp2a03)
 {
 	memory_writeb(rp2a03->bus_id, rp2a03->A, STACK_START + rp2a03->S--);
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void PHP(struct rp2a03 *rp2a03)
@@ -1292,7 +1293,7 @@ void PHP(struct rp2a03 *rp2a03)
 	rp2a03->B = 1;
 	memory_writeb(rp2a03->bus_id, rp2a03->P, STACK_START + rp2a03->S--);
 	rp2a03->B = 0;
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void PLA(struct rp2a03 *rp2a03)
@@ -1300,7 +1301,7 @@ void PLA(struct rp2a03 *rp2a03)
 	rp2a03->A = memory_readb(rp2a03->bus_id, STACK_START + ++rp2a03->S);
 	rp2a03->Z = (rp2a03->A == 0);
 	rp2a03->N = ((rp2a03->A & 0x80) != 0);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void PLP(struct rp2a03 *rp2a03)
@@ -1308,7 +1309,7 @@ void PLP(struct rp2a03 *rp2a03)
 	rp2a03->P = memory_readb(rp2a03->bus_id, STACK_START + ++rp2a03->S);
 	rp2a03->unused = 1;
 	rp2a03->B = 0;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void ROL_ACC(struct rp2a03 *rp2a03)
@@ -1318,7 +1319,7 @@ void ROL_ACC(struct rp2a03 *rp2a03)
 	rp2a03->A = (rp2a03->A << 1) | old_carry;
 	rp2a03->Z = (rp2a03->A == 0);
 	rp2a03->N = ((rp2a03->A & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void ROL_A(struct rp2a03 *rp2a03)
@@ -1332,7 +1333,7 @@ void ROL_A(struct rp2a03 *rp2a03)
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void ROL_AX(struct rp2a03 *rp2a03)
@@ -1346,7 +1347,7 @@ void ROL_AX(struct rp2a03 *rp2a03)
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 7;
+	clock_consume(7);
 }
 
 void ROL_ZP(struct rp2a03 *rp2a03)
@@ -1359,7 +1360,7 @@ void ROL_ZP(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, b, address);
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void ROL_ZPX(struct rp2a03 *rp2a03)
@@ -1373,7 +1374,7 @@ void ROL_ZPX(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, b, address);
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void ROR_ACC(struct rp2a03 *rp2a03)
@@ -1383,7 +1384,7 @@ void ROR_ACC(struct rp2a03 *rp2a03)
 	rp2a03->A = (rp2a03->A >> 1) | (old_carry << 7);
 	rp2a03->Z = (rp2a03->A == 0);
 	rp2a03->N = ((rp2a03->A & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void ROR_A(struct rp2a03 *rp2a03)
@@ -1397,7 +1398,7 @@ void ROR_A(struct rp2a03 *rp2a03)
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void ROR_AX(struct rp2a03 *rp2a03)
@@ -1411,7 +1412,7 @@ void ROR_AX(struct rp2a03 *rp2a03)
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 7;
+	clock_consume(7);
 }
 
 void ROR_ZP(struct rp2a03 *rp2a03)
@@ -1424,7 +1425,7 @@ void ROR_ZP(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, b, address);
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void ROR_ZPX(struct rp2a03 *rp2a03)
@@ -1438,7 +1439,7 @@ void ROR_ZPX(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, b, address);
 	rp2a03->Z = (b == 0);
 	rp2a03->N = ((b & 0x80) != 0);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void RTI(struct rp2a03 *rp2a03)
@@ -1449,7 +1450,7 @@ void RTI(struct rp2a03 *rp2a03)
 	rp2a03->PC = memory_readb(rp2a03->bus_id, STACK_START + ++rp2a03->S);
 	rp2a03->PC |= memory_readb(rp2a03->bus_id, STACK_START +
 		++rp2a03->S) << 8;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void RTS(struct rp2a03 *rp2a03)
@@ -1457,7 +1458,7 @@ void RTS(struct rp2a03 *rp2a03)
 	uint16_t PC = memory_readb(rp2a03->bus_id, STACK_START + ++rp2a03->S);
 	PC |= memory_readb(rp2a03->bus_id, STACK_START + ++rp2a03->S) << 8;
 	rp2a03->PC = PC + 1;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void SBC_A(struct rp2a03 *rp2a03)
@@ -1471,7 +1472,7 @@ void SBC_A(struct rp2a03 *rp2a03)
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void SBC_AX(struct rp2a03 *rp2a03)
@@ -1485,7 +1486,7 @@ void SBC_AX(struct rp2a03 *rp2a03)
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void SBC_AY(struct rp2a03 *rp2a03)
@@ -1499,7 +1500,7 @@ void SBC_AY(struct rp2a03 *rp2a03)
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void SBC_I(struct rp2a03 *rp2a03)
@@ -1511,7 +1512,7 @@ void SBC_I(struct rp2a03 *rp2a03)
 	rp2a03->V = (((rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void SBC_IX(struct rp2a03 *rp2a03)
@@ -1526,7 +1527,7 @@ void SBC_IX(struct rp2a03 *rp2a03)
 	rp2a03->V = (((rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void SBC_IY(struct rp2a03 *rp2a03)
@@ -1541,7 +1542,7 @@ void SBC_IY(struct rp2a03 *rp2a03)
 	rp2a03->V = (((rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void SBC_ZP(struct rp2a03 *rp2a03)
@@ -1554,7 +1555,7 @@ void SBC_ZP(struct rp2a03 *rp2a03)
 	rp2a03->V = (((rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void SBC_ZPX(struct rp2a03 *rp2a03)
@@ -1567,25 +1568,25 @@ void SBC_ZPX(struct rp2a03 *rp2a03)
 	rp2a03->V = (((rp2a03->A ^ b) & (rp2a03->A ^ result) & 0x80) != 0);
 	rp2a03->N = ((result & 0x80) != 0);
 	rp2a03->A = result;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void SEC(struct rp2a03 *rp2a03)
 {
 	rp2a03->C = 1;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void SED(struct rp2a03 *rp2a03)
 {
 	rp2a03->D = 1;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void SEI(struct rp2a03 *rp2a03)
 {
 	rp2a03->I = 1;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void STA_A(struct rp2a03 *rp2a03)
@@ -1593,7 +1594,7 @@ void STA_A(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, rp2a03->A, memory_readw(rp2a03->bus_id,
 		rp2a03->PC));
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void STA_AX(struct rp2a03 *rp2a03)
@@ -1601,7 +1602,7 @@ void STA_AX(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, rp2a03->A, memory_readw(rp2a03->bus_id,
 		rp2a03->PC) + rp2a03->X);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void STA_AY(struct rp2a03 *rp2a03)
@@ -1609,7 +1610,7 @@ void STA_AY(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, rp2a03->A, memory_readw(rp2a03->bus_id,
 		rp2a03->PC) + rp2a03->Y);
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 5;
+	clock_consume(5);
 }
 
 void STA_IX(struct rp2a03 *rp2a03)
@@ -1618,7 +1619,7 @@ void STA_IX(struct rp2a03 *rp2a03)
 	uint16_t address = memory_readb(rp2a03->bus_id, b % ZP_SIZE) |
 		(memory_readb(rp2a03->bus_id, (b + 1) % ZP_SIZE) << 8);
 	memory_writeb(rp2a03->bus_id, rp2a03->A, address);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void STA_IY(struct rp2a03 *rp2a03)
@@ -1626,21 +1627,21 @@ void STA_IY(struct rp2a03 *rp2a03)
 	uint16_t address = memory_readw(rp2a03->bus_id,
 		memory_readb(rp2a03->bus_id, rp2a03->PC++)) + rp2a03->Y;
 	memory_writeb(rp2a03->bus_id, rp2a03->A, address);
-	rp2a03->n_cycles += 6;
+	clock_consume(6);
 }
 
 void STA_ZP(struct rp2a03 *rp2a03)
 {
 	memory_writeb(rp2a03->bus_id, rp2a03->A, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void STA_ZPX(struct rp2a03 *rp2a03)
 {
 	memory_writeb(rp2a03->bus_id, rp2a03->A, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->X) % ZP_SIZE);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void STX_A(struct rp2a03 *rp2a03)
@@ -1648,21 +1649,21 @@ void STX_A(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, rp2a03->X, memory_readw(rp2a03->bus_id,
 		rp2a03->PC));
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void STX_ZP(struct rp2a03 *rp2a03)
 {
 	memory_writeb(rp2a03->bus_id, rp2a03->X, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void STX_ZPY(struct rp2a03 *rp2a03)
 {
 	memory_writeb(rp2a03->bus_id, rp2a03->X, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->Y) % ZP_SIZE);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void STY_A(struct rp2a03 *rp2a03)
@@ -1670,21 +1671,21 @@ void STY_A(struct rp2a03 *rp2a03)
 	memory_writeb(rp2a03->bus_id, rp2a03->Y, memory_readw(rp2a03->bus_id,
 		rp2a03->PC));
 	rp2a03->PC += 2;
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void STY_ZP(struct rp2a03 *rp2a03)
 {
 	memory_writeb(rp2a03->bus_id, rp2a03->Y, memory_readb(rp2a03->bus_id,
 		rp2a03->PC++));
-	rp2a03->n_cycles += 3;
+	clock_consume(3);
 }
 
 void STY_ZPX(struct rp2a03 *rp2a03)
 {
 	memory_writeb(rp2a03->bus_id, rp2a03->Y, (memory_readb(rp2a03->bus_id,
 		rp2a03->PC++) + rp2a03->X) % ZP_SIZE);
-	rp2a03->n_cycles += 4;
+	clock_consume(4);
 }
 
 void TAX(struct rp2a03 *rp2a03)
@@ -1692,7 +1693,7 @@ void TAX(struct rp2a03 *rp2a03)
 	rp2a03->X = rp2a03->A;
 	rp2a03->Z = (rp2a03->X == 0);
 	rp2a03->N = ((rp2a03->X & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void TAY(struct rp2a03 *rp2a03)
@@ -1700,7 +1701,7 @@ void TAY(struct rp2a03 *rp2a03)
 	rp2a03->Y = rp2a03->A;
 	rp2a03->Z = (rp2a03->Y == 0);
 	rp2a03->N = ((rp2a03->Y & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void TSX(struct rp2a03 *rp2a03)
@@ -1708,7 +1709,7 @@ void TSX(struct rp2a03 *rp2a03)
 	rp2a03->X = rp2a03->S;
 	rp2a03->Z = (rp2a03->X == 0);
 	rp2a03->N = ((rp2a03->X & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void TXA(struct rp2a03 *rp2a03)
@@ -1716,13 +1717,13 @@ void TXA(struct rp2a03 *rp2a03)
 	rp2a03->A = rp2a03->X;
 	rp2a03->Z = (rp2a03->A == 0);
 	rp2a03->N = ((rp2a03->A & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void TXS(struct rp2a03 *rp2a03)
 {
 	rp2a03->S = rp2a03->X;
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void TYA(struct rp2a03 *rp2a03)
@@ -1730,7 +1731,7 @@ void TYA(struct rp2a03 *rp2a03)
 	rp2a03->A = rp2a03->Y;
 	rp2a03->Z = (rp2a03->A == 0);
 	rp2a03->N = ((rp2a03->A & 0x80) != 0);
-	rp2a03->n_cycles += 2;
+	clock_consume(2);
 }
 
 void rp2a03_tick(clock_data_t *data)
@@ -1738,12 +1739,29 @@ void rp2a03_tick(clock_data_t *data)
 	struct rp2a03 *rp2a03 = data;
 	uint8_t opcode;
 
-	/* Decrement number of cycles left to execute instruction */
-	rp2a03->n_cycles--;
+	/* Check if CPU has been interrupted */
+	if (rp2a03->interrupted) {
+		/* Save PC */
+		memory_writeb(rp2a03->bus_id, rp2a03->PC >> 8, STACK_START +
+			rp2a03->S--);
+		memory_writeb(rp2a03->bus_id, rp2a03->PC & 0xFF, STACK_START +
+			rp2a03->S--);
 
-	/* Return if instruction is still in progress */
-	if (rp2a03->n_cycles > 0)
+		/* Push flags */
+		memory_writeb(rp2a03->bus_id, rp2a03->P, STACK_START +
+			rp2a03->S--);
+
+		/* Interrupt is now active */
+		rp2a03->I = 1;
+
+		/* Set PC to value written at the interrupt vector address */
+		rp2a03->PC = memory_readw(rp2a03->bus_id, NMI_VECTOR);
+		clock_consume(7);
+
+		/* Interrupt is now being handled */
+		rp2a03->interrupted = false;
 		return;
+	}
 
 	/* Fetch opcode */
 	opcode = memory_readb(rp2a03->bus_id, rp2a03->PC++);
@@ -2060,6 +2078,7 @@ void rp2a03_tick(clock_data_t *data)
 		return INC_AX(rp2a03);
 	default:
 		fprintf(stderr, "rp2a03: unknown opcode (%02x)!\n", opcode);
+		clock_consume(1);
 		break;
 	}
 }
@@ -2078,7 +2097,7 @@ bool rp2a03_init(struct cpu_instance *instance)
 	rp2a03->PC = memory_readw(rp2a03->bus_id, RESET_VECTOR);
 	rp2a03->I = 1;
 	rp2a03->unused = 1;
-	rp2a03->n_cycles = 1;
+	rp2a03->interrupted = false;
 
 	/* Save NMI IRQ number */
 	res = resource_get("nmi",
@@ -2108,21 +2127,8 @@ void rp2a03_interrupt(struct cpu_instance *instance, int irq)
 	if (irq != rp2a03->nmi)
 		return;
 
-	/* Save PC */
-	memory_writeb(rp2a03->bus_id, rp2a03->PC >> 8, STACK_START +
-		rp2a03->S--);
-	memory_writeb(rp2a03->bus_id, rp2a03->PC & 0xFF, STACK_START +
-		rp2a03->S--);
-
-	/* Push flags */
-	memory_writeb(rp2a03->bus_id, rp2a03->P, STACK_START + rp2a03->S--);
-
-	/* Interrupt is now active */
-	rp2a03->I = 1;
-
-	/* Set new PC to value written at the interrupt vector address */
-	rp2a03->PC = memory_readw(rp2a03->bus_id, NMI_VECTOR);
-	rp2a03->n_cycles += 7;
+	/* Make sure we treat interrupt next time the CPU is ticked */
+	rp2a03->interrupted = true;
 }
 
 void rp2a03_deinit(struct cpu_instance *instance)
