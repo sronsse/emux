@@ -1,0 +1,10 @@
+menu "DMA"
+
+config CONTROLLER_DMA_NES
+	bool "NES Sprite DMA controller"
+	default y
+	help
+		Enable NES sprite DMA operations
+
+endmenu
+

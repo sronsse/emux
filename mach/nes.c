@@ -32,6 +32,8 @@
 #define PPU_END				0x2007
 #define PPU_MIRROR_START		0x2008
 #define PPU_MIRROR_END			0x3FFF
+#define SPRITE_DMA_START		0x4014
+#define SPRITE_DMA_END			0x4014
 #define EXPANSION_START			0x4018
 #define EXPANSION_END			0x5FFF
 #define SRAM_START			0x6000
@@ -99,21 +101,15 @@ static struct cpu_instance rp2a03_instance = {
 	.num_resources = ARRAY_SIZE(rp2a03_resources)
 };
 
-/* PPU controller */
-static struct resource ppu_mirror =
-	MEM("mem_mirror", CPU_BUS_ID, PPU_MIRROR_START, PPU_MIRROR_END);
+/* Sprite DMA controller */
+static struct resource sprite_dma_resource =
+	MEM("mem", CPU_BUS_ID, SPRITE_DMA_START, SPRITE_DMA_END);
 
-static struct resource ppu_resources[] = {
-	MEMX("mem", CPU_BUS_ID, PPU_START, PPU_END, &ppu_mirror, 1),
-	IRQ("irq", NMI_IRQ),
-	CLK("clk", PPU_CLOCK_RATE)
-};
-
-static struct controller_instance ppu_instance = {
-	.controller_name = "ppu",
-	.bus_id = PPU_BUS_ID,
-	.resources = ppu_resources,
-	.num_resources = ARRAY_SIZE(ppu_resources)
+static struct controller_instance sprite_dma_instance = {
+	.controller_name = "nes_sprite",
+	.bus_id = CPU_BUS_ID,
+	.resources = &sprite_dma_resource,
+	.num_resources = 1
 };
 
 /* NES mapper controller */
@@ -135,6 +131,23 @@ static struct controller_instance nes_mapper_instance = {
 	.resources = nes_mapper_resources,
 	.num_resources = ARRAY_SIZE(nes_mapper_resources),
 	.mach_data = &nes_mapper_mach_data
+};
+
+/* PPU controller */
+static struct resource ppu_mirror =
+	MEM("mem_mirror", CPU_BUS_ID, PPU_MIRROR_START, PPU_MIRROR_END);
+
+static struct resource ppu_resources[] = {
+	MEMX("mem", CPU_BUS_ID, PPU_START, PPU_END, &ppu_mirror, 1),
+	IRQ("irq", NMI_IRQ),
+	CLK("clk", PPU_CLOCK_RATE)
+};
+
+static struct controller_instance ppu_instance = {
+	.controller_name = "ppu",
+	.bus_id = PPU_BUS_ID,
+	.resources = ppu_resources,
+	.num_resources = ARRAY_SIZE(ppu_resources)
 };
 
 void nes_print_usage()
@@ -160,6 +173,8 @@ bool nes_init()
 	nes_mapper_mach_data.vram = vram;
 
 	/* Add controllers */
+	if (!controller_add(&sprite_dma_instance))
+		return false;
 	if (!controller_add(&nes_mapper_instance))
 		return false;
 	if (!controller_add(&ppu_instance))

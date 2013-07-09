@@ -16,6 +16,7 @@ config MACH_NES
 	bool "nes (Nintendo Entertainment System)"
 	select MACH
 	select CPU_RP2A03
+	select CONTROLLER_DMA_NES
 	select CONTROLLER_MAPPER_NES
 	select CONTROLLER_VIDEO_PPU
 	default y
