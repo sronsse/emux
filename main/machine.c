@@ -122,9 +122,6 @@ void machine_run()
 
 	/* Run until user quits */
 	while (machine->running) {
-		/* Update input sub-system */
-		input_update();
-
 		/* Tick all registered clocks */
 		clock_tick_all(counter++);
 

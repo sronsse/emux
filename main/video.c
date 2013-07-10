@@ -93,6 +93,9 @@ void video_update()
 {
 	if (frontend->update)
 		frontend->update();
+
+	/* Update input sub-system as well */
+	input_update();
 }
 
 uint32_t video_map_rgb(uint8_t r, uint8_t g, uint8_t b)
