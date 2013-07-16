@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cpu.h>
-#include <machine.h>
+#include <list.h>
 #ifdef __APPLE__
 #include <mach-o/getsect.h>
 #endif
@@ -24,7 +24,7 @@ static struct cpu *cpus_begin = &__cpus_begin;
 static struct cpu *cpus_end = &__cpus_end;
 #endif
 
-extern struct machine *machine;
+static struct list_link *cpu_instances;
 
 #ifdef __APPLE__
 void cx_cpus()
@@ -47,7 +47,7 @@ bool cpu_add(struct cpu_instance *instance)
 		if (!strcmp(instance->cpu_name, cpu->name)) {
 			instance->cpu = cpu;
 			if ((cpu->init && cpu->init(instance)) || !cpu->init) {
-				list_insert(&machine->cpu_instances, instance);
+				list_insert(&cpu_instances, instance);
 				return true;
 			}
 			return false;
@@ -61,7 +61,7 @@ bool cpu_add(struct cpu_instance *instance)
 void cpu_interrupt(int irq)
 {
 	struct cpu_instance *instance;
-	struct list_link *link = machine->cpu_instances;
+	struct list_link *link = cpu_instances;
 
 	/* Interrupt first CPU only */
 	instance = list_get_next(&link);
@@ -71,13 +71,13 @@ void cpu_interrupt(int irq)
 
 void cpu_remove_all()
 {
-	struct list_link *link = machine->cpu_instances;
+	struct list_link *link = cpu_instances;
 	struct cpu_instance *instance;
 
 	while ((instance = list_get_next(&link)))
 		if (instance->cpu->deinit)
 			instance->cpu->deinit(instance);
 
-	list_remove_all(&machine->cpu_instances);
+	list_remove_all(&cpu_instances);
 }
 

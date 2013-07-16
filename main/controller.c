@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <controller.h>
-#include <machine.h>
+#include <list.h>
 #ifdef __APPLE__
 #include <mach-o/getsect.h>
 #endif
@@ -24,7 +24,7 @@ static struct controller *controllers_begin = &__controllers_begin;
 static struct controller *controllers_end = &__controllers_end;
 #endif
 
-extern struct machine *machine;
+static struct list_link *controller_instances;
 
 #ifdef __APPLE__
 void cx_controllers()
@@ -47,7 +47,7 @@ bool controller_add(struct controller_instance *instance)
 		if (!strcmp(instance->controller_name, c->name)) {
 			instance->controller = c;
 			if ((c->init && c->init(instance)) || !c->init) {
-				list_insert(&machine->controller_instances,
+				list_insert(&controller_instances,
 					instance);
 				return true;
 			}
@@ -62,13 +62,13 @@ bool controller_add(struct controller_instance *instance)
 
 void controller_remove_all()
 {
-	struct list_link *link = machine->controller_instances;
+	struct list_link *link = controller_instances;
 	struct controller_instance *instance;
 
 	while ((instance = list_get_next(&link)))
 		if (instance->controller->deinit)
 			instance->controller->deinit(instance);
 
-	list_remove_all(&machine->controller_instances);
+	list_remove_all(&controller_instances);
 }
 

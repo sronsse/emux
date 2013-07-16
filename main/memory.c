@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -8,7 +9,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #endif
-#include <machine.h>
+#include <list.h>
 #include <memory.h>
 #include <util.h>
 
@@ -25,7 +26,7 @@ static void ram_writew(region_data_t *data, uint16_t w, uint16_t address);
 static struct region *memory_find_region(struct list_link **regions, int bus_id,
 	uint16_t *a);
 
-extern struct machine *machine;
+static struct list_link *memory_regions;
 
 struct mops rom_mops = {
 	.readb = rom_readb,
@@ -121,17 +122,17 @@ struct region *memory_find_region(struct list_link **regions, int bus_id,
 
 void memory_region_add(struct region *region)
 {
-	list_insert(&machine->regions, region);
+	list_insert(&memory_regions, region);
 }
 
 void memory_region_remove_all()
 {
-	list_remove_all(&machine->regions);
+	list_remove_all(&memory_regions);
 }
 
 uint8_t memory_readb(int bus_id, uint16_t address)
 {
-	struct list_link *regions = machine->regions;
+	struct list_link *regions = memory_regions;
 	struct region *region;
 	uint16_t a = address;
 
@@ -148,7 +149,7 @@ uint8_t memory_readb(int bus_id, uint16_t address)
 
 uint16_t memory_readw(int bus_id, uint16_t address)
 {
-	struct list_link *regions = machine->regions;
+	struct list_link *regions = memory_regions;
 	struct region *region;
 	uint16_t a = address;
 
@@ -165,7 +166,7 @@ uint16_t memory_readw(int bus_id, uint16_t address)
 
 void memory_writeb(int bus_id, uint8_t b, uint16_t address)
 {
-	struct list_link *regions = machine->regions;
+	struct list_link *regions = memory_regions;
 	struct region *region;
 	uint16_t a = address;
 	bool found = false;
@@ -184,7 +185,7 @@ void memory_writeb(int bus_id, uint8_t b, uint16_t address)
 
 void memory_writew(int bus_id, uint16_t w, uint16_t address)
 {
-	struct list_link *regions = machine->regions;
+	struct list_link *regions = memory_regions;
 	struct region *region;
 	uint16_t a = address;
 	bool found = false;

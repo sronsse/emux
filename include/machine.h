@@ -2,7 +2,6 @@
 #define _MACHINE_H
 
 #include <stdbool.h>
-#include <list.h>
 
 #define MACHINE_SECTION_NAME	"machines"
 #ifdef __APPLE__
@@ -26,9 +25,6 @@
 struct machine {
 	char *name;
 	char *description;
-	struct list_link *cpu_instances;
-	struct list_link *controller_instances;
-	struct list_link *regions;
 	bool running;
 	bool (*init)();
 	void (*deinit)();
