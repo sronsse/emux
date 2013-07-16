@@ -69,24 +69,12 @@ static struct resource wram_mirror =
 static struct resource wram_area =
 	MEMX("mem", CPU_BUS_ID, WRAM_START, WRAM_END, &wram_mirror, 1);
 
-static struct region wram_region = {
-	.area = &wram_area,
-	.mops = &ram_mops,
-	.data = wram
-};
-
 /* Palette area */
 static struct resource palette_mirror =
 	MEM("mem_mirror", PPU_BUS_ID, PALETTE_MIRROR_START, PALETTE_MIRROR_END);
 
 static struct resource palette_area =
 	MEMX("mem", PPU_BUS_ID, PALETTE_START, PALETTE_END, &palette_mirror, 1);
-
-static struct region palette_region = {
-	.area = &palette_area,
-	.mops = &ram_mops,
-	.data = palette
-};
 
 /* RP2A03 CPU */
 static struct resource rp2a03_resources[] = {
@@ -166,8 +154,8 @@ bool nes_init()
 	}
 
 	/* Add memory regions */
-	memory_region_add(&wram_region);
-	memory_region_add(&palette_region);
+	memory_region_add(&wram_area, &ram_mops, wram);
+	memory_region_add(&palette_area, &ram_mops, palette);
 
 	/* NES cart controls VRAM address lines so let the mapper handle it */
 	nes_mapper_mach_data.vram = vram;

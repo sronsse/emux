@@ -5,9 +5,6 @@
 
 struct nrom {
 	bool vertical_mirroring;
-	struct region vram_region;
-	struct region prg_rom_region;
-	struct region chr_rom_region;
 	uint8_t *vram;
 	uint8_t *prg_rom;
 	int prg_rom_size;
@@ -113,7 +110,7 @@ bool nrom_init(struct controller_instance *instance)
 	struct nrom *nrom;
 	struct nes_mapper_mach_data *mach_data = instance->mach_data;
 	struct cart_header *cart_header;
-	struct region *region;
+	struct resource *area;
 
 	/* Allocate NROM structure */
 	instance->priv_data = malloc(sizeof(struct nrom));
@@ -131,14 +128,11 @@ bool nrom_init(struct controller_instance *instance)
 	nrom->vram = mach_data->vram;
 
 	/* Add VRAM region */
-	region = &nrom->vram_region;
-	region->area = resource_get("vram",
+	area = resource_get("vram",
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	region->mops = &vram_mops;
-	region->data = nrom;
-	memory_region_add(region);
+	memory_region_add(area, &vram_mops, nrom);
 
 	/* Allocate and fill PRG ROM data */
 	nrom->prg_rom_size = PRG_ROM_SIZE(cart_header);
@@ -147,14 +141,11 @@ bool nrom_init(struct controller_instance *instance)
 		nrom->prg_rom_size);
 
 	/* Fill and add PRG ROM region */
-	region = &nrom->prg_rom_region;
-	region->area = resource_get("prg_rom",
+	area = resource_get("prg_rom",
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	region->mops = &prg_rom_mops;
-	region->data = nrom;
-	memory_region_add(region);
+	memory_region_add(area, &prg_rom_mops, nrom);
 
 	/* Allocate and fill CHR ROM data */
 	nrom->chr_rom_size = CHR_ROM_SIZE(cart_header);
@@ -163,14 +154,11 @@ bool nrom_init(struct controller_instance *instance)
 		nrom->chr_rom_size);
 
 	/* Fill and add PRG ROM region */
-	region = &nrom->chr_rom_region;
-	region->area = resource_get("chr",
+	area = resource_get("chr",
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	region->mops = &rom_mops;
-	region->data = nrom->chr_rom;
-	memory_region_add(region);
+	memory_region_add(area, &rom_mops, nrom->chr_rom);
 
 	/* Unmap cart header */
 	memory_unmap_file(cart_header, sizeof(struct cart_header));

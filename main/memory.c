@@ -13,9 +13,18 @@
 #include <memory.h>
 #include <util.h>
 
-#define WITHIN_REGION(bus_id, address, area) \
-	((bus_id == area->data.mem.bus_id) && \
-	(address >= area->data.mem.start) && (address <= area->data.mem.end))
+#define WITHIN_REGION(bus_id, address, region) \
+	((bus_id == region->bus_id) && \
+		(address >= region->start) && \
+		(address <= region->end))
+
+struct region {
+	int bus_id;
+	uint16_t start;
+	uint16_t end;
+	struct mops *mops;
+	region_data_t *data;
+};
 
 static uint8_t rom_readb(region_data_t *data, uint16_t address);
 static uint16_t rom_readw(region_data_t *data, uint16_t address);
@@ -80,53 +89,56 @@ void ram_writew(region_data_t *data, uint16_t w, uint16_t address)
 struct region *memory_find_region(struct list_link **regions, int bus_id,
 	uint16_t *a)
 {
-	struct region *r;
-	struct region *region = NULL;
-	struct resource *area;
+	struct region *region;
+	while ((region = list_get_next(regions)))
+		if (WITHIN_REGION(bus_id, *a, region)) {
+			*a -= region->start;
+			return region;
+		}
+
+	/* No region was found */
+	return NULL;
+}
+
+void memory_region_add(struct resource *area, struct mops *mops,
+	region_data_t *data)
+{
+	struct region *region;
 	struct resource *mirror;
 	int i;
 
-	while ((r = list_get_next(regions))) {
-		area = r->area;
-
-		/* Check region area first */
-		if (WITHIN_REGION(bus_id, *a, area)) {
-			/* Select region and update address */
-			*a -= area->data.mem.start;
-			region = r;
-		} else {
-			/* Check region mirrors otherwise */
-			for (i = 0; i < area->num_children; i++) {
-				mirror = &area->children[i];
-	
-				/* Skip mirror if not within desired region */
-				if (!WITHIN_REGION(bus_id, *a, mirror))
-					continue;
-
-				/* Select region and update address */
-				*a = (*a - mirror->data.mem.start) %
-					(area->data.mem.end - area->data.mem.start + 1);
-				region = r;
-				break;
-			}
-		}
-
-		/* Break if region has been found */
-		if (region)
-			break;
-	}
-
-	/* Return found region or NULL otherwise */
-	return region;
-}
-
-void memory_region_add(struct region *region)
-{
+	/* Create main memory region */
+	region = malloc(sizeof(struct region));
+	region->bus_id = area->data.mem.bus_id;
+	region->start = area->data.mem.start;
+	region->end = area->data.mem.end;
+	region->mops = mops;
+	region->data = data;
 	list_insert(&memory_regions, region);
+
+	/* Create mirrors */
+	for (i = 0; i < area->num_children; i++) {
+		mirror = &area->children[i];
+		region = malloc(sizeof(struct region));
+		region->bus_id = mirror->data.mem.bus_id;
+		region->start = mirror->data.mem.start;
+		region->end = mirror->data.mem.end;
+		region->mops = mops;
+		region->data = data;
+		list_insert(&memory_regions, region);
+	}
 }
 
 void memory_region_remove_all()
 {
+	struct list_link *link = memory_regions;
+	struct region *region;
+
+	/* Free all regions */
+	while ((region = list_get_next(&link)))
+		free(region);
+
+	/* Free list */
 	list_remove_all(&memory_regions);
 }
 

@@ -16,7 +16,6 @@ static void nes_sprite_writeb(region_data_t *data, uint8_t b, uint16_t address);
 
 struct nes_sprite {
 	int bus_id;
-	struct region region;
 };
 
 static struct mops nes_sprite_mops = {
@@ -45,21 +44,18 @@ void nes_sprite_writeb(region_data_t *data, uint8_t b, uint16_t UNUSED(address))
 bool nes_sprite_init(struct controller_instance *instance)
 {
 	struct nes_sprite *nes_sprite;
-	struct region *region;
+	struct resource *area;
 
 	/* Allocate nes_sprite structure */
 	instance->priv_data = malloc(sizeof(struct nes_sprite));
 	nes_sprite = instance->priv_data;
 
 	/* Set up nes_sprite memory region */
-	region = &nes_sprite->region;
-	region->area = resource_get("mem",
+	area = resource_get("mem",
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	region->mops = &nes_sprite_mops;
-	region->data = instance->priv_data;
-	memory_region_add(region);
+	memory_region_add(area, &nes_sprite_mops, instance->priv_data);
 
 	/* Save bus ID for later use */
 	nes_sprite->bus_id = instance->bus_id;

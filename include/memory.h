@@ -15,13 +15,8 @@ struct mops {
 	void (*writew)(region_data_t *data, uint16_t w, uint16_t address);
 };
 
-struct region {
-	struct resource *area;
-	struct mops *mops;
-	region_data_t *data;
-};
-
-void memory_region_add(struct region *region);
+void memory_region_add(struct resource *area, struct mops *mops,
+	region_data_t *data);
 void memory_region_remove_all();
 uint8_t memory_readb(int bus_id, uint16_t address);
 uint16_t memory_readw(int bus_id, uint16_t address);

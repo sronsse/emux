@@ -85,7 +85,6 @@ struct ppu {
 	uint16_t vram_address;
 	int bus_id;
 	int irq;
-	struct region region;
 	struct clock clock;
 };
 
@@ -205,7 +204,6 @@ void ppu_writeb(region_data_t *data, uint8_t b, uint16_t address)
 bool ppu_init(struct controller_instance *instance)
 {
 	struct ppu *ppu;
-	struct region *region;
 	struct resource *res;
 
 	/* Initialize video frontend */
@@ -224,15 +222,12 @@ bool ppu_init(struct controller_instance *instance)
 	ppu->first_frame = true;
 	ppu->flipflop_first_write = true;
 
-	/* Set up PPU memory region */
-	region = &ppu->region;
-	region->area = resource_get("mem",
+	/* Add PPU memory region */
+	res = resource_get("mem",
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	region->mops = &ppu_mops;
-	region->data = instance->priv_data;
-	memory_region_add(region);
+	memory_region_add(res, &ppu_mops, instance->priv_data);
 
 	/* Save bus ID for later use */
 	ppu->bus_id = instance->bus_id;

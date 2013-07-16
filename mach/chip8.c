@@ -27,11 +27,6 @@ static struct cpu_instance chip8_cpu_instance = {
 static struct resource ram_area =
 	MEM("mem", CPU_BUS_ID, RAM_START, RAM_END);
 
-static struct region ram_region = {
-	.area = &ram_area,
-	.mops = &ram_mops
-};
-
 static uint8_t char_mem[] = {
 	0xF0, 0x90, 0x90, 0x90, 0xF0,
 	0x20, 0x60, 0x20, 0x20, 0x70,
@@ -88,8 +83,7 @@ bool chip8_init()
 	size = (size < max_rom_size) ? size : max_rom_size;
 
 	/* Create and add RAM region */
-	ram_region.data = ram;
-	memory_region_add(&ram_region);
+	memory_region_add(&ram_area, &ram_mops, ram);
 
 	/* Copy character memory to beginning of RAM */
 	memcpy(ram, char_mem, ARRAY_SIZE(char_mem));
