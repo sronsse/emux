@@ -2,7 +2,6 @@
 #define _MACHINE_H
 
 #include <stdbool.h>
-#include <stdint.h>
 #include <list.h>
 
 #define MACHINE_SECTION_NAME	"machines"
@@ -27,11 +26,9 @@
 struct machine {
 	char *name;
 	char *description;
-	struct list_link *clocks;
 	struct list_link *cpu_instances;
 	struct list_link *controller_instances;
 	struct list_link *regions;
-	uint64_t clock_rate;
 	bool running;
 	bool (*init)();
 	void (*deinit)();

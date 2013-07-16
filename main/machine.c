@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/time.h>
 #include <clock.h>
 #include <cmdline.h>
 #include <controller.h>
@@ -14,8 +12,6 @@
 #ifdef __APPLE__
 #include <mach-o/getsect.h>
 #endif
-
-#define NS(s) ((s) * 1000000000)
 
 #ifdef __APPLE__
 void cx_machines() __attribute__((__constructor__));
@@ -79,10 +75,6 @@ bool machine_init()
 	if (machine->init && !machine->init())
 		return false;
 
-	/* Warn if no clock has been registered */
-	if (machine->clock_rate == 0)
-		fprintf(stderr, "No clock registered for this machine!\n");
-
 	return true;
 }
 
@@ -94,23 +86,8 @@ void machine_input_event(int UNUSED(id), struct input_state *UNUSED(state),
 
 void machine_run()
 {
-	uint64_t counter = 0;
-	struct timeval start_time;
-	struct timeval current_time;
-	unsigned int mach_delay;
-	unsigned int real_delay;
 	struct input_config input_config;
 	struct input_event quit_event;
-
-	/* Return if no clock has been registered */
-	if (machine->clock_rate == 0)
-		return;
-
-	/* Compute machine delay between two ticks (in ns) */
-	mach_delay = NS(1) / machine->clock_rate;
-
-	/* Initialize start time */
-	gettimeofday(&start_time, NULL);
 
 	/* Set running flag and register for quit events */
 	machine->running = true;
@@ -121,25 +98,8 @@ void machine_run()
 	input_register(&input_config);
 
 	/* Run until user quits */
-	while (machine->running) {
-		/* Tick all registered clocks */
-		clock_tick_all(counter++);
-
-		/* Get actual delay (in ns) */
-		gettimeofday(&current_time, NULL);
-		real_delay = NS(current_time.tv_sec - start_time.tv_sec) +
-			(current_time.tv_usec - start_time.tv_usec) * 1000;
-
-		/* Sleep to match machine delay */
-		if (counter * mach_delay > real_delay)
-			usleep((counter * mach_delay - real_delay) / 1000);
-
-		/* Reset counter and start time if needed */
-		if (counter == machine->clock_rate) {
-			gettimeofday(&start_time, NULL);
-			counter = 0;
-		}
-	}
+	while (machine->running)
+		clock_tick_all();
 
 	/* Unregister quit events */
 	input_unregister(&input_config);
