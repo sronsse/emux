@@ -48,6 +48,18 @@ void sdl_update()
 	SDL_Flip(screen);
 }
 
+void sdl_lock()
+{
+	if (SDL_MUSTLOCK(screen) && (SDL_LockSurface(screen) < 0))
+		fprintf(stderr, "Can't lock surface: %s\n", SDL_GetError());
+}
+
+void sdl_unlock()
+{
+	if (SDL_MUSTLOCK(screen))
+		SDL_UnlockSurface(screen);
+}
+
 uint32_t sdl_map_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
 	return SDL_MapRGB(screen->format, r, g, b);
@@ -63,11 +75,6 @@ uint32_t sdl_get_pixel(int x, int y)
 	x *= scale_factor;
 	y *= scale_factor;
 	p = (uint8_t *)screen->pixels + y * screen->pitch + x * bpp;
-
-	if (SDL_MUSTLOCK(screen) && (SDL_LockSurface(screen) < 0)) {
-		fprintf(stderr, "Can't lock surface: %s\n", SDL_GetError());
-		return 0;
-	}
 
 	/* Read pixel */
 	switch (bpp) {
@@ -91,9 +98,6 @@ uint32_t sdl_get_pixel(int x, int y)
 		break;
 	}
 
-	if (SDL_MUSTLOCK(screen))
-		SDL_UnlockSurface(screen);
-
 	return result;
 }
 
@@ -107,11 +111,6 @@ void sdl_set_pixel(int x, int y, uint32_t pixel)
 	/* Apply scaling factor to coordinates */
 	x *= scale_factor;
 	y *= scale_factor;
-
-	if (SDL_MUSTLOCK(screen) && (SDL_LockSurface(screen) < 0)) {
-		fprintf(stderr, "Can't lock surface: %s\n", SDL_GetError());
-		return;
-	}
 
 	/* Write square of pixels depending on scaling factor */
 	for (i = x; i < x + scale_factor; i++)
@@ -146,9 +145,6 @@ void sdl_set_pixel(int x, int y, uint32_t pixel)
 				break;
 			}
 		}
-
-	if (SDL_MUSTLOCK(screen))
-		SDL_UnlockSurface(screen);
 }
 
 void sdl_deinit()
@@ -159,6 +155,8 @@ void sdl_deinit()
 VIDEO_START(sdl)
 	.init = sdl_init,
 	.update = sdl_update,
+	.lock = sdl_lock,
+	.unlock = sdl_unlock,
 	.map_rgb = sdl_map_rgb,
 	.get_pixel = sdl_get_pixel,
 	.set_pixel = sdl_set_pixel,

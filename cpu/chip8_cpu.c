@@ -134,9 +134,12 @@ void CLS(struct chip8 *UNUSED(chip8))
 {
 	uint8_t x, y;
 	uint32_t black = video_map_rgb(0, 0, 0);
+
+	video_lock();
 	for (x = 0; x < SCREEN_WIDTH; x++)
 		for (y = 0; y < SCREEN_HEIGHT; y++)
 			video_set_pixel(x, y, black);
+	video_unlock();
 }
 
 void RET(struct chip8 *chip8)

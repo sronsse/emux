@@ -28,6 +28,8 @@ struct video_frontend {
 	char *name;
 	video_window_t *(*init)(int width, int height, int scale);
 	void (*update)();
+	void (*lock)();
+	void (*unlock)();
 	uint32_t (*map_rgb)(uint8_t r, uint8_t g, uint8_t b);
 	uint32_t (*get_pixel)(int x, int y);
 	void (*set_pixel)(int x, int y, uint32_t pixel);
@@ -36,6 +38,8 @@ struct video_frontend {
 
 bool video_init(int width, int height);
 void video_update();
+void video_lock();
+void video_unlock();
 uint32_t video_map_rgb(uint8_t r, uint8_t g, uint8_t b);
 uint32_t video_get_pixel(int x, int y);
 void video_set_pixel(int x, int y, uint32_t pixel);

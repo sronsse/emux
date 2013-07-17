@@ -98,6 +98,18 @@ void video_update()
 	input_update();
 }
 
+void video_lock()
+{
+	if (frontend->lock)
+		frontend->lock();
+}
+
+void video_unlock()
+{
+	if (frontend->unlock)
+		frontend->unlock();
+}
+
 uint32_t video_map_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
 	if (frontend->map_rgb)
