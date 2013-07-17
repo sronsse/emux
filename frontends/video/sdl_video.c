@@ -104,7 +104,8 @@ uint32_t sdl_get_pixel(int x, int y)
 void sdl_set_pixel(int x, int y, uint32_t pixel)
 {
 	int bpp = screen->format->BytesPerPixel;
-	uint8_t *p;
+	uint8_t *p1;
+	uint8_t *p2;
 	int i;
 	int j;
 
@@ -112,38 +113,46 @@ void sdl_set_pixel(int x, int y, uint32_t pixel)
 	x *= scale_factor;
 	y *= scale_factor;
 
-	/* Write square of pixels depending on scaling factor */
+	/* Set pixel contents */
+	p1 = (uint8_t *)screen->pixels + y * screen->pitch + x * bpp;
+	switch (bpp) {
+	case 1:
+		*p1 = pixel;
+		break;
+	case 2:
+		*(uint16_t *)p1 = pixel;
+		break;
+	case 3:
+		if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
+			p1[0] = (pixel >> 16) & 0xFF;
+			p1[1] = (pixel >> 8) & 0xFF;
+			p1[2] = pixel & 0xFF;
+		} else {
+			p1[0] = pixel & 0xFF;
+			p1[1] = (pixel >> 8) & 0xFF;
+			p1[2] = (pixel >> 16) & 0xFF;
+		}
+		break;
+	case 4:
+		*(uint32_t *)p1 = pixel;
+		break;
+	default:
+		break;
+	}
+
+	/* Write remaining square of pixels depending on scaling factor */
 	for (i = x; i < x + scale_factor; i++)
 		for (j = y; j < y + scale_factor; j++) {
+			/* Skip source pixel */
+			if ((i == x) && (j == y))
+				continue;
+
 			/* Compute pixel pointer */
-			p = (uint8_t *)screen->pixels + j * screen->pitch +
+			p2 = (uint8_t *)screen->pixels + j * screen->pitch +
 				i * bpp;
 
-			/* Write pixel */
-			switch (bpp) {
-			case 1:
-				*p = pixel;
-				break;
-			case 2:
-				*(uint16_t *)p = pixel;
-				break;
-			case 3:
-				if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
-					p[0] = (pixel >> 16) & 0xFF;
-					p[1] = (pixel >> 8) & 0xFF;
-					p[2] = pixel & 0xFF;
-				} else {
-					p[0] = pixel & 0xFF;
-					p[1] = (pixel >> 8) & 0xFF;
-					p[2] = (pixel >> 16) & 0xFF;
-				}
-				break;
-			case 4:
-				*(uint32_t *)p = pixel;
-				break;
-			default:
-				break;
-			}
+			/* Copy previous pixel contents */
+			memcpy(p2, p1, bpp);
 		}
 }
 
