@@ -8,15 +8,16 @@
 #include <util.h>
 
 #define CPU_BUS_ID	0
-
+#define RAM_SIZE	4096
 #define RAM_START	0x0000
 #define RAM_END		0x0FFF
-
 #define ROM_ADDRESS	0x0200
 
 static bool chip8_init();
 static void chip8_deinit();
 static void chip8_print_usage();
+
+static uint8_t ram[RAM_SIZE];
 
 static struct cpu_instance chip8_cpu_instance = {
 	.cpu_name = "chip8",
@@ -62,7 +63,6 @@ bool chip8_init()
 	FILE *f;
 	unsigned int size;
 	unsigned int max_rom_size;
-	uint8_t *ram;
 
 	/* Get ROM option */
 	if (!cmdline_parse_string("rom", &rom_path)) {
@@ -84,11 +84,10 @@ bool chip8_init()
 	fseek(f, 0, SEEK_SET);
 
 	/* Make sure ROM file is not too large */
-	max_rom_size = RAM_END - ROM_ADDRESS + 1;
+	max_rom_size = RAM_SIZE - ROM_ADDRESS;
 	size = (size < max_rom_size) ? size : max_rom_size;
 
 	/* Create and add RAM region */
-	ram = malloc(RAM_END - RAM_START + 1);
 	ram_region.data = ram;
 	memory_region_add(&ram_region);
 
@@ -97,7 +96,6 @@ bool chip8_init()
 
 	/* Copy ROM contents to RAM (starting at ROM address) */
 	if (fread(&ram[ROM_ADDRESS], 1, size, f) != size) {
-		free(ram);
 		fclose(f);
 		fprintf(stderr, "Could not read ROM from \"%s\"!\n", rom_path);
 		return false;
@@ -112,7 +110,6 @@ bool chip8_init()
 
 void chip8_deinit()
 {
-	free(ram_region.data);
 }
 
 MACHINE_START(chip8, "CHIP-8")
