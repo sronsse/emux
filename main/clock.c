@@ -4,15 +4,15 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <clock.h>
-#include <list.h>
 
 #define NS(s) ((s) * 1000000000)
 
 static uint64_t gcd(uint64_t a, uint64_t b);
 static uint64_t lcm(uint64_t a, uint64_t b);
-static uint64_t lcmm(struct list_link *clocks);
+static uint64_t lcmm(int clock_index);
 
-static struct list_link *clocks;
+static struct clock **clocks;
+static int num_clocks;
 static uint64_t machine_clock_rate;
 static uint64_t current_cycle;
 static unsigned int mach_delay;
@@ -34,35 +34,31 @@ uint64_t lcm(uint64_t a, uint64_t b)
 	return a * b / gcd(a, b);
 }
 
-uint64_t lcmm(struct list_link *clocks)
+uint64_t lcmm(int clock_index)
 {
-	struct clock *clock1, *clock2;
+	struct clock *clock1 = clocks[clock_index];
+	struct clock *clock2 = clocks[clock_index + 1];
 
-	if (!clocks->next->next){
-		clock1 = clocks->data;
-		clock2 = clocks->next->data;
+	if (clock_index + 2 == num_clocks)
 		return lcm(clock1->rate, clock2->rate);
-	}
 
-	clock1 = clocks->data;
-	return lcm(clock1->rate, lcmm(clocks->next));
+	return lcm(clock1->rate, lcmm(clock_index + 1));
 }
 
 void clock_add(struct clock *clock)
 {
-	struct list_link *link;
-	struct clock *c;
+	int i;
 
-	list_insert(&clocks, clock);
+	/* Grow clocks array and insert clock */
+	clocks = realloc(clocks, ++num_clocks * sizeof(struct clock *));
+	clocks[num_clocks - 1] = clock;
 
 	/* Update machine rate */
-	machine_clock_rate = clocks->next ? lcmm(clocks) :
-		clock->rate;
+	machine_clock_rate = (num_clocks > 1) ? lcmm(0) : clock->rate;
 
 	/* Update clock dividers */
-	link = clocks;
-	while ((c = list_get_next(&link)))
-		c->div = machine_clock_rate / c->rate;
+	for (i = 0; i < num_clocks; i++)
+		clocks[i]->div = machine_clock_rate / clocks[i]->rate;
 
 	/* Set initial number of remaining clock cycles */
 	clock->num_remaining_cycles = 0;
@@ -73,8 +69,7 @@ void clock_add(struct clock *clock)
 
 void clock_tick_all()
 {
-	struct list_link *link = clocks;
-	struct clock *clock;
+	int i;
 	static struct timeval start_time;
 	static struct timeval current_time;
 	static unsigned int real_delay;
@@ -83,23 +78,23 @@ void clock_tick_all()
 	if (current_cycle++ == 0)
 		gettimeofday(&start_time, NULL);
 
-	while ((clock = list_get_next(&link))) {
+	for (i = 0; i < num_clocks; i++) {
 		/* Set current clock */
-		current_clock = clock;
+		current_clock = clocks[i];
 
 		/* Check if clock needs to be ticked */
-		if (current_cycle % clock->div != 0)
+		if (current_cycle % current_clock->div != 0)
 			continue;
 
 		/* Only execute clock action if there are no remaining cycles */
-		if (clock->num_remaining_cycles == 0)
-			clock->tick(clock->data);
+		if (current_clock->num_remaining_cycles == 0)
+			current_clock->tick(current_clock->data);
 
 		/* Decrement number of remaining number of cycles */
-		clock->num_remaining_cycles--;
+		current_clock->num_remaining_cycles--;
 
 		/* Verify clock actually consumed cycles */
-		if (clock->num_remaining_cycles < 0)
+		if (current_clock->num_remaining_cycles < 0)
 			fprintf(stderr,
 				"Error: clock action should consume cycles!\n");
 	}
@@ -133,6 +128,6 @@ void clock_consume(int num_cycles)
 
 void clock_remove_all()
 {
-	list_remove_all(&clocks);
+	free(clocks);
 }
 
