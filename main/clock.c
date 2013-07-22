@@ -16,6 +16,7 @@ static int num_clocks;
 static uint64_t machine_clock_rate;
 static uint64_t current_cycle;
 static unsigned int mach_delay;
+static struct timeval start_time;
 static struct clock *current_clock;
 
 uint64_t gcd(uint64_t a, uint64_t b)
@@ -67,40 +68,48 @@ void clock_add(struct clock *clock)
 	mach_delay = NS(1) / machine_clock_rate;
 }
 
+void clock_prepare()
+{
+	/* Initialize start time */
+	gettimeofday(&start_time, NULL);
+}
+
 void clock_tick_all()
 {
+	unsigned int real_delay;
+	int num_remaining_cycles;
+	struct timeval current_time;
 	int i;
-	static struct timeval start_time;
-	static struct timeval current_time;
-	static unsigned int real_delay;
 
-	/* Reset start time if needed */
-	if (current_cycle++ == 0)
-		gettimeofday(&start_time, NULL);
-
+	/* Tick clocks */
 	for (i = 0; i < num_clocks; i++) {
 		/* Set current clock */
 		current_clock = clocks[i];
 
-		/* Check if clock needs to be ticked */
-		if (current_cycle % current_clock->div != 0)
-			continue;
-
 		/* Only execute clock action if there are no remaining cycles */
 		if (current_clock->num_remaining_cycles == 0)
 			current_clock->tick(current_clock->data);
-
-		/* Decrement number of remaining number of cycles */
-		current_clock->num_remaining_cycles--;
-
-		/* Verify clock actually consumed cycles */
-		if (current_clock->num_remaining_cycles < 0)
-			fprintf(stderr,
-				"Error: clock action should consume cycles!\n");
 	}
 
 	/* No clock is being ticked anymore */
 	current_clock = NULL;
+
+	/* Find minimum number of remaining cycles */
+	num_remaining_cycles = clocks[0]->num_remaining_cycles;
+	for (i = 1; i < num_clocks; i++)
+		if (clocks[i]->num_remaining_cycles < num_remaining_cycles)
+			num_remaining_cycles = clocks[i]->num_remaining_cycles;
+
+	/* Sanity check (clocks should consume cycles at all times) */
+	if (num_remaining_cycles == 0)
+		fprintf(stderr, "Error: clock action should consume cycles!\n");
+
+	/* Increment current cycle by min number of remaining cycles found */
+	current_cycle += num_remaining_cycles;
+
+	/* Decrement clocks remaining cycles */
+	for (i = 0; i < num_clocks; i++)
+		clocks[i]->num_remaining_cycles -= num_remaining_cycles;
 
 	/* Get actual delay (in ns) */
 	gettimeofday(&current_time, NULL);
@@ -111,9 +120,11 @@ void clock_tick_all()
 	if (current_cycle * mach_delay > real_delay)
 		usleep((current_cycle * mach_delay - real_delay) / 1000);
 
-	/* Reset current cycle if needed */
-	if (current_cycle == machine_clock_rate)
-		current_cycle = 0;
+	/* Reset current cycle and start time if needed */
+	if (current_cycle >= machine_clock_rate) {
+		gettimeofday(&start_time, NULL);
+		current_cycle -= machine_clock_rate;
+	}
 }
 
 void clock_consume(int num_cycles)
@@ -123,7 +134,7 @@ void clock_consume(int num_cycles)
 		fprintf(stderr, "Error: no clock is currently being ticked!\n");
 
 	/* Increase number of remaining clock cycles by desired amount */
-	current_clock->num_remaining_cycles += num_cycles;
+	current_clock->num_remaining_cycles += num_cycles * current_clock->div;
 }
 
 void clock_remove_all()

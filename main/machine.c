@@ -103,6 +103,9 @@ void machine_run()
 	input_config.callback = machine_input_event;
 	input_register(&input_config);
 
+	/* Prepare clock ticking */
+	clock_prepare();
+
 	/* Run until user quits */
 	while (machine->running)
 		clock_tick_all();
