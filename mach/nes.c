@@ -53,15 +53,17 @@
 #define PALETTE_MIRROR_START		0x3F20
 #define PALETTE_MIRROR_END		0x3FFF
 
-static bool nes_init();
-static void nes_deinit();
-static void nes_print_usage();
-
 struct nes_data {
 	uint8_t wram[WRAM_SIZE];
 	uint8_t vram[VRAM_SIZE];
 	uint8_t palette[PALETTE_SIZE];
 };
+
+static bool nes_init();
+static void nes_deinit();
+static void nes_print_usage();
+static uint8_t palette_readb(region_data_t *data, uint16_t address);
+static void palette_writeb(region_data_t *data, uint8_t b, uint16_t address);
 
 /* WRAM area */
 static struct resource wram_mirror =
@@ -76,6 +78,11 @@ static struct resource palette_mirror =
 
 static struct resource palette_area =
 	MEMX("mem", PPU_BUS_ID, PALETTE_START, PALETTE_END, &palette_mirror, 1);
+
+static struct mops palette_mops = {
+	.readb = palette_readb,
+	.writeb = palette_writeb
+};
 
 /* RP2A03 CPU */
 static struct resource rp2a03_resources[] = {
@@ -139,6 +146,48 @@ static struct controller_instance ppu_instance = {
 	.num_resources = ARRAY_SIZE(ppu_resources)
 };
 
+uint8_t palette_readb(region_data_t *data, uint16_t address)
+{
+	uint8_t *ram = data;
+
+	/* Addresses 0x3F10, 0x3F14, 0x3F18, 0x3F1C are mirrors of
+	0x3F00, 0x3F04, 0x3F08, 0x3F0C */
+	switch (address) {
+	case 0x10:
+	case 0x14:
+	case 0x18:
+	case 0x1C:
+		address -= 0x10;
+		break;
+	default:
+		break;
+	}
+
+	/* Read palette entry */
+	return ram[address];
+}
+
+void palette_writeb(region_data_t *data, uint8_t b, uint16_t address)
+{
+	uint8_t *ram = data;
+
+	/* Addresses 0x3F10, 0x3F14, 0x3F18, 0x3F1C are mirrors of
+	0x3F00, 0x3F04, 0x3F08, 0x3F0C */
+	switch (address) {
+	case 0x10:
+	case 0x14:
+	case 0x18:
+	case 0x1C:
+		address -= 0x10;
+		break;
+	default:
+		break;
+	}
+
+	/* Read palette entry */
+	ram[address] = b;
+}
+
 void nes_print_usage()
 {
 	fprintf(stderr, "Valid nes options:\n");
@@ -162,7 +211,7 @@ bool nes_init(struct machine *machine)
 
 	/* Add memory regions */
 	memory_region_add(&wram_area, &ram_mops, nes_data->wram);
-	memory_region_add(&palette_area, &ram_mops, nes_data->palette);
+	memory_region_add(&palette_area, &palette_mops, nes_data->palette);
 
 	/* NES cart controls VRAM address lines so let the mapper handle it */
 	nes_mapper_mach_data.vram = nes_data->vram;
