@@ -22,12 +22,15 @@
 #define MACHINE_END \
 	};
 
+typedef void machine_priv_data_t;
+
 struct machine {
 	char *name;
 	char *description;
+	machine_priv_data_t *priv_data;
 	bool running;
-	bool (*init)();
-	void (*deinit)();
+	bool (*init)(struct machine *machine);
+	void (*deinit)(struct machine *machine);
 };
 
 bool machine_init();

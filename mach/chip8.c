@@ -17,7 +17,9 @@ static bool chip8_init();
 static void chip8_deinit();
 static void chip8_print_usage();
 
-static uint8_t ram[RAM_SIZE];
+struct chip8_data {
+	uint8_t ram[RAM_SIZE];
+};
 
 static struct cpu_instance chip8_cpu_instance = {
 	.cpu_name = "chip8",
@@ -52,12 +54,16 @@ void chip8_print_usage()
 	fprintf(stderr, "  --rom    ROM path\n");
 }
 
-bool chip8_init()
+bool chip8_init(struct machine *machine)
 {
+	struct chip8_data *chip8_data;
 	char *rom_path;
 	FILE *f;
 	unsigned int size;
 	unsigned int max_rom_size;
+
+	/* Create machine data structure */
+	chip8_data = malloc(sizeof(struct chip8_data));
 
 	/* Get ROM option */
 	if (!cmdline_parse_string("rom", &rom_path)) {
@@ -82,28 +88,35 @@ bool chip8_init()
 	max_rom_size = RAM_SIZE - ROM_ADDRESS;
 	size = (size < max_rom_size) ? size : max_rom_size;
 
-	/* Create and add RAM region */
-	memory_region_add(&ram_area, &ram_mops, ram);
+	/* Add RAM region */
+	memory_region_add(&ram_area, &ram_mops, chip8_data->ram);
 
 	/* Copy character memory to beginning of RAM */
-	memcpy(ram, char_mem, ARRAY_SIZE(char_mem));
+	memcpy(chip8_data->ram, char_mem, ARRAY_SIZE(char_mem));
 
 	/* Copy ROM contents to RAM (starting at ROM address) */
-	if (fread(&ram[ROM_ADDRESS], 1, size, f) != size) {
+	if (fread(&chip8_data->ram[ROM_ADDRESS], 1, size, f) != size) {
+		free(chip8_data);
 		fclose(f);
 		fprintf(stderr, "Could not read ROM from \"%s\"!\n", rom_path);
 		return false;
 	}
 	fclose(f);
 
-	if (!cpu_add(&chip8_cpu_instance))
+	if (!cpu_add(&chip8_cpu_instance)) {
+		free(chip8_data);
 		return false;
+	}
+
+	/* Save machine data structure */
+	machine->priv_data = chip8_data;
 
 	return true;
 }
 
-void chip8_deinit()
+void chip8_deinit(struct machine *machine)
 {
+	free(machine->priv_data);
 }
 
 MACHINE_START(chip8, "CHIP-8")

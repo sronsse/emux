@@ -72,7 +72,7 @@ bool machine_init()
 	fprintf(stdout, "Machine: %s (%s)\n", machine->name,
 		machine->description);
 
-	if (machine->init && !machine->init()) {
+	if (machine->init && !machine->init(machine)) {
 		/* Remove all components which may have been added */
 		clock_remove_all();
 		cpu_remove_all();
@@ -121,6 +121,6 @@ void machine_deinit()
 	controller_remove_all();
 	memory_region_remove_all();
 	if (machine->deinit)
-		machine->deinit();
+		machine->deinit(machine);
 }
 

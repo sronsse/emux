@@ -57,10 +57,11 @@ static bool nes_init();
 static void nes_deinit();
 static void nes_print_usage();
 
-/* Internal memory */
-static uint8_t wram[WRAM_SIZE];
-static uint8_t vram[VRAM_SIZE];
-static uint8_t palette[PALETTE_SIZE];
+struct nes_data {
+	uint8_t wram[WRAM_SIZE];
+	uint8_t vram[VRAM_SIZE];
+	uint8_t palette[PALETTE_SIZE];
+};
 
 /* WRAM area */
 static struct resource wram_mirror =
@@ -144,39 +145,46 @@ void nes_print_usage()
 	fprintf(stderr, "  --cart    Game cart path\n");
 }
 
-bool nes_init()
+bool nes_init(struct machine *machine)
 {
+	struct nes_data *nes_data;
+
+	/* Create machine data structure */
+	nes_data = malloc(sizeof(struct nes_data));
+
 	/* Get cart option */
 	if (!cmdline_parse_string("cart", &nes_mapper_mach_data.path)) {
+		free(nes_data);
 		fprintf(stderr, "Please provide a cart option!\n");
 		nes_print_usage();
 		return false;
 	}
 
 	/* Add memory regions */
-	memory_region_add(&wram_area, &ram_mops, wram);
-	memory_region_add(&palette_area, &ram_mops, palette);
+	memory_region_add(&wram_area, &ram_mops, nes_data->wram);
+	memory_region_add(&palette_area, &ram_mops, nes_data->palette);
 
 	/* NES cart controls VRAM address lines so let the mapper handle it */
-	nes_mapper_mach_data.vram = vram;
+	nes_mapper_mach_data.vram = nes_data->vram;
 
-	/* Add controllers */
-	if (!controller_add(&sprite_dma_instance))
+	/* Add controllers and CPU */
+	if (!controller_add(&sprite_dma_instance) ||
+		!controller_add(&nes_mapper_instance) ||
+		!controller_add(&ppu_instance) ||
+		!cpu_add(&rp2a03_instance)) {
+		free(nes_data);
 		return false;
-	if (!controller_add(&nes_mapper_instance))
-		return false;
-	if (!controller_add(&ppu_instance))
-		return false;
+	}
 
-	/* Add main CPU */
-	if (!cpu_add(&rp2a03_instance))
-		return false;
+	/* Save machine data structure */
+	machine->priv_data = nes_data;
 
 	return true;
 }
 
-void nes_deinit()
+void nes_deinit(struct machine *machine)
 {
+	free(machine->priv_data);
 }
 
 MACHINE_START(nes, "Nintendo Entertainment System")
