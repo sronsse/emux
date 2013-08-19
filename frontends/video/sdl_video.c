@@ -5,9 +5,8 @@
 
 static video_window_t *sdl_init(int width, int height, int scale);
 static void sdl_update();
-static uint32_t sdl_map_rgb(uint8_t r, uint8_t g, uint8_t b);
-static uint32_t sdl_get_pixel(int x, int y);
-static void sdl_set_pixel(int x, int y, uint32_t pixel);
+static struct color sdl_get_pixel(int x, int y);
+static void sdl_set_pixel(int x, int y, struct color color);
 static void sdl_deinit();
 
 static SDL_Surface *screen;
@@ -60,16 +59,12 @@ void sdl_unlock()
 		SDL_UnlockSurface(screen);
 }
 
-uint32_t sdl_map_rgb(uint8_t r, uint8_t g, uint8_t b)
-{
-	return SDL_MapRGB(screen->format, r, g, b);
-}
-
-uint32_t sdl_get_pixel(int x, int y)
+struct color sdl_get_pixel(int x, int y)
 {
 	int bpp = screen->format->BytesPerPixel;
 	uint8_t *p;
-	uint32_t result;
+	uint32_t pixel;
+	struct color color;
 
 	/* Apply scaling factor to coordinates and get pixel pointer */
 	x *= scale_factor;
@@ -79,35 +74,41 @@ uint32_t sdl_get_pixel(int x, int y)
 	/* Read pixel */
 	switch (bpp) {
 	case 1:
-		result = *p;
+		pixel = *p;
 		break;
 	case 2:
-		result = *(uint16_t *)p;
+		pixel = *(uint16_t *)p;
 		break;
 	case 3:
 		if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-			result = (p[0] << 16) | (p[1] << 8) | p[2];
+			pixel = (p[0] << 16) | (p[1] << 8) | p[2];
 		else
-			result = p[0] | (p[1] << 8) | (p[2] << 16);
+			pixel = p[0] | (p[1] << 8) | (p[2] << 16);
 		break;
 	case 4:
-		result = *(uint32_t *)p;
+		pixel = *(uint32_t *)p;
 		break;
 	default:
-		result = 0;
+		pixel = 0;
 		break;
 	}
 
-	return result;
+	/* Get RGB components */
+	SDL_GetRGB(pixel, screen->format, &color.r, &color.g, &color.b);
+	return color;
 }
 
-void sdl_set_pixel(int x, int y, uint32_t pixel)
+void sdl_set_pixel(int x, int y, struct color color)
 {
+	uint32_t pixel;
 	int bpp = screen->format->BytesPerPixel;
 	uint8_t *p1;
 	uint8_t *p2;
 	int i;
 	int j;
+
+	/* Map color */
+	pixel = SDL_MapRGB(screen->format, color.r, color.g, color.b);
 
 	/* Apply scaling factor to coordinates */
 	x *= scale_factor;
@@ -166,7 +167,6 @@ VIDEO_START(sdl)
 	.update = sdl_update,
 	.lock = sdl_lock,
 	.unlock = sdl_unlock,
-	.map_rgb = sdl_map_rgb,
 	.get_pixel = sdl_get_pixel,
 	.set_pixel = sdl_set_pixel,
 	.deinit = sdl_deinit

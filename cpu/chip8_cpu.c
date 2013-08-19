@@ -133,7 +133,7 @@ static struct input_event default_input_events[] = {
 void CLS(struct chip8 *UNUSED(chip8))
 {
 	uint8_t x, y;
-	uint32_t black = video_map_rgb(0, 0, 0);
+	struct color black = { 0, 0, 0 };
 
 	video_lock();
 	for (x = 0; x < SCREEN_WIDTH; x++)
@@ -270,8 +270,9 @@ void RND_Vx_byte(struct chip8 *chip8)
 void DRW_Vx_Vy_nibble(struct chip8 *chip8)
 {
 	uint8_t i, j, x, y, b, src, VF = 0;
-	uint32_t black = video_map_rgb(0, 0, 0);
-	uint32_t white = video_map_rgb(255, 255, 255);
+	struct color black = { 0, 0, 0 };
+	struct color white = { 255, 255, 255 };
+	struct color c;
 	bool pixel;
 
 	for (i = 0; i < chip8->opcode.n; i++) {
@@ -280,9 +281,10 @@ void DRW_Vx_Vy_nibble(struct chip8 *chip8)
 		for (j = 0; j < NUM_PIXELS_PER_BYTE; j++) {
 			x = (chip8->V[chip8->opcode.x] + j) % SCREEN_WIDTH;
 			src = b >> (NUM_PIXELS_PER_BYTE - j - 1) & 0x01;
-			pixel = (video_get_pixel(x, y) == white) ^ src;
+			c = video_get_pixel(x, y);
+			pixel = (c.r == white.r) ^ src;
 			video_set_pixel(x, y, pixel ? white : black);
-			if (src && (video_get_pixel(x, y) == black))
+			if (src && !pixel)
 				VF = 1;
 		}
 	}

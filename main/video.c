@@ -110,24 +110,18 @@ void video_unlock()
 		frontend->unlock();
 }
 
-uint32_t video_map_rgb(uint8_t r, uint8_t g, uint8_t b)
+struct color video_get_pixel(int x, int y)
 {
-	if (frontend->map_rgb)
-		return frontend->map_rgb(r, g, b);
-	return 0;
-}
-
-uint32_t video_get_pixel(int x, int y)
-{
+	struct color default_color = { 0, 0, 0 };
 	if (frontend->get_pixel)
 		return frontend->get_pixel(x, y);
-	return 0;
+	return default_color;
 }
 
-void video_set_pixel(int x, int y, uint32_t pixel)
+void video_set_pixel(int x, int y, struct color color)
 {
 	if (frontend->set_pixel)
-		frontend->set_pixel(x, y, pixel);
+		frontend->set_pixel(x, y, color);
 }
 
 void video_deinit()

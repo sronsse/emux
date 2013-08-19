@@ -24,9 +24,8 @@ struct caca_surface {
 
 static video_window_t *caca_init(int width, int height, int scale);
 static void caca_update();
-static uint32_t caca_map_rgb(uint8_t r, uint8_t g, uint8_t b);
-static uint32_t caca_get_pixel(int x, int y);
-static void caca_set_pixel(int x, int y, uint32_t pixel);
+static struct color caca_get_pixel(int x, int y);
+static void caca_set_pixel(int x, int y, struct color color);
 static void caca_deinit();
 
 static caca_display_t *dp;
@@ -77,18 +76,22 @@ void caca_update()
 	caca_refresh_display(dp);
 }
 
-uint32_t caca_map_rgb(uint8_t r, uint8_t g, uint8_t b)
+struct color caca_get_pixel(int x, int y)
 {
-	return (r << R_SHIFT) | (g << G_SHIFT) | (b << B_SHIFT);
+	uint32_t pixel = surface->pixels[x + y * surface->width];
+	struct color color;
+	color.r = (pixel & R_MASK) >> R_SHIFT;
+	color.g = (pixel & G_MASK) >> G_SHIFT;
+	color.b = (pixel & B_MASK) >> B_SHIFT;
+	return color;
 }
 
-uint32_t caca_get_pixel(int x, int y)
+void caca_set_pixel(int x, int y, struct color color)
 {
-	return surface->pixels[x + y * surface->width];
-}
-
-void caca_set_pixel(int x, int y, uint32_t pixel)
-{
+	uint32_t pixel = 0;
+	pixel |= color.r << R_SHIFT;
+	pixel |= color.g << G_SHIFT;
+	pixel |= color.b << B_SHIFT;
 	surface->pixels[x + y * surface->width] = pixel;
 }
 
@@ -101,7 +104,6 @@ void caca_deinit()
 VIDEO_START(caca)
 	.init = caca_init,
 	.update = caca_update,
-	.map_rgb = caca_map_rgb,
 	.get_pixel = caca_get_pixel,
 	.set_pixel = caca_set_pixel,
 	.deinit = caca_deinit
