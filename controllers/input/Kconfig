@@ -1,0 +1,10 @@
+menu "Input"
+
+config CONTROLLER_INPUT_NES
+	bool "NES standard controller"
+	default y
+	help
+		Enable NES standard controller for players 1 and 2
+
+endmenu
+

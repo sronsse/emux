@@ -34,6 +34,8 @@
 #define PPU_MIRROR_END			0x3FFF
 #define SPRITE_DMA_START		0x4014
 #define SPRITE_DMA_END			0x4014
+#define CTRL_START			0x4016
+#define CTRL_END			0x4017
 #define EXPANSION_START			0x4018
 #define EXPANSION_END			0x5FFF
 #define SRAM_START			0x6000
@@ -105,6 +107,16 @@ static struct controller_instance sprite_dma_instance = {
 	.controller_name = "nes_sprite",
 	.bus_id = CPU_BUS_ID,
 	.resources = &sprite_dma_resource,
+	.num_resources = 1
+};
+
+/* NES standard controller */
+static struct resource nes_controller_resource =
+	MEM("mem", CPU_BUS_ID, CTRL_START, CTRL_END);
+
+static struct controller_instance nes_controller_instance = {
+	.controller_name = "nes_controller",
+	.resources = &nes_controller_resource,
 	.num_resources = 1
 };
 
@@ -220,6 +232,7 @@ bool nes_init(struct machine *machine)
 	if (!controller_add(&sprite_dma_instance) ||
 		!controller_add(&nes_mapper_instance) ||
 		!controller_add(&ppu_instance) ||
+		!controller_add(&nes_controller_instance) ||
 		!cpu_add(&rp2a03_instance)) {
 		free(nes_data);
 		return false;

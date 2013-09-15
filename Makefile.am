@@ -35,6 +35,7 @@ EXTRA_DIST = Kconfig \
 	linker.lds \
 	controllers/Kconfig \
 	controllers/dma/Kconfig \
+	controllers/input/Kconfig \
 	controllers/mapper/Kconfig \
 	controllers/video/Kconfig \
 	cpu/Kconfig \
@@ -80,6 +81,9 @@ endif
 # Controllers
 if CONFIG_CONTROLLER_DMA_NES
 emux_SOURCES += controllers/dma/nes_sprite.c
+endif
+if CONFIG_CONTROLLER_INPUT_NES
+emux_SOURCES += controllers/input/nes_controller.c
 endif
 if CONFIG_CONTROLLER_MAPPER_NES
 emux_SOURCES += controllers/mapper/nes_mapper.c
