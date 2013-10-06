@@ -77,6 +77,9 @@ endif
 if CONFIG_CPU_CHIP8
 emux_SOURCES += cpu/chip8_cpu.c
 endif
+if CONFIG_CPU_LR35902
+emux_SOURCES += cpu/lr35902.c
+endif
 if CONFIG_CPU_RP2A03
 emux_SOURCES += cpu/rp2a03.c
 endif

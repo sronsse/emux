@@ -15,6 +15,7 @@ config MACH_CHIP8
 config MACH_GB
 	bool "gb (Nintendo Game Boy)"
 	select MACH
+	select CPU_LR35902
 	default y
 	help
 		Enable GB (Nintendo Game Boy) support

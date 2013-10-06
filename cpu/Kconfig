@@ -6,6 +6,12 @@ config CPU_CHIP8
 	help
 		Enable CHIP-8 CPU
 
+config CPU_LR35902
+	bool "LR35902"
+	default y
+	help
+		Enable LR35902 CPU
+
 config CPU_RP2A03
 	bool "RP2A03"
 	default y
