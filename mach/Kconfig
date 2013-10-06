@@ -12,6 +12,13 @@ config MACH_CHIP8
 	help
 		Enable CHIP-8 support
 
+config MACH_GB
+	bool "gb (Nintendo Game Boy)"
+	select MACH
+	default y
+	help
+		Enable GB (Nintendo Game Boy) support
+
 config MACH_NES
 	bool "nes (Nintendo Entertainment System)"
 	select MACH

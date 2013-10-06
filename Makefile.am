@@ -49,6 +49,9 @@ EXTRA_DIST = Kconfig \
 if CONFIG_MACH_CHIP8
 emux_SOURCES += mach/chip8.c
 endif
+if CONFIG_MACH_GB
+emux_SOURCES += mach/gb.c
+endif
 if CONFIG_MACH_NES
 emux_SOURCES += mach/nes.c
 endif
