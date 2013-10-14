@@ -251,7 +251,7 @@ void *memory_map_file(char *path, int offset, int size)
 	int pa_offset;
 
 	GetSystemInfo(&system_info);
-	pa_offset = offset & ~(system_info.dwPageSize - 1);
+	pa_offset = offset & ~(system_info.dwAllocationGranularity - 1);
 	size += offset - pa_offset;
 
 	file = CreateFile(path, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
