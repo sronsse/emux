@@ -60,11 +60,8 @@ PKG_CHECK_MODULES([CACA], [caca])
 fi
 
 # Add SDL if needed
-if test "$CONFIG_AUDIO_SDL" == "y" ||
-	test "$CONFIG_INPUT_SDL" == "y" ||
-	test "$CONFIG_VIDEO_SDL" == "y"; then
-SDL_VERSION=1.2.0
-AM_PATH_SDL($SDL_VERSION, :, AC_MSG_ERROR([*** SDL $SDL_VERSION not found!]))
+if test "$CONFIG_INPUT_SDL" == "y" || test "$CONFIG_VIDEO_SDL" == "y"; then
+PKG_CHECK_MODULES([SDL], [sdl])
 fi
 
 # Helps defining CONFIG_xxx macros in config.h and automake conditionals

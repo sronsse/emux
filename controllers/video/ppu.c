@@ -10,6 +10,10 @@
 #include <resource.h>
 #include <video.h>
 
+#ifdef _WIN32
+#define ffs __builtin_ffs
+#endif
+
 /* PPU registers */
 #define NUM_REGS		8
 #define PPUCTRL			0
