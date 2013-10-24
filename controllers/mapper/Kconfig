@@ -1,5 +1,11 @@
 menu "Mappers"
 
+config CONTROLLER_MAPPER_GB
+	bool "GB"
+	default y
+	help
+		Enable GB mapper
+
 config CONTROLLER_MAPPER_NES
 	bool "NES"
 	default y
