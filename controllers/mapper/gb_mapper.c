@@ -4,30 +4,7 @@
 #include <controller.h>
 #include <memory.h>
 #include <util.h>
-
-#define CART_HEADER_START	0x100
-#define NINTENDO_LOGO_SIZE	48
-#define MANUFACTURER_CODE_SIZE	4
-#define NEW_LICENSEE_CODE_SIZE	2
-#define TITLE_SIZE		11
-
-struct cart_header {
-	uint32_t entry_point;
-	uint8_t nintendo_logo[NINTENDO_LOGO_SIZE];
-	char title[TITLE_SIZE];
-	char manufacturer_code[MANUFACTURER_CODE_SIZE];
-	uint8_t cgb_flag;
-	char new_licensee_code[NEW_LICENSEE_CODE_SIZE];
-	uint8_t sgb_flag;
-	uint8_t cartridge_type;
-	uint8_t rom_size;
-	uint8_t ram_size;
-	uint8_t dest_code;
-	uint8_t old_licensee_code;
-	uint8_t rom_version;
-	uint8_t header_checksum;
-	uint16_t global_checksum;
-};
+#include <controllers/mapper/gb_mapper.h>
 
 static bool gb_mapper_init(struct controller_instance *instance);
 static void gb_mapper_deinit(struct controller_instance *instance);
@@ -38,17 +15,17 @@ static char *mbcs[] = {
 
 bool gb_mapper_init(struct controller_instance *instance)
 {
-	char *cart_path = instance->mach_data;
+	struct gb_mapper_mach_data *mach_data = instance->mach_data;
 	struct controller_instance *mbc_instance;
 	struct cart_header *cart_header;
 	uint8_t number;
 
 	/* Map cart header */
-	cart_header = memory_map_file(cart_path, CART_HEADER_START,
+	cart_header = memory_map_file(mach_data->path, CART_HEADER_START,
 		sizeof(struct cart_header));
 	if (!cart_header) {
 		fprintf(stderr, "Could not map header from \"%s\"!\n",
-			cart_path);
+			mach_data->path);
 		return false;
 	}
 
