@@ -10,34 +10,35 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #endif
+#include <bitops.h>
 #include <memory.h>
 #include <util.h>
 
+struct bus {
+	int width;
+	struct region *regions;
+	int num_regions;
+};
+
 struct region {
-	int bus_id;
-	uint16_t start;
-	uint16_t end;
+	address_t start;
+	address_t end;
 	struct mops *mops;
 	region_data_t *data;
 };
 
-struct location {
-	int bus_id;
-	uint16_t address;
-};
-
-static uint8_t rom_readb(region_data_t *data, uint16_t address);
-static uint16_t rom_readw(region_data_t *data, uint16_t address);
-static uint8_t ram_readb(region_data_t *data, uint16_t address);
-static uint16_t ram_readw(region_data_t *data, uint16_t address);
-static void ram_writeb(region_data_t *data, uint8_t b, uint16_t address);
-static void ram_writew(region_data_t *data, uint16_t w, uint16_t address);
+static uint8_t rom_readb(region_data_t *data, address_t address);
+static uint16_t rom_readw(region_data_t *data, address_t address);
+static uint8_t ram_readb(region_data_t *data, address_t address);
+static uint16_t ram_readw(region_data_t *data, address_t address);
+static void ram_writeb(region_data_t *data, uint8_t b, address_t address);
+static void ram_writew(region_data_t *data, uint16_t w, address_t address);
 static int memory_region_sort_compare(const void *a, const void *b);
 static int memory_region_bsearch_compare(const void *key, const void *elem);
-static struct region *memory_region_find(int bus_id, uint16_t *address);
+static struct region *memory_region_find(int bus_id, address_t *address);
 
-static struct region *memory_regions;
-static int num_memory_regions;
+static struct bus *busses;
+static int num_busses;
 
 struct mops rom_mops = {
 	.readb = rom_readb,
@@ -51,37 +52,37 @@ struct mops ram_mops = {
 	.writew = ram_writew
 };
 
-uint8_t rom_readb(region_data_t *data, uint16_t address)
+uint8_t rom_readb(region_data_t *data, address_t address)
 {
 	uint8_t *mem = (uint8_t *)data + address;
 	return *mem;
 }
 
-uint16_t rom_readw(region_data_t *data, uint16_t address)
+uint16_t rom_readw(region_data_t *data, address_t address)
 {
 	uint8_t *mem = (uint8_t *)data + address;
 	return (*(mem + 1) << 8) | *mem;
 }
 
-uint8_t ram_readb(region_data_t *data, uint16_t address)
+uint8_t ram_readb(region_data_t *data, address_t address)
 {
 	uint8_t *mem = (uint8_t *)data + address;
 	return *mem;
 }
 
-uint16_t ram_readw(region_data_t *data, uint16_t address)
+uint16_t ram_readw(region_data_t *data, address_t address)
 {
 	uint8_t *mem = (uint8_t *)data + address;
 	return (*(mem + 1) << 8) | *mem;
 }
 
-void ram_writeb(region_data_t *data, uint8_t b, uint16_t address)
+void ram_writeb(region_data_t *data, uint8_t b, address_t address)
 {
 	uint8_t *mem = (uint8_t *)data + address;
 	*mem = b;
 }
 
-void ram_writew(region_data_t *data, uint16_t w, uint16_t address)
+void ram_writew(region_data_t *data, uint16_t w, address_t address)
 {
 	uint8_t *mem = (uint8_t *)data + address;
 	*mem++ = w;
@@ -92,12 +93,6 @@ int memory_region_sort_compare(const void *a, const void *b)
 {
 	struct region *r1 = (struct region *)a;
 	struct region *r2 = (struct region *)b;
-
-	/* Check memory bus ID first */
-	if (r1->bus_id < r2->bus_id)
-		return -1;
-	else if (r1->bus_id > r2->bus_id)
-		return 1;
 
 	/* Check start address next */
 	if (r1->start < r2->start)
@@ -111,87 +106,90 @@ int memory_region_sort_compare(const void *a, const void *b)
 
 int memory_region_bsearch_compare(const void *key, const void *elem)
 {
-	struct location *l = (struct location *)key;
+	address_t address = *(address_t *)key;
 	struct region *r = (struct region *)elem;
 
-	/* Check memory bus ID first */
-	if (l->bus_id < r->bus_id)
-		return -1;
-	else if (l->bus_id > r->bus_id)
-		return 1;
-
 	/* Check address next */
-	if (l->address < r->start)
+	if (address < r->start)
 		return -1;
-	else if (l->address > r->end)
+	else if (address > r->end)
 		return 1;
 
 	/* Region matches */
 	return 0;
 }
 
-struct region *memory_region_find(int bus_id, uint16_t *address)
+struct region *memory_region_find(int bus_id, address_t *address)
 {
 	struct region *region;
-	struct location l;
 
-	l.bus_id = bus_id;
-	l.address = *address;
+	/* Make sure address fits within bus */
+	*address &= (BIT(busses[bus_id].width) - 1);
 
-	/* Search region and adapt address if found */
-	if ((region = bsearch(&l, memory_regions, num_memory_regions,
-		sizeof(struct region), memory_region_bsearch_compare)))
+	/* Search region */
+	region = bsearch(address,
+		busses[bus_id].regions,
+		busses[bus_id].num_regions,
+		sizeof(struct region),
+		memory_region_bsearch_compare);
+
+	/* Adapt address if a region was found */
+	if (region)
 		*address -= region->start;
 
 	return region;
 }
 
+void memory_bus_add(int width)
+{
+	/* Grow busses array */
+	busses = realloc(busses, ++num_busses * sizeof(struct bus));
+
+	/* Initialize bus */
+	busses[num_busses - 1].width = width;
+	busses[num_busses - 1].regions = NULL;
+	busses[num_busses - 1].num_regions = 0;
+}
+
 void memory_region_add(struct resource *area, struct mops *mops,
 	region_data_t *data)
 {
+	struct bus *bus;
 	struct region *region;
-	struct resource *mirror;
 	int i;
 
-	/* Grow memory regions array */
-	memory_regions = realloc(memory_regions, ++num_memory_regions *
-		sizeof(struct region));	
+	/* Get bus based on area */
+	bus = &busses[area->data.mem.bus_id];
 
-	/* Create main memory region */
-	region = &memory_regions[num_memory_regions - 1];
-	region->bus_id = area->data.mem.bus_id;
-	region->start = area->data.mem.start;
-	region->end = area->data.mem.end;
+	/* Grow memory regions array */
+	bus->regions = realloc(bus->regions, ++bus->num_regions *
+		sizeof(struct region));
+
+	/* Create memory region */
+	region = &bus->regions[bus->num_regions - 1];
+	region->start = area->data.mem.start & (BIT(bus->width) - 1);
+	region->end = area->data.mem.end & (BIT(bus->width) - 1);
 	region->mops = mops;
 	region->data = data;
 
-	/* Create mirrors */
-	for (i = 0; i < area->num_children; i++) {
-		/* Grow memory regions array */
-		memory_regions = realloc(memory_regions, ++num_memory_regions *
-			sizeof(struct region));	
-
-		/* Append mirror */
-		region = &memory_regions[num_memory_regions - 1];
-		mirror = &area->children[i];
-		region->bus_id = mirror->data.mem.bus_id;
-		region->start = mirror->data.mem.start;
-		region->end = mirror->data.mem.end;
-		region->mops = mops;
-		region->data = data;
-	}
+	/* Add mirrors */
+	for (i = 0; i < area->num_children; i++)
+		memory_region_add(&area->children[i], mops, data);
 
 	/* Sort memory regions array */
-	qsort(memory_regions, num_memory_regions, sizeof(struct region),
+	qsort(bus->regions, bus->num_regions, sizeof(struct region),
 		memory_region_sort_compare);
 }
 
-void memory_region_remove_all()
+void memory_bus_remove_all()
 {
-	free(memory_regions);
+	int i;
+	for (i = 0; i < num_busses; i++)
+		free(busses[i].regions);
+	free(busses);
 }
 
-uint8_t memory_readb(int bus_id, uint16_t address)
+uint8_t memory_readb(int bus_id, address_t address)
 {
 	struct region *region = memory_region_find(bus_id, &address);
 
@@ -203,7 +201,7 @@ uint8_t memory_readb(int bus_id, uint16_t address)
 	return 0;
 }
 
-uint16_t memory_readw(int bus_id, uint16_t address)
+uint16_t memory_readw(int bus_id, address_t address)
 {
 	struct region *region = memory_region_find(bus_id, &address);
 
@@ -215,7 +213,7 @@ uint16_t memory_readw(int bus_id, uint16_t address)
 	return 0;
 }
 
-void memory_writeb(int bus_id, uint8_t b, uint16_t address)
+void memory_writeb(int bus_id, uint8_t b, address_t address)
 {
 	struct region *region = memory_region_find(bus_id, &address);
 
@@ -228,7 +226,7 @@ void memory_writeb(int bus_id, uint8_t b, uint16_t address)
 		bus_id, address);
 }
 
-void memory_writew(int bus_id, uint16_t w, uint16_t address)
+void memory_writew(int bus_id, uint16_t w, address_t address)
 {
 	struct region *region = memory_region_find(bus_id, &address);
 

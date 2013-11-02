@@ -42,8 +42,8 @@ struct nes_ctrl {
 static bool nes_ctrl_init(struct controller_instance *instance);
 static void nes_ctrl_deinit(struct controller_instance *instance);
 static void nes_ctrl_event(int id, struct input_state *s, input_data_t *d);
-static uint8_t nes_ctrl_readb(region_data_t *data, uint16_t address);
-static void nes_ctrl_writeb(region_data_t *data, uint8_t b, uint16_t address);
+static uint8_t nes_ctrl_readb(region_data_t *data, address_t address);
+static void nes_ctrl_writeb(region_data_t *data, uint8_t b, address_t address);
 static void nes_ctrl_reload(struct nes_ctrl *nes_ctrl);
 
 static struct input_event default_input_events[] = {
@@ -70,7 +70,7 @@ static struct mops nes_ctrl_mops = {
 	.writeb = nes_ctrl_writeb
 };
 
-uint8_t nes_ctrl_readb(region_data_t *data, uint16_t address)
+uint8_t nes_ctrl_readb(region_data_t *data, address_t address)
 {
 	struct nes_ctrl *nes_ctrl = data;
 	union output_reg output_reg;
@@ -89,7 +89,7 @@ uint8_t nes_ctrl_readb(region_data_t *data, uint16_t address)
 	return output_reg.value;
 }
 
-void nes_ctrl_writeb(region_data_t *data, uint8_t b, uint16_t address)
+void nes_ctrl_writeb(region_data_t *data, uint8_t b, address_t address)
 {
 	struct nes_ctrl *nes_ctrl = data;
 

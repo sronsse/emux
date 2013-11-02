@@ -12,7 +12,8 @@
 
 static bool nes_sprite_init(struct controller_instance *instance);
 static void nes_sprite_deinit(struct controller_instance *instance);
-static void nes_sprite_writeb(region_data_t *data, uint8_t b, uint16_t address);
+static void nes_sprite_writeb(region_data_t *data, uint8_t b,
+	address_t address);
 
 struct nes_sprite {
 	int bus_id;
@@ -22,7 +23,8 @@ static struct mops nes_sprite_mops = {
 	.writeb = nes_sprite_writeb
 };
 
-void nes_sprite_writeb(region_data_t *data, uint8_t b, uint16_t UNUSED(address))
+void nes_sprite_writeb(region_data_t *data, uint8_t b,
+	address_t UNUSED(address))
 {
 	struct nes_sprite *nes_sprite = data;
 	uint16_t src_address;

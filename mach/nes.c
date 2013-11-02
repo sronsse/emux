@@ -10,11 +10,6 @@
 #include <util.h>
 #include <controllers/mapper/nes_mapper.h>
 
-#define CPU_BUS_ID			0
-#define PPU_BUS_ID			1
-
-#define NMI_IRQ				0
-
 #define MASTER_CLOCK_RATE		21477264
 #define CPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 12)
 #define PPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 4)
@@ -55,6 +50,13 @@
 #define PALETTE_MIRROR_START		0x3F20
 #define PALETTE_MIRROR_END		0x3FFF
 
+#define NMI_IRQ				0
+
+enum {
+	CPU_BUS_ID,
+	PPU_BUS_ID
+};
+
 struct nes_data {
 	uint8_t wram[WRAM_SIZE];
 	uint8_t vram[VRAM_SIZE];
@@ -64,8 +66,8 @@ struct nes_data {
 static bool nes_init();
 static void nes_deinit();
 static void nes_print_usage();
-static uint8_t palette_readb(region_data_t *data, uint16_t address);
-static void palette_writeb(region_data_t *data, uint8_t b, uint16_t address);
+static uint8_t palette_readb(region_data_t *data, address_t address);
+static void palette_writeb(region_data_t *data, uint8_t b, address_t address);
 
 /* WRAM area */
 static struct resource wram_mirror =
@@ -158,7 +160,7 @@ static struct controller_instance ppu_instance = {
 	.num_resources = ARRAY_SIZE(ppu_resources)
 };
 
-uint8_t palette_readb(region_data_t *data, uint16_t address)
+uint8_t palette_readb(region_data_t *data, address_t address)
 {
 	uint8_t *ram = data;
 
@@ -179,7 +181,7 @@ uint8_t palette_readb(region_data_t *data, uint16_t address)
 	return ram[address];
 }
 
-void palette_writeb(region_data_t *data, uint8_t b, uint16_t address)
+void palette_writeb(region_data_t *data, uint8_t b, address_t address)
 {
 	uint8_t *ram = data;
 
@@ -220,6 +222,10 @@ bool nes_init(struct machine *machine)
 		nes_print_usage();
 		return false;
 	}
+
+	/* Add memory busses */
+	memory_bus_add(16); /* CPU bus */
+	memory_bus_add(16); /* PPU bus */
 
 	/* Add memory regions */
 	memory_region_add(&wram_area, &ram_mops, nes_data->wram);

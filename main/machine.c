@@ -77,7 +77,7 @@ bool machine_init()
 		clock_remove_all();
 		cpu_remove_all();
 		controller_remove_all();
-		memory_region_remove_all();
+		memory_bus_remove_all();
 		return false;
 	}
 
@@ -119,7 +119,7 @@ void machine_deinit()
 	clock_remove_all();
 	cpu_remove_all();
 	controller_remove_all();
-	memory_region_remove_all();
+	memory_bus_remove_all();
 	if (machine->deinit)
 		machine->deinit(machine);
 }

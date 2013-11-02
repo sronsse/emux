@@ -175,8 +175,8 @@ static void ppu_deinit(struct controller_instance *instance);
 static void ppu_tick(clock_data_t *data);
 static void ppu_update_counters(struct ppu *ppu);
 static void ppu_set_events(struct ppu *ppu);
-static uint8_t ppu_readb(region_data_t *data, uint16_t address);
-static void ppu_writeb(region_data_t *data, uint8_t b, uint16_t address);
+static uint8_t ppu_readb(region_data_t *data, address_t address);
+static void ppu_writeb(region_data_t *data, uint8_t b, address_t address);
 static void ppu_shift_bg(struct ppu *ppu);
 static void ppu_reload_bg(struct ppu *ppu);
 static void ppu_fetch_nt(struct ppu *ppu);
@@ -245,7 +245,7 @@ static struct color ppu_palette[NUM_LUMA_VALUES][NUM_CHROMA_VALUES] = {
 	}
 };
 
-uint8_t ppu_readb(region_data_t *data, uint16_t address)
+uint8_t ppu_readb(region_data_t *data, address_t address)
 {
 	struct ppu *ppu = data;
 	uint8_t b;
@@ -274,7 +274,7 @@ uint8_t ppu_readb(region_data_t *data, uint16_t address)
 	}
 }
 
-void ppu_writeb(region_data_t *data, uint8_t b, uint16_t address)
+void ppu_writeb(region_data_t *data, uint8_t b, address_t address)
 {
 	struct ppu *ppu = data;
 	uint16_t t;
@@ -424,7 +424,7 @@ void ppu_reload_bg(struct ppu *ppu)
 
 void ppu_fetch_nt(struct ppu *ppu)
 {
-	uint16_t address;
+	address_t address;
 	struct ppu_render_data *r = &ppu->render_data;
 	union ppu_vram_address nametable_addr;
 
@@ -443,7 +443,7 @@ void ppu_fetch_nt(struct ppu *ppu)
 
 void ppu_fetch_at(struct ppu *ppu)
 {
-	uint16_t address;
+	address_t address;
 	struct ppu_render_data *r = &ppu->render_data;
 	union ppu_attribute_address attr_addr;
 	union ppu_attribute at;
@@ -477,7 +477,7 @@ void ppu_fetch_at(struct ppu *ppu)
 
 void ppu_fetch_low_bg(struct ppu *ppu)
 {
-	uint16_t address;
+	address_t address;
 	struct ppu_render_data *r = &ppu->render_data;
 
 	/* Return already if rendering is not enabled */
@@ -495,7 +495,7 @@ void ppu_fetch_low_bg(struct ppu *ppu)
 
 void ppu_fetch_high_bg(struct ppu *ppu)
 {
-	uint16_t address;
+	address_t address;
 	struct ppu_render_data *r = &ppu->render_data;
 
 	/* Return already if rendering is not enabled */

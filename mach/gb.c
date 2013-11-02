@@ -35,6 +35,8 @@
 #define HRAM_END	0xFFFE
 #define IER		0xFFFF
 
+#define BUS_ID		0
+
 struct gb_data {
 	bool bootrom_locked;
 	uint8_t *bootrom;
@@ -54,16 +56,16 @@ static bool gb_map_rom0(struct gb_data *gb_data, char *path);
 static void gb_unmap_rom0(struct gb_data *gb_data);
 
 /* Boot ROM area (end address is filled at run-time) */
-static struct resource bootrom_area = MEM("bootrom", 0, ROM0_START, 0);
+static struct resource bootrom_area = MEM("bootrom", BUS_ID, ROM0_START, 0);
 
 /* ROM0 area (start addres is filled at run-time) */
-static struct resource rom0_area = MEM("rom0", 0, 0, ROM0_END);
+static struct resource rom0_area = MEM("rom0", BUS_ID, 0, ROM0_END);
 
 /* VRAM area */
-static struct resource vram_area = MEM("vram", 0, VRAM_START, VRAM_END);
+static struct resource vram_area = MEM("vram", BUS_ID, VRAM_START, VRAM_END);
 
 /* HRAM area */
-static struct resource hram_area = MEM("hram", 0, HRAM_START, HRAM_END);
+static struct resource hram_area = MEM("hram", BUS_ID, HRAM_START, HRAM_END);
 
 /* LR35902 CPU */
 static struct resource cpu_resources[] = {
@@ -72,7 +74,7 @@ static struct resource cpu_resources[] = {
 
 static struct cpu_instance cpu_instance = {
 	.cpu_name = "lr35902",
-	.bus_id = 0,
+	.bus_id = BUS_ID,
 	.resources = cpu_resources,
 	.num_resources = ARRAY_SIZE(cpu_resources)
 };
@@ -86,7 +88,7 @@ static struct resource gb_mapper_resources[] = {
 
 static struct controller_instance gb_mapper_instance = {
 	.controller_name = "gb_mapper",
-	.bus_id = 0,
+	.bus_id = BUS_ID,
 	.resources = gb_mapper_resources,
 	.num_resources = ARRAY_SIZE(gb_mapper_resources),
 	.mach_data = &gb_mapper_mach_data
@@ -194,6 +196,9 @@ bool gb_init(struct machine *machine)
 		gb_print_usage();
 		return false;
 	}
+
+	/* Add 16-bit memory bus */
+	memory_bus_add(16);
 
 	/* Map provided boot ROM */
 	if (!gb_map_bootrom(gb_data, bootrom_path)) {

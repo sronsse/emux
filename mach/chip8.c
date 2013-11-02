@@ -88,6 +88,9 @@ bool chip8_init(struct machine *machine)
 	max_rom_size = RAM_SIZE - ROM_ADDRESS;
 	size = (size < max_rom_size) ? size : max_rom_size;
 
+	/* Add 16-bit memory bus */
+	memory_bus_add(16);
+
 	/* Add RAM region */
 	memory_region_add(&ram_area, &ram_mops, chip8_data->ram);
 
