@@ -129,10 +129,6 @@ void clock_tick_all()
 
 void clock_consume(int num_cycles)
 {
-	/* Verify we are not trying to consume cycles outside a tick function */
-	if (!current_clock)
-		fprintf(stderr, "Error: no clock is currently being ticked!\n");
-
 	/* Increase number of remaining clock cycles by desired amount */
 	current_clock->num_remaining_cycles += num_cycles * current_clock->div;
 }
