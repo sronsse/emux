@@ -12,6 +12,8 @@
 #define GB_CLOCK_RATE	4194304
 
 #define VRAM_SIZE	KB(8)
+#define WRAM_SIZE	KB(8)
+#define OAM_SIZE	160
 #define HRAM_SIZE	127
 
 /* Memory map */
@@ -51,6 +53,8 @@ struct gb_data {
 	uint8_t *rom0;
 	uint16_t rom0_size;
 	uint8_t vram[VRAM_SIZE];
+	uint8_t wram[WRAM_SIZE];
+	uint8_t oam[OAM_SIZE];
 	uint8_t hram[HRAM_SIZE];
 };
 
@@ -70,6 +74,12 @@ static struct resource rom0_area = MEM("rom0", BUS_ID, 0, ROM0_END);
 
 /* VRAM area */
 static struct resource vram_area = MEM("vram", BUS_ID, VRAM_START, VRAM_END);
+
+/* WRAM area */
+static struct resource wram_area = MEM("wram", BUS_ID, WRAM_START, WRAM_END);
+
+/* OAM area */
+static struct resource oam_area = MEM("oam", BUS_ID, OAM_START, OAM_END);
 
 /* HRAM area */
 static struct resource hram_area = MEM("hram", BUS_ID, HRAM_START, HRAM_END);
@@ -241,7 +251,9 @@ bool gb_init(struct machine *machine)
 
 	/* Add memory regions */
 	memory_region_add(&vram_area, &ram_mops, gb_data->vram);
+	memory_region_add(&wram_area, &ram_mops, gb_data->wram);
 	memory_region_add(&hram_area, &ram_mops, gb_data->hram);
+	memory_region_add(&oam_area, &ram_mops, gb_data->oam);
 
 	/* Set GB mapper controller machine data */
 	gb_mapper_mach_data.path = cart_path;
