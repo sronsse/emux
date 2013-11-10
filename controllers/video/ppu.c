@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <strings.h>
 #include <bitops.h>
 #include <clock.h>
 #include <controller.h>
@@ -9,10 +8,6 @@
 #include <memory.h>
 #include <resource.h>
 #include <video.h>
-
-#ifdef _WIN32
-#define ffs __builtin_ffs
-#endif
 
 /* PPU registers */
 #define NUM_REGS		8
@@ -705,7 +700,7 @@ void ppu_tick(clock_data_t *data)
 	event_mask = ppu->events[ppu->v][ppu->h];
 
 	/* Loop through all events and fire them */
-	while ((pos = ffs(event_mask))) {
+	while ((pos = bitops_ffs(event_mask))) {
 		ppu_events[pos - 1](ppu);
 		event_mask &= ~BIT(pos - 1);
 	}
