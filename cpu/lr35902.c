@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <bitops.h>
 #include <clock.h>
 #include <cpu.h>
 #include <memory.h>
@@ -26,6 +27,9 @@
 		uint16_t X##Y; \
 	};
 
+#define INT_VECTOR(irq) \
+	(0x40 + (irq << 3))
+
 struct lr35902_flags {
 	uint8_t reserved:4;
 	uint8_t C:1;
@@ -42,6 +46,8 @@ struct lr35902 {
 	uint16_t PC;
 	uint16_t SP;
 	uint8_t IME;
+	uint8_t IF;
+	uint8_t IE;
 	bool halted;
 	int bus_id;
 	struct clock clock;
@@ -50,6 +56,7 @@ struct lr35902 {
 static bool lr35902_init(struct cpu_instance *instance);
 static void lr35902_interrupt(struct cpu_instance *instance, int irq);
 static void lr35902_deinit(struct cpu_instance *instance);
+static bool lr35902_handle_interrupts(struct lr35902 *cpu);
 static void lr35902_tick(clock_data_t *data);
 static void lr35902_opcode_CB(struct lr35902 *cpu);
 static inline void LD_r_r(struct lr35902 *cpu, uint8_t *r1, uint8_t *r2);
@@ -1202,10 +1209,55 @@ void RST_n(struct lr35902 *cpu, uint8_t n)
 	clock_consume(16);
 }
 
+bool lr35902_handle_interrupts(struct lr35902 *cpu)
+{
+	int irq;
+
+	/* Check if interrupts are enabled */
+	if (!cpu->IME)
+		return false;
+
+	/* Get interrupt request (by priority) and leave if none is active */
+	irq = bitops_ffs(cpu->IF);
+	if (irq-- == 0)
+		return false;
+
+	/* Check if particular interrupt is enabled */
+	if (!(cpu->IE & BIT(irq)))
+		return false;
+
+	/* Clear master interrupt enable flag */
+	cpu->IME = 0;
+
+	/* Clear interrupt request flag */
+	cpu->IF &= ~BIT(irq);
+
+	/* Push PC on stack */
+	memory_writeb(cpu->bus_id, cpu->PC >> 8, --cpu->SP);
+	memory_writeb(cpu->bus_id, cpu->PC, --cpu->SP);
+
+	/* Jump to interrupt address */
+	cpu->PC = INT_VECTOR(irq);
+
+	/* Interrupt handler should consume 20 cycles */
+	clock_consume(20);
+	return true;
+}
+
 void lr35902_tick(clock_data_t *data)
 {
 	struct lr35902 *cpu = data;
 	uint8_t opcode;
+
+	/* Check for interrupt requests */
+	if (lr35902_handle_interrupts(cpu))
+		return;
+
+	/* Check if CPU is halted */
+	if (cpu->halted) {
+		clock_consume(1);
+		return;
+	}
 
 	/* Fetch opcode */
 	opcode = memory_readb(cpu->bus_id, cpu->PC++);
@@ -2249,6 +2301,9 @@ bool lr35902_init(struct cpu_instance *instance)
 	/* Initialize processor data */
 	cpu->bus_id = instance->bus_id;
 	cpu->PC = 0;
+	cpu->IME = 0;
+	cpu->IF = 0;
+	cpu->IE = 0;
 
 	/* Add CPU clock */
 	res = resource_get("clk",
@@ -2260,11 +2315,29 @@ bool lr35902_init(struct cpu_instance *instance)
 	cpu->clock.tick = lr35902_tick;
 	clock_add(&cpu->clock);
 
+	/* Add IF memory region */
+	res = resource_get("ifr",
+		RESOURCE_MEM,
+		instance->resources,
+		instance->num_resources);
+	memory_region_add(res, &ram_mops, &cpu->IF);
+
+	/* Add IE memory region */
+	res = resource_get("ier",
+		RESOURCE_MEM,
+		instance->resources,
+		instance->num_resources);
+	memory_region_add(res, &ram_mops, &cpu->IE);
+
 	return true;
 }
 
-void lr35902_interrupt(struct cpu_instance *UNUSED(instance), int UNUSED(irq))
+void lr35902_interrupt(struct cpu_instance *instance, int irq)
 {
+	struct lr35902 *cpu = instance->priv_data;
+
+	/* Flag interrupt request in IF register */
+	cpu->IF |= BIT(irq);
 }
 
 void lr35902_deinit(struct cpu_instance *instance)

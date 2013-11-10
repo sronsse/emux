@@ -29,13 +29,18 @@
 #define ECHO_END	0xFDFF
 #define OAM_START	0xFE00
 #define OAM_END		0xFE9F
-#define IO_START	0xFF00
-#define IO_END		0xFF7F
+#define IFR		0xFF0F
 #define HRAM_START	0xFF80
 #define HRAM_END	0xFFFE
 #define IER		0xFFFF
 
 #define BUS_ID		0
+
+#define VBLANK_IRQ	0
+#define LCDC_IRQ	1
+#define TIMER_IRQ	2
+#define SERIAL_IRQ	3
+#define JOYPAD_IRQ	4
 
 struct gb_data {
 	bool bootrom_locked;
@@ -69,7 +74,9 @@ static struct resource hram_area = MEM("hram", BUS_ID, HRAM_START, HRAM_END);
 
 /* LR35902 CPU */
 static struct resource cpu_resources[] = {
-	CLK("clk", CPU_CLOCK_RATE)
+	CLK("clk", GB_CLOCK_RATE),
+	MEM("ifr", BUS_ID, IFR, IFR),
+	MEM("ier", BUS_ID, IER, IER)
 };
 
 static struct cpu_instance cpu_instance = {
