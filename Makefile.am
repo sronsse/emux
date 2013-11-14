@@ -105,6 +105,9 @@ endif
 if CONFIG_CONTROLLER_MAPPER_ROM
 emux_SOURCES += controllers/mapper/rom.c
 endif
+if CONFIG_CONTROLLER_VIDEO_LCDC
+emux_SOURCES += controllers/video/lcdc.c
+endif
 if CONFIG_CONTROLLER_VIDEO_PPU
 emux_SOURCES += controllers/video/ppu.c
 endif

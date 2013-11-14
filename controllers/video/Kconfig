@@ -1,5 +1,11 @@
 menu "Video"
 
+config CONTROLLER_VIDEO_LCDC
+	bool "GB LCDC"
+	default y
+	help
+		Enable Game Boy LCD controller
+
 config CONTROLLER_VIDEO_PPU
 	bool "NES PPU"
 	default y
