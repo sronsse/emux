@@ -9,7 +9,7 @@
 #include <util.h>
 #include <controllers/mapper/gb_mapper.h>
 
-#define CPU_CLOCK_RATE	4194304
+#define GB_CLOCK_RATE	4194304
 
 #define VRAM_SIZE	KB(8)
 #define HRAM_SIZE	127
@@ -30,6 +30,8 @@
 #define OAM_START	0xFE00
 #define OAM_END		0xFE9F
 #define IFR		0xFF0F
+#define LCDC_START	0xFF40
+#define LCDC_END	0xFF4B
 #define HRAM_START	0xFF80
 #define HRAM_END	0xFFFE
 #define IER		0xFFFF
@@ -99,6 +101,21 @@ static struct controller_instance gb_mapper_instance = {
 	.resources = gb_mapper_resources,
 	.num_resources = ARRAY_SIZE(gb_mapper_resources),
 	.mach_data = &gb_mapper_mach_data
+};
+
+/* LCD controller */
+static struct resource lcdc_resources[] = {
+	MEM("mem", BUS_ID, LCDC_START, LCDC_END),
+	CLK("clk", GB_CLOCK_RATE),
+	IRQ("vblank", VBLANK_IRQ),
+	IRQ("lcdc", LCDC_IRQ)
+};
+
+static struct controller_instance lcdc_instance = {
+	.controller_name = "lcdc",
+	.bus_id = BUS_ID,
+	.resources = lcdc_resources,
+	.num_resources = ARRAY_SIZE(lcdc_resources)
 };
 
 bool gb_map_bootrom(struct gb_data *gb_data, char *path)
@@ -231,6 +248,7 @@ bool gb_init(struct machine *machine)
 
 	/* Add controllers and CPU */
 	if (!controller_add(&gb_mapper_instance) ||
+		!controller_add(&lcdc_instance) ||
 		!cpu_add(&cpu_instance)) {
 		gb_unmap_rom0(gb_data);
 		gb_unmap_bootrom(gb_data);

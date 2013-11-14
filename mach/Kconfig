@@ -17,6 +17,7 @@ config MACH_GB
 	select MACH
 	select CPU_LR35902
 	select CONTROLLER_MAPPER_GB
+	select CONTROLLER_VIDEO_LCDC
 	default y
 	help
 		Enable GB (Nintendo Game Boy) support
