@@ -16,7 +16,7 @@ bool rom_init(struct controller_instance *instance)
 	uint8_t *bank;
 
 	/* Map second ROM bank */
-	bank = memory_map_file(mach_data->path, BANK_START, BANK_SIZE);
+	bank = memory_map_file(mach_data->cart_path, BANK_START, BANK_SIZE);
 
 	/* Add second ROM bank */
 	area = resource_get("rom1",

@@ -3,14 +3,14 @@
 
 #include <stdint.h>
 
-#define CART_HEADER_START	0x0100
 #define NINTENDO_LOGO_SIZE	48
 #define MANUFACTURER_CODE_SIZE	4
 #define NEW_LICENSEE_CODE_SIZE	2
 #define TITLE_SIZE		11
 
 struct gb_mapper_mach_data {
-	char *path;
+	char *bootrom_path;
+	char *cart_path;
 };
 
 struct cart_header {

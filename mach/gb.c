@@ -17,6 +17,8 @@
 #define HRAM_SIZE	127
 
 /* Memory map */
+#define BOOTROM_START	0x0000
+#define BOOTROM_END	0x00FF
 #define ROM0_START	0x0000
 #define ROM0_END	0x3FFF
 #define ROM1_START	0x4000
@@ -34,6 +36,7 @@
 #define IFR		0xFF0F
 #define LCDC_START	0xFF40
 #define LCDC_END	0xFF4B
+#define BOOT_LOCK	0xFF50
 #define HRAM_START	0xFF80
 #define HRAM_END	0xFFFE
 #define IER		0xFFFF
@@ -47,11 +50,6 @@
 #define JOYPAD_IRQ	4
 
 struct gb_data {
-	bool bootrom_locked;
-	uint8_t *bootrom;
-	uint16_t bootrom_size;
-	uint8_t *rom0;
-	uint16_t rom0_size;
 	uint8_t vram[VRAM_SIZE];
 	uint8_t wram[WRAM_SIZE];
 	uint8_t oam[OAM_SIZE];
@@ -61,27 +59,11 @@ struct gb_data {
 static bool gb_init();
 static void gb_deinit();
 static void gb_print_usage();
-static bool gb_map_bootrom(struct gb_data *gb_data, char *path);
-static void gb_unmap_bootrom(struct gb_data *gb_data);
-static bool gb_map_rom0(struct gb_data *gb_data, char *path);
-static void gb_unmap_rom0(struct gb_data *gb_data);
 
-/* Boot ROM area (end address is filled at run-time) */
-static struct resource bootrom_area = MEM("bootrom", BUS_ID, ROM0_START, 0);
-
-/* ROM0 area (start addres is filled at run-time) */
-static struct resource rom0_area = MEM("rom0", BUS_ID, 0, ROM0_END);
-
-/* VRAM area */
+/* Memory areas */
 static struct resource vram_area = MEM("vram", BUS_ID, VRAM_START, VRAM_END);
-
-/* WRAM area */
 static struct resource wram_area = MEM("wram", BUS_ID, WRAM_START, WRAM_END);
-
-/* OAM area */
 static struct resource oam_area = MEM("oam", BUS_ID, OAM_START, OAM_END);
-
-/* HRAM area */
 static struct resource hram_area = MEM("hram", BUS_ID, HRAM_START, HRAM_END);
 
 /* LR35902 CPU */
@@ -102,7 +84,10 @@ static struct cpu_instance cpu_instance = {
 static struct gb_mapper_mach_data gb_mapper_mach_data;
 
 static struct resource gb_mapper_resources[] = {
-	MEM("rom1", BUS_ID, ROM1_START, ROM1_END)
+	MEM("bootrom", BUS_ID, BOOTROM_START, BOOTROM_END),
+	MEM("rom0", BUS_ID, ROM0_START, ROM0_END),
+	MEM("rom1", BUS_ID, ROM1_START, ROM1_END),
+	MEM("lock", BUS_ID, BOOT_LOCK, BOOT_LOCK)
 };
 
 static struct controller_instance gb_mapper_instance = {
@@ -128,76 +113,6 @@ static struct controller_instance lcdc_instance = {
 	.num_resources = ARRAY_SIZE(lcdc_resources)
 };
 
-bool gb_map_bootrom(struct gb_data *gb_data, char *path)
-{
-	FILE *f;
-	uint16_t end_addr;
-
-	/* Open boot ROM file */
-	f = fopen(path, "rb");
-	if (!f) {
-		fprintf(stderr, "Could not open boot ROM from \"%s\"!\n", path);
-		return false;
-	}
-
-	/* Compute boot ROM size */
-	fseek(f, 0, SEEK_END);
-	gb_data->bootrom_size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	fclose(f);
-
-	/* Map boot ROM */
-	gb_data->bootrom = memory_map_file(path, 0, gb_data->bootrom_size);
-
-	/* Specify boot ROM area end address */
-	end_addr = bootrom_area.data.mem.start + gb_data->bootrom_size - 1;
-	bootrom_area.data.mem.end = end_addr;
-
-	/* Add boot ROM memory region */
-	memory_region_add(&bootrom_area, &rom_mops, gb_data->bootrom);
-
-	return true;
-}
-
-void gb_unmap_bootrom(struct gb_data *gb_data)
-{
-	/* Unmap boot ROM */
-	memory_unmap_file(gb_data->bootrom, gb_data->bootrom_size);
-}
-
-bool gb_map_rom0(struct gb_data *gb_data, char *path)
-{
-	uint16_t start_addr;
-
-	/* Initialize start address to map based on boot ROM locked state */
-	start_addr = ROM0_START;
-	if (!gb_data->bootrom_locked)
-		start_addr += gb_data->bootrom_size;
-
-	/* Specify ROM0 area start address */
-	rom0_area.data.mem.start = start_addr;
-
-	/* Save mapped size */
-	gb_data->rom0_size = ROM0_END - start_addr + 1;
-
-	/* Map ROM0 */
-	gb_data->rom0 = memory_map_file(path, start_addr, gb_data->rom0_size);
-	if (!gb_data->rom0) {
-		fprintf(stderr, "Could not map cart from \"%s\"!\n", path);
-		return false;
-	}
-
-	/* Add ROM0 memory region */
-	memory_region_add(&rom0_area, &rom_mops, gb_data->rom0);
-	return true;
-}
-
-void gb_unmap_rom0(struct gb_data *gb_data)
-{
-	/* Unmap ROM0 */
-	memory_unmap_file(gb_data->rom0, gb_data->rom0_size);
-}
-
 void gb_print_usage()
 {
 	fprintf(stderr, "Valid gb options:\n");
@@ -211,9 +126,8 @@ bool gb_init(struct machine *machine)
 	char *bootrom_path;
 	char *cart_path;
 
-	/* Create machine data structure and initialize it */
+	/* Create machine data structure */
 	gb_data = malloc(sizeof(struct gb_data));
-	gb_data->bootrom_locked = false;
 
 	/* Get bootrom option */
 	if (!cmdline_parse_string("bootrom", &bootrom_path)) {
@@ -234,21 +148,6 @@ bool gb_init(struct machine *machine)
 	/* Add 16-bit memory bus */
 	memory_bus_add(16);
 
-	/* Map provided boot ROM */
-	if (!gb_map_bootrom(gb_data, bootrom_path)) {
-		free(gb_data);
-		fprintf(stderr, "Could not map boot ROM!\n");
-		return false;
-	}
-
-	/* Map ROM0 using provided cart */
-	if (!gb_map_rom0(gb_data, cart_path)) {
-		gb_unmap_bootrom(gb_data);
-		free(gb_data);
-		fprintf(stderr, "Could not map ROM0!\n");
-		return false;
-	}
-
 	/* Add memory regions */
 	memory_region_add(&vram_area, &ram_mops, gb_data->vram);
 	memory_region_add(&wram_area, &ram_mops, gb_data->wram);
@@ -256,14 +155,13 @@ bool gb_init(struct machine *machine)
 	memory_region_add(&oam_area, &ram_mops, gb_data->oam);
 
 	/* Set GB mapper controller machine data */
-	gb_mapper_mach_data.path = cart_path;
+	gb_mapper_mach_data.bootrom_path = bootrom_path;
+	gb_mapper_mach_data.cart_path = cart_path;
 
 	/* Add controllers and CPU */
 	if (!controller_add(&gb_mapper_instance) ||
 		!controller_add(&lcdc_instance) ||
 		!cpu_add(&cpu_instance)) {
-		gb_unmap_rom0(gb_data);
-		gb_unmap_bootrom(gb_data);
 		free(gb_data);
 		return false;
 	}
@@ -276,10 +174,7 @@ bool gb_init(struct machine *machine)
 
 void gb_deinit(struct machine *machine)
 {
-	struct gb_data *gb_data = machine->priv_data;
-	gb_unmap_rom0(gb_data);
-	gb_unmap_bootrom(gb_data);
-	free(gb_data);
+	free(machine->priv_data);
 }
 
 MACHINE_START(gb, "Nintendo Game Boy")
