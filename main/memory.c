@@ -181,6 +181,41 @@ void memory_region_add(struct resource *area, struct mops *mops,
 		memory_region_sort_compare);
 }
 
+void memory_region_remove(struct resource *area)
+{
+	struct bus *bus;
+	address_t start;
+	address_t end;
+	int index;
+
+	/* Get bus based on area */
+	bus = &busses[area->data.mem.bus_id];
+
+	/* Get region start and end addresses */
+	start = area->data.mem.start;
+	end = area->data.mem.end;
+
+	/* Find region to remove */
+	for (index = 0; index < bus->num_regions; index++)
+		if ((bus->regions[index].start == start) &&
+			(bus->regions[index].end == end))
+			break;
+
+	/* Return if region was not found */
+	if (index == bus->num_regions)
+		return;
+
+	/* Shift remaining regions */
+	while (index < bus->num_regions - 1) {
+		bus->regions[index] = bus->regions[index + 1];
+		index++;
+	}
+
+	/* Shrink memory regions array */
+	bus->regions = realloc(bus->regions, --bus->num_regions *
+		sizeof(struct region));
+}
+
 void memory_bus_remove_all()
 {
 	int i;
