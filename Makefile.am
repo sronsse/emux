@@ -2,9 +2,11 @@ bin_PROGRAMS = emux
 emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
 	$(ROXML_CFLAGS) \
 	$(CACA_CFLAGS) \
+	$(GL_CFLAGS) \
+	$(GLU_CFLAGS) \
 	$(SDL_CFLAGS)
 emux_LDFLAGS = $(ldscript_LDFLAGS)
-emux_LDADD = $(CACA_LIBS) $(SDL_LIBS) $(ROXML_LIBS)
+emux_LDADD = $(CACA_LIBS) $(GL_LIBS) $(GLU_LIBS) $(SDL_LIBS) $(ROXML_LIBS)
 emux_SOURCES = include/audio.h \
 	include/bitops.h \
 	include/clock.h \
@@ -68,6 +70,9 @@ emux_SOURCES += frontends/input/sdl_input.c
 endif
 if CONFIG_VIDEO_CACA
 emux_SOURCES += frontends/video/caca_video.c
+endif
+if CONFIG_VIDEO_OPENGL
+emux_SOURCES += frontends/video/opengl_video.c
 endif
 if CONFIG_VIDEO_SDL
 emux_SOURCES += frontends/video/sdl_video.c
