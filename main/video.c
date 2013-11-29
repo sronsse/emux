@@ -79,7 +79,7 @@ bool video_init(int width, int height)
 			frontend = fe;
 
 			/* Initialize input frontend */
-			return input_init(name, window);
+			return input_init(fe->input, window);
 		}
 		return false;
 	}

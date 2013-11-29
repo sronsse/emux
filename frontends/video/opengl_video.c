@@ -279,6 +279,7 @@ void gl_deinit()
 }
 
 VIDEO_START(opengl)
+	.input = "sdl",
 	.init = gl_init,
 	.update = gl_update,
 	.get_pixel = gl_get_pixel,

@@ -102,6 +102,7 @@ void caca_deinit()
 }
 
 VIDEO_START(caca)
+	.input = "caca",
 	.init = caca_init,
 	.update = caca_update,
 	.get_pixel = caca_get_pixel,

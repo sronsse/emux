@@ -165,6 +165,7 @@ void sdl_deinit()
 }
 
 VIDEO_START(sdl)
+	.input = "sdl",
 	.init = sdl_init,
 	.update = sdl_update,
 	.lock = sdl_lock,
