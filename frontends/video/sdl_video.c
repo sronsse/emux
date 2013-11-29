@@ -5,6 +5,8 @@
 
 static video_window_t *sdl_init(int width, int height, int scale);
 static void sdl_update();
+static void sdl_lock();
+static void sdl_unlock();
 static struct color sdl_get_pixel(int x, int y);
 static void sdl_set_pixel(int x, int y, struct color color);
 static void sdl_deinit();
