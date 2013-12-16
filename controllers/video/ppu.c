@@ -781,6 +781,7 @@ bool ppu_init(struct controller_instance *instance)
 
 void ppu_deinit(struct controller_instance *instance)
 {
+	video_deinit();
 	free(instance->priv_data);
 }
 
