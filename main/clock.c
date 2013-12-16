@@ -136,5 +136,7 @@ void clock_consume(int num_cycles)
 void clock_remove_all()
 {
 	free(clocks);
+	clocks = NULL;
+	num_clocks = 0;
 }
 

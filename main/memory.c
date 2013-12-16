@@ -222,6 +222,8 @@ void memory_bus_remove_all()
 	for (i = 0; i < num_busses; i++)
 		free(busses[i].regions);
 	free(busses);
+	busses = NULL;
+	num_busses = 0;
 }
 
 uint8_t memory_readb(int bus_id, address_t address)
