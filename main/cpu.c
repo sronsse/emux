@@ -3,47 +3,16 @@
 #include <string.h>
 #include <cpu.h>
 #include <list.h>
-#ifdef __APPLE__
-#include <mach-o/getsect.h>
-#endif
 
-#ifdef __APPLE__
-void cx_cpus() __attribute__((__constructor__));
-#endif
-
-#if defined(_WIN32)
-extern struct cpu _cpus_begin, _cpus_end;
-static struct cpu *cpus_begin = &_cpus_begin;
-static struct cpu *cpus_end = &_cpus_end;
-#elif defined(__APPLE__)
-static struct cpu *cpus_begin;
-static struct cpu *cpus_end;
-#else
-extern struct cpu __cpus_begin, __cpus_end;
-static struct cpu *cpus_begin = &__cpus_begin;
-static struct cpu *cpus_end = &__cpus_end;
-#endif
-
+struct list_link *cpus;
 static struct list_link *cpu_instances;
-
-#ifdef __APPLE__
-void cx_cpus()
-{
-#ifdef __LP64__
-	const struct section_64 *sect;
-#else
-	const struct section *sect;
-#endif
-	sect = getsectbyname(CPU_SEGMENT_NAME, CPU_SECTION_NAME);
-	cpus_begin = (struct cpu *)(sect->addr);
-	cpus_end = (struct cpu *)(sect->addr + sect->size);
-}
-#endif
 
 bool cpu_add(struct cpu_instance *instance)
 {
+	struct list_link *link = cpus;
 	struct cpu *cpu;
-	for (cpu = cpus_begin; cpu < cpus_end; cpu++)
+
+	while ((cpu = list_get_next(&link)))
 		if (!strcmp(instance->cpu_name, cpu->name)) {
 			instance->cpu = cpu;
 			if ((cpu->init && cpu->init(instance)) || !cpu->init) {

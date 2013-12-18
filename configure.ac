@@ -20,11 +20,6 @@ PKG_PROG_PKG_CONFIG
 # Export source directory to the environment
 export EMUX_SRC_DIR=$srcdir
 
-# Declare linker script if arch requires it
-AS_CASE(["$target_os"], [*darwin*], [ldscript_LDFLAGS=""],
-	[ldscript_LDFLAGS="-T${EMUX_SRC_DIR}/linker.lds"])
-AC_SUBST([ldscript_LDFLAGS], [${ldscript_LDFLAGS}])
-
 # Execute menuconfig
 kconfig-mconf $EMUX_SRC_DIR/Kconfig <& AS_ORIGINAL_STDIN_FD
 

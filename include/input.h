@@ -2,25 +2,22 @@
 #define _INPUT_H
 
 #include <stdbool.h>
+#include <list.h>
 #include <video.h>
 
-#define INPUT_SECTION_NAME	"input_frontends"
-#ifdef __APPLE__
-#define INPUT_SEGMENT_NAME	"__DATA"
-#define INPUT_SECTION_LABEL	INPUT_SEGMENT_NAME ", " INPUT_SECTION_NAME
-#else
-#define INPUT_SECTION_LABEL	INPUT_SECTION_NAME
-#endif
-
 #define INPUT_START(_name) \
-	static struct input_frontend input_##_name \
-		__attribute__(( \
-			__used__, \
-			__section__(INPUT_SECTION_LABEL), \
-			__aligned__(__alignof__(struct input_frontend)))) = { \
+	static struct input_frontend _input_frontend = { \
 		.name = #_name,
 #define INPUT_END \
-	};
+	}; \
+	__attribute__((constructor)) static void _register() \
+	{ \
+		list_insert(&input_frontends, &_input_frontend); \
+	} \
+	__attribute__((destructor)) static void _unregister() \
+	{ \
+		list_remove(&input_frontends, &_input_frontend); \
+	}
 
 typedef void input_data_t;
 
@@ -63,6 +60,8 @@ void input_report(struct input_event *event, struct input_state *state);
 void input_register(struct input_config *config);
 void input_unregister(struct input_config *config);
 void input_deinit();
+
+extern struct list_link *input_frontends;
 
 #endif
 

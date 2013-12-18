@@ -2,24 +2,21 @@
 #define _CPU_H
 
 #include <stdbool.h>
-
-#define CPU_SECTION_NAME	"cpus"
-#ifdef __APPLE__
-#define CPU_SEGMENT_NAME	"__DATA"
-#define CPU_SECTION_LABEL	CPU_SEGMENT_NAME ", " CPU_SECTION_NAME
-#else
-#define CPU_SECTION_LABEL	CPU_SECTION_NAME
-#endif
+#include <list.h>
 
 #define CPU_START(_name) \
-	static struct cpu cpu_##_name \
-		__attribute__(( \
-			__used__, \
-			__section__(CPU_SECTION_LABEL), \
-			__aligned__(__alignof__(struct cpu)))) = { \
+	static struct cpu _cpu = { \
 		.name = #_name,
 #define CPU_END \
-	};
+	}; \
+	__attribute__((constructor)) static void _register() \
+	{ \
+		list_insert(&cpus, &_cpu); \
+	} \
+	__attribute__((destructor)) static void _unregister() \
+	{ \
+		list_remove(&cpus, &_cpu); \
+	}
 
 typedef void cpu_mach_data_t;
 typedef void cpu_priv_data_t;
@@ -46,6 +43,8 @@ struct cpu_instance {
 bool cpu_add(struct cpu_instance *instance);
 void cpu_interrupt(int irq);
 void cpu_remove_all();
+
+extern struct list_link *cpus;
 
 #endif
 

@@ -2,26 +2,22 @@
 #define _CONTROLLER_H
 
 #include <stdbool.h>
+#include <list.h>
 #include <resource.h>
 
-#define CONTROLLER_SECTION_NAME		"controllers"
-#ifdef __APPLE__
-#define CONTROLLER_SEGMENT_NAME		"__DATA"
-#define CONTROLLER_SECTION_LABEL	CONTROLLER_SEGMENT_NAME ", " \
-	CONTROLLER_SECTION_NAME
-#else
-#define CONTROLLER_SECTION_LABEL	CONTROLLER_SECTION_NAME
-#endif
-
 #define CONTROLLER_START(_name) \
-	static struct controller controller_##_name \
-		__attribute__(( \
-			__used__, \
-			__section__(CONTROLLER_SECTION_LABEL), \
-			__aligned__(__alignof__(struct controller)))) = { \
+	static struct controller _controller = { \
 		.name = #_name,
 #define CONTROLLER_END \
-	};
+	}; \
+	__attribute__((constructor)) static void _register() \
+	{ \
+		list_insert(&controllers, &_controller); \
+	} \
+	__attribute__((destructor)) static void _unregister() \
+	{ \
+		list_remove(&controllers, &_controller); \
+	}
 
 typedef void controller_mach_data_t;
 typedef void controller_priv_data_t;
@@ -46,6 +42,8 @@ struct controller_instance {
 
 bool controller_add(struct controller_instance *instance);
 void controller_remove_all();
+
+extern struct list_link *controllers;
 
 #endif
 

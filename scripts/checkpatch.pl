@@ -550,7 +550,7 @@ sub top_of_kernel_tree {
 	my @tree_check = (
 		"AUTHORS", "COPYING", "ChangeLog", "Kconfig", "Makefile.am",
 		"NEWS", "README", "configure.ac", "controllers", "cpu",
-		"frontends", "include", "linker.lds", "mach", "main", "scripts",
+		"frontends", "include", "mach", "main", "scripts"
 	);
 
 	foreach my $check (@tree_check) {

@@ -5,7 +5,6 @@ emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
 	$(GL_CFLAGS) \
 	$(GLU_CFLAGS) \
 	$(SDL_CFLAGS)
-emux_LDFLAGS = $(ldscript_LDFLAGS)
 emux_LDADD = $(CACA_LIBS) $(GL_LIBS) $(GLU_LIBS) $(SDL_LIBS) $(ROXML_LIBS)
 emux_SOURCES = include/audio.h \
 	include/bitops.h \
@@ -34,7 +33,6 @@ emux_SOURCES = include/audio.h \
 	main/resource.c \
 	main/video.c
 EXTRA_DIST = Kconfig \
-	linker.lds \
 	controllers/Kconfig \
 	controllers/dma/Kconfig \
 	controllers/input/Kconfig \

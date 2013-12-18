@@ -2,47 +2,15 @@
 #include <string.h>
 #include <cmdline.h>
 #include <input.h>
+#include <list.h>
 #include <video.h>
-#ifdef __APPLE__
-#include <mach-o/getsect.h>
-#endif
 
-#ifdef __APPLE__
-void cx_video_frontends() __attribute__((__constructor__));
-#endif
-
-#if defined(_WIN32)
-extern struct video_frontend _video_frontends_begin, _video_frontends_end;
-static struct video_frontend *video_frontends_begin = &_video_frontends_begin;
-static struct video_frontend *video_frontends_end = &_video_frontends_end;
-#elif defined(__APPLE__)
-struct video_frontend *video_frontends_begin;
-struct video_frontend *video_frontends_end;
-#else
-extern struct video_frontend __video_frontends_begin, __video_frontends_end;
-static struct video_frontend *video_frontends_begin = &__video_frontends_begin;
-static struct video_frontend *video_frontends_end = &__video_frontends_end;
-#endif
-
+struct list_link *video_frontends;
 static struct video_frontend *frontend;
-
-#ifdef __APPLE__
-void cx_video_frontends()
-{
-#ifdef __LP64__
-	const struct section_64 *sect;
-#else
-	const struct section *sect;
-#endif
-	sect = getsectbyname(VIDEO_SEGMENT_NAME, VIDEO_SECTION_NAME);
-	video_frontends_begin = (struct video_frontend *)(sect->addr);
-	video_frontends_end = (struct video_frontend *)(sect->addr +
-		sect->size);
-}
-#endif
 
 bool video_init(int width, int height)
 {
+	struct list_link *link = video_frontends;
 	struct video_frontend *fe;
 	char *name;
 	int scale = 1;
@@ -66,7 +34,7 @@ bool video_init(int width, int height)
 	}
 
 	/* Find video frontend */
-	for (fe = video_frontends_begin; fe < video_frontends_end; fe++) {
+	while ((fe = list_get_next(&link))) {
 		if (strcmp(name, fe->name))
 			continue;
 

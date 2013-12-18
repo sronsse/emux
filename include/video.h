@@ -3,24 +3,21 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
-#define VIDEO_SECTION_NAME	"video_frontends"
-#ifdef __APPLE__
-#define VIDEO_SEGMENT_NAME	"__DATA"
-#define VIDEO_SECTION_LABEL	VIDEO_SEGMENT_NAME ", " VIDEO_SECTION_NAME
-#else
-#define VIDEO_SECTION_LABEL	VIDEO_SECTION_NAME
-#endif
+#include <list.h>
 
 #define VIDEO_START(_name) \
-	static struct video_frontend video_##_name \
-		__attribute__(( \
-			__used__, \
-			__section__(VIDEO_SECTION_LABEL), \
-			__aligned__(__alignof__(struct video_frontend)))) = { \
+	static struct video_frontend _video_frontend = { \
 		.name = #_name,
 #define VIDEO_END \
-	};
+	}; \
+	__attribute__((constructor)) static void _register() \
+	{ \
+		list_insert(&video_frontends, &_video_frontend); \
+	} \
+	__attribute__((destructor)) static void _unregister() \
+	{ \
+		list_remove(&video_frontends, &_video_frontend); \
+	}
 
 typedef void video_window_t;
 
@@ -49,6 +46,8 @@ void video_unlock();
 struct color video_get_pixel(int x, int y);
 void video_set_pixel(int x, int y, struct color color);
 void video_deinit();
+
+extern struct list_link *video_frontends;
 
 #endif
 
