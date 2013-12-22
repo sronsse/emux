@@ -12,10 +12,10 @@
 #define BIT(n) (1 << (n))
 
 /* Declare BITOPS functions */
-DECLARE_BITOPS_GET(b, uint8_t);
-DECLARE_BITOPS_SET(b, uint8_t);
-DECLARE_BITOPS_GET(w, uint16_t);
-DECLARE_BITOPS_SET(w, uint16_t);
+DECLARE_BITOPS_GET(b, uint8_t)
+DECLARE_BITOPS_SET(b, uint8_t)
+DECLARE_BITOPS_GET(w, uint16_t)
+DECLARE_BITOPS_SET(w, uint16_t)
 
 int bitops_ffs(int i);
 
