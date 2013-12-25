@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <controller.h>
+#include <log.h>
 #include <memory.h>
 #include <util.h>
 #include <controllers/mapper/gb_mapper.h>
@@ -96,7 +97,7 @@ bool map_rom0(struct gb_mapper *gb_mapper)
 	gb_mapper->rom0 = memory_map_file(gb_mapper->mach_data->cart_path,
 		offset, gb_mapper->rom0_size);
 	if (!gb_mapper->rom0) {
-		fprintf(stderr, "Could not map cart from \"%s\"!\n",
+		LOG_E("Could not map cart from \"%s\"!\n",
 			gb_mapper->mach_data->cart_path);
 		return false;
 	}
@@ -125,31 +126,28 @@ bool gb_mapper_init(struct controller_instance *instance)
 	cart_header = memory_map_file(gb_mapper->mach_data->cart_path,
 		CART_HEADER_START, sizeof(struct cart_header));
 	if (!cart_header) {
-		fprintf(stderr, "Could not map header from \"%s\"!\n",
+		LOG_E("Could not map header from \"%s\"!\n",
 			gb_mapper->mach_data->cart_path);
 		free(gb_mapper);
 		return false;
 	}
 
 	/* Print header info */
-	fprintf(stdout, "Title: %.*s\n", TITLE_SIZE, cart_header->title);
-	fprintf(stdout, "Manufacturer code: %.*s\n", MANUFACTURER_CODE_SIZE,
+	LOG_I("Title: %.*s\n", TITLE_SIZE, cart_header->title);
+	LOG_I("Manufacturer code: %.*s\n", MANUFACTURER_CODE_SIZE,
 		cart_header->manufacturer_code);
-	fprintf(stdout, "CGB flag: %u\n", cart_header->cgb_flag);
-	fprintf(stdout, "New licensee code: %.*s\n", NEW_LICENSEE_CODE_SIZE,
+	LOG_I("CGB flag: %u\n", cart_header->cgb_flag);
+	LOG_I("New licensee code: %.*s\n", NEW_LICENSEE_CODE_SIZE,
 		cart_header->new_licensee_code);
-	fprintf(stdout, "SGB flag: %u\n", cart_header->sgb_flag);
-	fprintf(stdout, "Cartridge type: %02x\n", cart_header->cartridge_type);
-	fprintf(stdout, "ROM size: %02x\n", cart_header->rom_size);
-	fprintf(stdout, "RAM size: %02x\n", cart_header->ram_size);
-	fprintf(stdout, "Destination code: %02x\n", cart_header->dest_code);
-	fprintf(stdout, "Old licensee code: %02x\n",
-		cart_header->old_licensee_code);
-	fprintf(stdout, "ROM version: %02x\n", cart_header->rom_version);
-	fprintf(stdout, "Header checksum: %02x\n",
-		cart_header->header_checksum);
-	fprintf(stdout, "Global checksum: %04x\n",
-		cart_header->global_checksum);
+	LOG_I("SGB flag: %u\n", cart_header->sgb_flag);
+	LOG_I("Cartridge type: %02x\n", cart_header->cartridge_type);
+	LOG_I("ROM size: %02x\n", cart_header->rom_size);
+	LOG_I("RAM size: %02x\n", cart_header->ram_size);
+	LOG_I("Destination code: %02x\n", cart_header->dest_code);
+	LOG_I("Old licensee code: %02x\n", cart_header->old_licensee_code);
+	LOG_I("ROM version: %02x\n", cart_header->rom_version);
+	LOG_I("Header checksum: %02x\n", cart_header->header_checksum);
+	LOG_I("Global checksum: %04x\n", cart_header->global_checksum);
 
 	/* Get cart type number */
 	number = cart_header->cartridge_type;
@@ -159,7 +157,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 
 	/* Check if cart type is supported */
 	if ((number >= ARRAY_SIZE(mbcs)) || !mbcs[number]) {
-		fprintf(stderr, "Cart type %u is not supported!\n", number);
+		LOG_E("Cart type %u is not supported!\n", number);
 		free(gb_mapper);
 		return false;
 	}
@@ -177,7 +175,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	/* Map boot ROM */
 	if (!map_bootrom(gb_mapper)) {
 		free(gb_mapper);
-		fprintf(stderr, "Could not map boot ROM!\n");
+		LOG_E("Could not map boot ROM!\n");
 		return false;
 	}
 
@@ -186,7 +184,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	if (!map_rom0(gb_mapper)) {
 		memory_unmap_file(gb_mapper->bootrom, gb_mapper->bootrom_size);
 		free(gb_mapper);
-		fprintf(stderr, "Could not map ROM0!\n");
+		LOG_E("Could not map ROM0!\n");
 		return false;
 	}
 
@@ -198,7 +196,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	memory_region_add(lock_area, &lock_mops, gb_mapper);
 
 	/* Cart type is supported, so add actual controller */
-	fprintf(stdout, "Cart type %u (%s) detected.\n", number, mbcs[number]);
+	LOG_I("Cart type %u (%s) detected.\n", number, mbcs[number]);
 	mbc_instance = malloc(sizeof(struct controller_instance));
 	mbc_instance->controller_name = mbcs[number];
 	mbc_instance->num_resources = instance->num_resources;

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <caca.h>
+#include <log.h>
 #include <util.h>
 #include <video.h>
 
@@ -40,7 +41,7 @@ video_window_t *caca_init(int width, int height, int scale)
 	cv = caca_create_canvas(width * scale, height * scale);
 	dp = caca_create_display(cv);
 	if (!dp) {
-		fprintf(stderr, "Can't create caca display!\n");
+		LOG_E("Could not create caca display!\n");
 		return NULL;
 	}
 

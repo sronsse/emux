@@ -6,6 +6,7 @@
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengl.h>
 #include <GL/glext.h>
+#include <log.h>
 #include <video.h>
 
 /* Vertex parameters */
@@ -167,8 +168,7 @@ video_window_t *gl_init(int width, int height, int scale)
 
 	/* Initialize video sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
-		fprintf(stderr, "Error initializing SDL video: %s\n",
-			SDL_GetError());
+		LOG_E("Error initializing SDL video: %s\n", SDL_GetError());
 		return NULL;
 	}
 
@@ -179,8 +179,7 @@ video_window_t *gl_init(int width, int height, int scale)
 	/* Create main video surface */
 	gl.screen = SDL_SetVideoMode(width * scale, height * scale, 0, flags);
 	if (!gl.screen) {
-		fprintf(stderr, "Error create video surface! %s\n",
-			SDL_GetError());
+		LOG_E("Error creating video surface: %s\n", SDL_GetError());
 		SDL_VideoQuit();
 		return NULL;
 	}
@@ -192,7 +191,7 @@ video_window_t *gl_init(int width, int height, int scale)
 
 	/* Initialize shaders and return in case of failure */
 	if (!init_shaders()) {
-		fprintf(stderr, "Error initializing shaders!\n");
+		LOG_E("Error initializing shaders!\n");
 		return NULL;
 	}
 

@@ -5,6 +5,7 @@
 #include <cmdline.h>
 #include <input.h>
 #include <list.h>
+#include <log.h>
 
 /* Configuration file and node definitions */
 #define DOC_FILENAME		"config.xml"
@@ -22,7 +23,7 @@ bool input_init(char *name, video_window_t *window)
 	struct input_frontend *fe;
 
 	if (frontend) {
-		fprintf(stderr, "Input frontend already initialized!\n");
+		LOG_E("Input frontend already initialized!\n");
 		return false;
 	}
 
@@ -40,7 +41,7 @@ bool input_init(char *name, video_window_t *window)
 		}
 
 	/* Warn as input frontend was not found */
-	fprintf(stderr, "Input frontend \"%s\" not recognized!\n", name);
+	LOG_E("Input frontend \"%s\" not recognized!\n", name);
 	return false;
 }
 
@@ -103,7 +104,7 @@ bool input_load(char *name, struct input_event *events, int num_events)
 err:
 	roxml_release(RELEASE_ALL);
 	if (!rc)
-		fprintf(stderr, "Error parsing input configuration file!\n");
+		LOG_W("Error parsing input configuration file!\n");
 	return rc;
 }
 

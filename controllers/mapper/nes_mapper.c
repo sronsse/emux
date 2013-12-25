@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <controller.h>
+#include <log.h>
 #include <memory.h>
 #include <util.h>
 #include <controllers/mapper/nes_mapper.h>
@@ -26,26 +27,25 @@ bool nes_mapper_init(struct controller_instance *instance)
 	cart_header = memory_map_file(mach_data->path, 0,
 		sizeof(struct cart_header));
 	if (!cart_header) {
-		fprintf(stderr, "Could not map header from \"%s\"!\n",
-			mach_data->path);
+		LOG_E("Could not map header from \"%s\"!\n", mach_data->path);
 		return false;
 	}
 
 	/* Validate header */
 	if (cart_header->ines_constant != INES_CONSTANT) {
-		fprintf(stderr, "Cart header does not have valid format!\n");
+		LOG_E("Cart header does not have valid format!\n");
 		memory_unmap_file(cart_header, sizeof(struct cart_header));
 		return false;
 	}
 
 	/* Print header info */
-	fprintf(stdout, "PRG ROM size: %u\n", cart_header->prg_rom_size);
-	fprintf(stdout, "CHR ROM size: %u\n", cart_header->chr_rom_size);
-	fprintf(stdout, "Flags 6: %02x\n", cart_header->flags6);
-	fprintf(stdout, "Flags 7: %02x\n", cart_header->flags7);
-	fprintf(stdout, "PRG RAM size: %u\n", cart_header->prg_ram_size);
-	fprintf(stdout, "Flags 9: %02x\n", cart_header->flags9);
-	fprintf(stdout, "Flags 10: %02x\n", cart_header->flags10);
+	LOG_I("PRG ROM size: %u\n", cart_header->prg_rom_size);
+	LOG_I("CHR ROM size: %u\n", cart_header->chr_rom_size);
+	LOG_I("Flags 6: %02x\n", cart_header->flags6);
+	LOG_I("Flags 7: %02x\n", cart_header->flags7);
+	LOG_I("PRG RAM size: %u\n", cart_header->prg_ram_size);
+	LOG_I("Flags 9: %02x\n", cart_header->flags9);
+	LOG_I("Flags 10: %02x\n", cart_header->flags10);
 
 	/* Bits 4-7 of flags 6 contain the mapper number lower nibble */
 	/* Bits 4-7 of flags 7 contain the mapper number upper nibble */
@@ -56,12 +56,12 @@ bool nes_mapper_init(struct controller_instance *instance)
 
 	/* Check if mapper is supported */
 	if ((number >= ARRAY_SIZE(mappers)) || !mappers[number]) {
-		fprintf(stderr, "Mapper %u is not supported!\n", number);
+		LOG_I("Mapper %u is not supported!\n", number);
 		return false;
 	}
 
 	/* Mapper type is supported, so add actual controller */
-	fprintf(stdout, "Mapper %u (%s) detected.\n", number, mappers[number]);
+	LOG_I("Mapper %u (%s) detected.\n", number, mappers[number]);
 	mapper_instance = malloc(sizeof(struct controller_instance));
 	mapper_instance->controller_name = mappers[number];
 	mapper_instance->num_resources = instance->num_resources;

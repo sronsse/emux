@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <SDL.h>
+#include <log.h>
 #include <video.h>
 
 static video_window_t *sdl_init(int width, int height, int scale);
@@ -20,8 +21,7 @@ video_window_t *sdl_init(int width, int height, int scale)
 
 	/* Initialize video sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
-		fprintf(stderr, "Error initializing SDL video: %s\n",
-			SDL_GetError());
+		LOG_E("Error initializing SDL video: %s\n", SDL_GetError());
 		return NULL;
 	}
 
@@ -32,8 +32,7 @@ video_window_t *sdl_init(int width, int height, int scale)
 	/* Create main video surface */
 	screen = SDL_SetVideoMode(width * scale, height * scale, 0, flags);
 	if (!screen) {
-		fprintf(stderr, "Error create video surface! %s\n",
-			SDL_GetError());
+		LOG_E("Error creating video surface: %s\n", SDL_GetError());
 		SDL_VideoQuit();
 		return NULL;
 	}
@@ -52,7 +51,7 @@ void sdl_update()
 void sdl_lock()
 {
 	if (SDL_MUSTLOCK(screen) && (SDL_LockSurface(screen) < 0))
-		fprintf(stderr, "Can't lock surface: %s\n", SDL_GetError());
+		LOG_W("Couldn't lock surface: %s\n", SDL_GetError());
 }
 
 void sdl_unlock()

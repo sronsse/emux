@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <clock.h>
+#include <log.h>
 
 #define NS(s) ((s) * 1000000000)
 
@@ -102,7 +103,7 @@ void clock_tick_all()
 
 	/* Sanity check (clocks should consume cycles at all times) */
 	if (num_remaining_cycles == 0)
-		fprintf(stderr, "Error: clock action should consume cycles!\n");
+		LOG_W("Clock action should consume cycles!\n");
 
 	/* Increment current cycle by min number of remaining cycles found */
 	current_cycle += num_remaining_cycles;

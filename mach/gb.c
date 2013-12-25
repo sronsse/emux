@@ -4,6 +4,7 @@
 #include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
+#include <log.h>
 #include <machine.h>
 #include <memory.h>
 #include <util.h>
@@ -132,7 +133,7 @@ bool gb_init(struct machine *machine)
 	/* Get bootrom option */
 	if (!cmdline_parse_string("bootrom", &bootrom_path)) {
 		free(gb_data);
-		fprintf(stderr, "Please provide a bootrom option!\n");
+		LOG_E("Please provide a bootrom option!\n");
 		gb_print_usage();
 		return false;
 	}
@@ -140,7 +141,7 @@ bool gb_init(struct machine *machine)
 	/* Get cart option */
 	if (!cmdline_parse_string("cart", &cart_path)) {
 		free(gb_data);
-		fprintf(stderr, "Please provide a cart option!\n");
+		LOG_E("Please provide a cart option!\n");
 		gb_print_usage();
 		return false;
 	}

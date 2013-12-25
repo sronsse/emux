@@ -3,6 +3,7 @@
 #include <string.h>
 #include <controller.h>
 #include <list.h>
+#include <log.h>
 
 struct list_link *controllers;
 static struct list_link *controller_instances;
@@ -24,8 +25,7 @@ bool controller_add(struct controller_instance *instance)
 		}
 
 	/* Warn as controller was not found */
-	fprintf(stderr, "Controller \"%s\" not recognized!\n",
-		instance->controller_name);
+	LOG_E("Controller \"%s\" not recognized!\n", instance->controller_name);
 	return false;
 }
 

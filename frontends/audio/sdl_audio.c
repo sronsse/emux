@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <SDL.h>
 #include <audio.h>
+#include <log.h>
 #include <util.h>
 
 struct audio_data {
@@ -23,8 +24,7 @@ bool sdl_init(struct audio_specs *specs)
 
 	/* Initialize audio sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
-		fprintf(stderr, "Error initializing SDL audio: %s\n",
-			SDL_GetError());
+		LOG_E("Error initializing SDL audio: %s\n", SDL_GetError());
 		return false;
 	}
 
@@ -44,8 +44,7 @@ bool sdl_init(struct audio_specs *specs)
 		fmt.format = AUDIO_S16;
 		break;
 	default:
-		fprintf(stderr, "Unknown audio format! (%u)\n",
-			(int)specs->format);
+		LOG_E("Unknown audio format: %u\n", (int)specs->format);
 		SDL_AudioQuit();
 		return false;
 	}
@@ -59,7 +58,7 @@ bool sdl_init(struct audio_specs *specs)
 
 	/* Open the audio device */
 	if (SDL_OpenAudio(&fmt, NULL) < 0) {
-		fprintf(stderr, "Unable to open audio: %s\n", SDL_GetError());
+		LOG_E("Unable to open audio: %s\n", SDL_GetError());
 		SDL_AudioQuit();
 		return false;
 	}

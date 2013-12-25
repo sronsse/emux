@@ -4,6 +4,7 @@
 #include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
+#include <log.h>
 #include <machine.h>
 #include <memory.h>
 #include <resource.h>
@@ -218,7 +219,7 @@ bool nes_init(struct machine *machine)
 	/* Get cart option */
 	if (!cmdline_parse_string("cart", &nes_mapper_mach_data.path)) {
 		free(nes_data);
-		fprintf(stderr, "Please provide a cart option!\n");
+		LOG_E("Please provide a cart option!\n");
 		nes_print_usage();
 		return false;
 	}

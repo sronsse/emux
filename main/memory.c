@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #endif
 #include <bitops.h>
+#include <log.h>
 #include <memory.h>
 #include <util.h>
 
@@ -233,8 +234,7 @@ uint8_t memory_readb(int bus_id, address_t address)
 	if (region && region->mops->readb)
 		return region->mops->readb(region->data, address);
 
-	fprintf(stderr, "Error: no region found at (%u, %04x)!\n",
-		bus_id, address);
+	LOG_W("No region found at (%u, %04x)!\n", bus_id, address);
 	return 0;
 }
 
@@ -245,8 +245,7 @@ uint16_t memory_readw(int bus_id, address_t address)
 	if (region && region->mops->readw)
 		return region->mops->readw(region->data, address);
 
-	fprintf(stderr, "Error: no region found at (%u, %04x)!\n",
-		bus_id, address);
+	LOG_W("No region found at (%u, %04x)!\n", bus_id, address);
 	return 0;
 }
 
@@ -259,8 +258,7 @@ void memory_writeb(int bus_id, uint8_t b, address_t address)
 		return;
 	}
 
-	fprintf(stderr, "Error: no region found at (%u, %04x)!\n",
-		bus_id, address);
+	LOG_W("No region found at (%u, %04x)!\n", bus_id, address);
 }
 
 void memory_writew(int bus_id, uint16_t w, address_t address)
@@ -272,8 +270,7 @@ void memory_writew(int bus_id, uint16_t w, address_t address)
 		return;
 	}
 
-	fprintf(stderr, "Error: no region found at (%u, %04x)!\n",
-		bus_id, address);
+	LOG_W("No region found at (%u, %04x)!\n", bus_id, address);
 }
 
 void *memory_map_file(char *path, int offset, int size)

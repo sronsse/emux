@@ -8,6 +8,7 @@
 #include <clock.h>
 #include <cpu.h>
 #include <input.h>
+#include <log.h>
 #include <memory.h>
 #include <util.h>
 #include <video.h>
@@ -375,8 +376,7 @@ void opcode_0(struct chip8 *chip8)
 	case 0xEE:
 		return RET(chip8);
 	default:
-		fprintf(stderr, "chip8: unknown opcode (%04x)!\n",
-			chip8->opcode.raw);
+		LOG_W("chip8: unknown opcode (%04x)!\n", chip8->opcode.raw);
 		break;
 	}
 }
@@ -403,8 +403,7 @@ void opcode_8(struct chip8 *chip8)
 	case 0x0E:
 		return SHL_Vx(chip8);
 	default:
-		fprintf(stderr, "chip8: unknown opcode (%04x)!\n",
-			chip8->opcode.raw);
+		LOG_W("chip8: unknown opcode (%04x)!\n", chip8->opcode.raw);
 		break;
 	}
 }
@@ -417,8 +416,7 @@ void opcode_E(struct chip8 *chip8)
 	case 0xA1:
 		return SKNP_Vx(chip8);
 	default:
-		fprintf(stderr, "chip8: unknown opcode (%04x)!\n",
-			chip8->opcode.raw);
+		LOG_W("chip8: unknown opcode (%04x)!\n", chip8->opcode.raw);
 		break;
 	}
 }
@@ -445,8 +443,7 @@ void opcode_F(struct chip8 *chip8)
 	case 0x65:
 		return LD_Vx_cI(chip8);
 	default:
-		fprintf(stderr, "chip8: unknown opcode (%04x)!\n",
-			chip8->opcode.raw);
+		LOG_W("chip8: unknown opcode (%04x)!\n", chip8->opcode.raw);
 		break;
 	}
 }
@@ -589,8 +586,7 @@ void chip8_tick(clock_data_t *data)
 		opcode_F(chip8);
 		break;
 	default:
-		fprintf(stderr, "chip8: unknown opcode (%04x)!\n",
-			chip8->opcode.raw);
+		LOG_W("chip8: unknown opcode (%04x)!\n", chip8->opcode.raw);
 		break;
 	}
 

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <clock.h>
 #include <cpu.h>
+#include <log.h>
 #include <memory.h>
 #include <util.h>
 
@@ -2077,7 +2078,7 @@ void rp2a03_tick(clock_data_t *data)
 	case 0xFE:
 		return INC_AX(rp2a03);
 	default:
-		fprintf(stderr, "rp2a03: unknown opcode (%02x)!\n", opcode);
+		LOG_W("rp2a03: unknown opcode (%02x)!\n", opcode);
 		clock_consume(1);
 		break;
 	}

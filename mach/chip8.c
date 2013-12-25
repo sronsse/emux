@@ -3,6 +3,7 @@
 #include <string.h>
 #include <cmdline.h>
 #include <cpu.h>
+#include <log.h>
 #include <machine.h>
 #include <memory.h>
 #include <util.h>
@@ -67,7 +68,7 @@ bool chip8_init(struct machine *machine)
 
 	/* Get ROM option */
 	if (!cmdline_parse_string("rom", &rom_path)) {
-		fprintf(stderr, "Please provide a rom option!\n");
+		LOG_E("Please provide a rom option!\n");
 		chip8_print_usage();
 		return false;
 	}
@@ -75,7 +76,7 @@ bool chip8_init(struct machine *machine)
 	/* Open ROM file */
 	f = fopen(rom_path, "rb");
 	if (!f) {
-		fprintf(stderr, "Could not open ROM from \"%s\"!\n", rom_path);
+		LOG_E("Could not open ROM from \"%s\"!\n", rom_path);
 		return false;
 	}
 
@@ -101,7 +102,7 @@ bool chip8_init(struct machine *machine)
 	if (fread(&chip8_data->ram[ROM_ADDRESS], 1, size, f) != size) {
 		free(chip8_data);
 		fclose(f);
-		fprintf(stderr, "Could not read ROM from \"%s\"!\n", rom_path);
+		LOG_E("Could not read ROM from \"%s\"!\n", rom_path);
 		return false;
 	}
 	fclose(f);

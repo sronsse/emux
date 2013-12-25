@@ -3,6 +3,7 @@
 #include <string.h>
 #include <cpu.h>
 #include <list.h>
+#include <log.h>
 
 struct list_link *cpus;
 static struct list_link *cpu_instances;
@@ -23,7 +24,7 @@ bool cpu_add(struct cpu_instance *instance)
 		}
 
 	/* Warn as CPU was not found */
-	fprintf(stderr, "CPU \"%s\" not recognized!\n", instance->cpu_name);
+	LOG_E("CPU \"%s\" not recognized!\n", instance->cpu_name);
 	return false;
 }
 

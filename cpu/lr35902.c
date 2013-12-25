@@ -3,6 +3,7 @@
 #include <bitops.h>
 #include <clock.h>
 #include <cpu.h>
+#include <log.h>
 #include <memory.h>
 #include <util.h>
 
@@ -1755,7 +1756,7 @@ void lr35902_tick(clock_data_t *data)
 	case 0xFF:
 		return RST_n(cpu, 0x38);
 	default:
-		fprintf(stderr, "lr35902: unknown opcode (%02x)!\n", opcode);
+		LOG_W("lr35902: unknown opcode (%02x)!\n", opcode);
 		clock_consume(1);
 		break;
 	}
@@ -2283,7 +2284,7 @@ void lr35902_opcode_CB(struct lr35902 *cpu)
 	case 0xFF:
 		return SET_n_r(cpu, 7, &cpu->A);
 	default:
-		fprintf(stderr, "lr35902: unknown opcode (%02x)!\n", opcode);
+		LOG_W("lr35902: unknown opcode (%02x)!\n", opcode);
 		clock_consume(1);
 		break;
 	}

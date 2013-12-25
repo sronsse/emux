@@ -3,6 +3,7 @@
 #include <audio.h>
 #include <cmdline.h>
 #include <list.h>
+#include <log.h>
 
 struct list_link *audio_frontends;
 static struct audio_frontend *frontend;
@@ -14,13 +15,13 @@ bool audio_init(struct audio_specs *specs)
 	char *name;
 
 	if (frontend) {
-		fprintf(stderr, "Audio frontend already initialized!\n");
+		LOG_E("Audio frontend already initialized!\n");
 		return false;
 	}
 
 	/* Get selected frontend name */
 	if (!cmdline_parse_string("audio", &name)) {
-		fprintf(stderr, "No audio frontend selected!\n");
+		LOG_E("No audio frontend selected!\n");
 		return false;
 	}
 
@@ -35,7 +36,7 @@ bool audio_init(struct audio_specs *specs)
 		}
 
 	/* Warn as audio frontend was not found */
-	fprintf(stderr, "Audio frontend \"%s\" not recognized!\n", name);
+	LOG_E("Audio frontend \"%s\" not recognized!\n", name);
 	return false;
 }
 

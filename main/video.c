@@ -3,6 +3,7 @@
 #include <cmdline.h>
 #include <input.h>
 #include <list.h>
+#include <log.h>
 #include <video.h>
 
 struct list_link *video_frontends;
@@ -17,19 +18,19 @@ bool video_init(int width, int height)
 	video_window_t *window;
 
 	if (frontend) {
-		fprintf(stderr, "Video frontend already initialized!\n");
+		LOG_E("Video frontend already initialized!\n");
 		return false;
 	}
 
 	/* Get selected frontend name */
 	if (!cmdline_parse_string("video", &name)) {
-		fprintf(stderr, "No video frontend selected!\n");
+		LOG_E("No video frontend selected!\n");
 		return false;
 	}
 
 	/* Check if user specified a video scaling factor */
 	if (cmdline_parse_int("scale", &scale) && scale <= 0) {
-		fprintf(stderr, "Scaling factor should be positive!\n");
+		LOG_E("Scaling factor should be positive!\n");
 		return false;
 	}
 
@@ -53,7 +54,7 @@ bool video_init(int width, int height)
 	}
 
 	/* Warn as video frontend was not found */
-	fprintf(stderr, "Video frontend \"%s\" not recognized!\n", name);
+	LOG_E("Video frontend \"%s\" not recognized!\n", name);
 	return false;
 }
 

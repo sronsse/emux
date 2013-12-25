@@ -6,6 +6,7 @@
 #include <controller.h>
 #include <cpu.h>
 #include <input.h>
+#include <log.h>
 #include <machine.h>
 #include <memory.h>
 #include <util.h>
@@ -29,13 +30,12 @@ bool machine_init()
 
 	/* Exit if machine has not been found */
 	if (!machine) {
-		fprintf(stderr, "Machine \"%s\" not recognized!\n", name);
+		LOG_E("Machine \"%s\" not recognized!\n", name);
 		return false;
 	}
 
 	/* Display machine name and description */
-	fprintf(stdout, "Machine: %s (%s)\n", machine->name,
-		machine->description);
+	LOG_I("Machine: %s (%s)\n", machine->name, machine->description);
 
 	if (machine->init && !machine->init(machine)) {
 		/* Remove all components which may have been added */
