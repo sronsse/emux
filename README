@@ -87,11 +87,12 @@ RUNNING EMUX
 
   Once installed on your system, you should now be able to run Emux. Here is a
   list of the available options:
-    --machine=MACH    Selects machine to emulate
-    --audio=AUDIO     Selects audio frontend
-    --video=VIDEO     Selects video frontend
-    --scale=SCALE     Applies a screen scale ratio
-    --help            Displays help, available frontends and machines
+    --machine=MACH     Selects machine to emulate
+    --audio=AUDIO      Selects audio frontend
+    --video=VIDEO      Selects video frontend
+    --scale=SCALE      Applies a screen scale ratio
+    --log-level=LVL    Specifies log level (0 to 3)
+    --help             Displays help, available frontends and machines
 
   If you would like to run INVADERS (CHIP-8) using libcaca for graphics, SDL for
   audio, and use the default window size, the command would be:

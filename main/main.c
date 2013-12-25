@@ -6,6 +6,7 @@
 #include <audio.h>
 #include <cmdline.h>
 #include <config.h>
+#include <log.h>
 #include <machine.h>
 #include <video.h>
 
@@ -36,11 +37,12 @@ void print_usage(bool error)
 	/* Print options */
 	fprintf(stream, "\n");
 	fprintf(stream, "Emux options:\n");
-	fprintf(stream, "  --machine=MACH    Selects machine to emulate\n");
-	fprintf(stream, "  --audio=AUDIO     Selects audio frontend\n");
-	fprintf(stream, "  --video=VIDEO     Selects video frontend\n");
-	fprintf(stream, "  --scale=SCALE     Applies a screen scale ratio\n");
-	fprintf(stream, "  --help            Display this help and exit\n");
+	fprintf(stream, "  --machine=MACH     Selects machine to emulate\n");
+	fprintf(stream, "  --audio=AUDIO      Selects audio frontend\n");
+	fprintf(stream, "  --video=VIDEO      Selects video frontend\n");
+	fprintf(stream, "  --scale=SCALE      Applies a screen scale ratio\n");
+	fprintf(stream, "  --log-level=LVL    Specifies log level (0 to 3)\n");
+	fprintf(stream, "  --help             Display this help and exit\n");
 	fprintf(stream, "\n");
 
 	/* Print supported machines */
@@ -83,8 +85,11 @@ int main(int argc, char *argv[])
 		fprintf(stdout, " %s", argv[i]);
 	fprintf(stdout, "\n");
 
-	/* Initialize command line and parse it */
+	/* Save command line */
 	cmdline_init(argc, argv);
+
+	/* Initialize log system */
+	log_init();
 
 	/* Check if user requires help */
 	if (cmdline_parse_bool("help", NULL)) {
