@@ -11,8 +11,18 @@
 #include <memory.h>
 #include <util.h>
 
+static void machine_input_event(int id,	struct input_state *state,
+	input_data_t *data);
+
 struct list_link *machines;
 static struct machine *machine;
+
+void machine_input_event(int UNUSED(id), struct input_state *UNUSED(state),
+	input_data_t *UNUSED(data))
+{
+	/* Request machine to stop running */
+	machine->running = false;
+}
 
 bool machine_init()
 {
@@ -47,12 +57,6 @@ bool machine_init()
 	}
 
 	return true;
-}
-
-void machine_input_event(int UNUSED(id), struct input_state *UNUSED(state),
-	input_data_t *UNUSED(data))
-{
-	machine->running = false;
 }
 
 void machine_run()
