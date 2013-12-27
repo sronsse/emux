@@ -29,6 +29,16 @@ bool controller_add(struct controller_instance *instance)
 	return false;
 }
 
+void controller_reset_all()
+{
+	struct list_link *link = controller_instances;
+	struct controller_instance *instance;
+
+	while ((instance = list_get_next(&link)))
+		if (instance->controller->reset)
+			instance->controller->reset(instance);
+}
+
 void controller_remove_all()
 {
 	struct list_link *link = controller_instances;

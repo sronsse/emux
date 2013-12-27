@@ -27,10 +27,12 @@ struct machine {
 	machine_priv_data_t *priv_data;
 	bool running;
 	bool (*init)(struct machine *machine);
+	void (*reset)(struct machine *machine);
 	void (*deinit)(struct machine *machine);
 };
 
 bool machine_init();
+void machine_reset();
 void machine_run();
 void machine_deinit();
 

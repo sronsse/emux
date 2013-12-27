@@ -59,10 +59,27 @@ bool machine_init()
 	return true;
 }
 
+void machine_reset()
+{
+	/* Call machine-specific reset if available */
+	if (machine && machine->reset)
+		machine->reset(machine);
+
+	/* Reset CPUs, controllers, and clock system */
+	cpu_reset_all();
+	controller_reset_all();
+	clock_reset();
+
+	LOG_I("Machine reset.\n");
+}
+
 void machine_run()
 {
 	struct input_config input_config;
 	struct input_event quit_event;
+
+	/* Reset machine first */
+	machine_reset();
 
 	/* Set running flag and register for quit events */
 	machine->running = true;
@@ -71,9 +88,6 @@ void machine_run()
 	input_config.num_events = 1;
 	input_config.callback = machine_input_event;
 	input_register(&input_config);
-
-	/* Prepare clock ticking */
-	clock_prepare();
 
 	/* Run until user quits */
 	while (machine->running)

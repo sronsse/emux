@@ -28,6 +28,16 @@ bool cpu_add(struct cpu_instance *instance)
 	return false;
 }
 
+void cpu_reset_all()
+{
+	struct list_link *link = cpu_instances;
+	struct cpu_instance *instance;
+
+	while ((instance = list_get_next(&link)))
+		if (instance->cpu->reset)
+			instance->cpu->reset(instance);
+}
+
 void cpu_interrupt(int irq)
 {
 	struct cpu_instance *instance;

@@ -27,6 +27,7 @@ struct controller_instance;
 struct controller {
 	char *name;
 	bool (*init)(struct controller_instance *instance);
+	void (*reset)(struct controller_instance *instance);
 	void (*deinit)(struct controller_instance *instance);
 };
 
@@ -41,6 +42,7 @@ struct controller_instance {
 };
 
 bool controller_add(struct controller_instance *instance);
+void controller_reset_all();
 void controller_remove_all();
 
 extern struct list_link *controllers;

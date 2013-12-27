@@ -69,9 +69,10 @@ void clock_add(struct clock *clock)
 	mach_delay = NS(1) / machine_clock_rate;
 }
 
-void clock_prepare()
+void clock_reset()
 {
-	/* Initialize start time */
+	/* Initialize current cycle and start time */
+	current_cycle = 0;
 	gettimeofday(&start_time, NULL);
 }
 
