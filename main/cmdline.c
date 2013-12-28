@@ -51,6 +51,13 @@ bool cmdline_parse(char *long_name, bool has_arg, char **arg)
 		}
 	} while (c != -1);
 
+	/* Check if a non-option is found if needed */
+	if (!long_name && (optind < cmdline.argc)) {
+		if (has_arg)
+			*arg = cmdline.argv[optind];
+		return true;
+	}
+
 	return false;
 }
 
