@@ -6,6 +6,12 @@
 #include <log.h>
 #include <video.h>
 
+/* Command-line parameters */
+static char *video_fe_name;
+PARAM(video_fe_name, string, "video", NULL, "Selects video frontend")
+static int scale = 1;
+PARAM(scale, int, "scale", NULL, "Applies a screen scale ratio")
+
 struct list_link *video_frontends;
 static struct video_frontend *frontend;
 
@@ -13,7 +19,6 @@ bool video_init(int width, int height)
 {
 	struct list_link *link = video_frontends;
 	struct video_frontend *fe;
-	char *name;
 	int scale = 1;
 	video_window_t *window;
 
@@ -22,21 +27,21 @@ bool video_init(int width, int height)
 		return false;
 	}
 
-	/* Get selected frontend name */
-	if (!cmdline_parse_string("video", &name)) {
+	/* Validate video option */
+	if (!video_fe_name) {
 		LOG_E("No video frontend selected!\n");
 		return false;
 	}
 
-	/* Check if user specified a video scaling factor */
-	if (cmdline_parse_int("scale", &scale) && scale <= 0) {
+	/* Validate scaling factor */
+	if (scale <= 0) {
 		LOG_E("Scaling factor should be positive!\n");
 		return false;
 	}
 
 	/* Find video frontend */
 	while ((fe = list_get_next(&link))) {
-		if (strcmp(name, fe->name))
+		if (strcmp(video_fe_name, fe->name))
 			continue;
 
 		if (fe->init) {
@@ -54,7 +59,7 @@ bool video_init(int width, int height)
 	}
 
 	/* Warn as video frontend was not found */
-	LOG_E("Video frontend \"%s\" not recognized!\n", name);
+	LOG_E("Video frontend \"%s\" not recognized!\n", video_fe_name);
 	return false;
 }
 

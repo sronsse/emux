@@ -14,6 +14,9 @@
 static void machine_input_event(int id,	struct input_state *state,
 	input_data_t *data);
 
+static char *machine_name;
+PARAM(machine_name, string, "machine", NULL, "Selects machine to emulate");
+
 struct list_link *machines;
 static struct machine *machine;
 
@@ -27,20 +30,21 @@ void machine_input_event(int UNUSED(id), struct input_state *UNUSED(state),
 bool machine_init()
 {
 	struct list_link *link = machines;
-	char *name;
 	struct machine *m;
 
-	/* Parse machine from command line */
-	if (!cmdline_parse_string("machine", &name))
+	/* Validate machine option */
+	if (!machine_name) {
+		LOG_E("No machine selected!\n");
 		return false;
+	}
 
 	while ((m = list_get_next(&link)))
-		if (!strcmp(name, m->name))
+		if (!strcmp(machine_name, m->name))
 			machine = m;
 
 	/* Exit if machine has not been found */
 	if (!machine) {
-		LOG_E("Machine \"%s\" not recognized!\n", name);
+		LOG_E("Machine \"%s\" not recognized!\n", machine_name);
 		return false;
 	}
 
@@ -53,6 +57,9 @@ bool machine_init()
 		cpu_remove_all();
 		controller_remove_all();
 		memory_bus_remove_all();
+
+		/* Print machine-specific options */
+		cmdline_print_module_options(machine_name);
 		return false;
 	}
 

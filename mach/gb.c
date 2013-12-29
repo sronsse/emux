@@ -59,7 +59,10 @@ struct gb_data {
 
 static bool gb_init();
 static void gb_deinit();
-static void gb_print_usage();
+
+/* Command-line parameters */
+static char *bootrom_path;
+PARAM(bootrom_path, string, "bootrom", "gb", "GameBoy boot ROM path")
 
 /* Memory areas */
 static struct resource vram_area = MEM("vram", BUS_ID, VRAM_START, VRAM_END);
@@ -114,37 +117,23 @@ static struct controller_instance lcdc_instance = {
 	.num_resources = ARRAY_SIZE(lcdc_resources)
 };
 
-void gb_print_usage()
-{
-	fprintf(stderr, "Valid gb options:\n");
-	fprintf(stderr, "  --bootrom    GameBoy boot ROM path\n");
-	fprintf(stderr, "  --cart       Game cart path\n");
-}
-
 bool gb_init(struct machine *machine)
 {
 	struct gb_data *gb_data;
-	char *bootrom_path;
 	char *cart_path;
 
 	/* Create machine data structure */
 	gb_data = malloc(sizeof(struct gb_data));
 
-	/* Get bootrom option */
-	if (!cmdline_parse_string("bootrom", &bootrom_path)) {
+	/* Validate bootrom option */
+	if (!bootrom_path) {
 		free(gb_data);
 		LOG_E("Please provide a bootrom option!\n");
-		gb_print_usage();
 		return false;
 	}
 
 	/* Get cart option */
-	if (!cmdline_parse_string("cart", &cart_path)) {
-		free(gb_data);
-		LOG_E("Please provide a cart option!\n");
-		gb_print_usage();
-		return false;
-	}
+	cart_path = cmdline_get_path();
 
 	/* Add 16-bit memory bus */
 	memory_bus_add(16);

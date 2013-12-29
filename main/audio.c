@@ -5,6 +5,10 @@
 #include <list.h>
 #include <log.h>
 
+/* Command-line parameter */
+static char *audio_fe_name;
+PARAM(audio_fe_name, string, "audio", NULL, "Selects audio frontend")
+
 struct list_link *audio_frontends;
 static struct audio_frontend *frontend;
 
@@ -12,22 +16,21 @@ bool audio_init(struct audio_specs *specs)
 {
 	struct list_link *link = audio_frontends;
 	struct audio_frontend *fe;
-	char *name;
 
 	if (frontend) {
 		LOG_E("Audio frontend already initialized!\n");
 		return false;
 	}
 
-	/* Get selected frontend name */
-	if (!cmdline_parse_string("audio", &name)) {
+	/* Validate audio option */
+	if (!audio_fe_name) {
 		LOG_E("No audio frontend selected!\n");
 		return false;
 	}
 
 	/* Find frontend and initialize it */
 	while ((fe = list_get_next(&link)))
-		if (!strcmp(name, fe->name)) {
+		if (!strcmp(audio_fe_name, fe->name)) {
 			if ((fe->init && fe->init(specs))) {
 				frontend = fe;
 				return true;
@@ -36,7 +39,7 @@ bool audio_init(struct audio_specs *specs)
 		}
 
 	/* Warn as audio frontend was not found */
-	LOG_E("Audio frontend \"%s\" not recognized!\n", name);
+	LOG_E("Audio frontend \"%s\" not recognized!\n", audio_fe_name);
 	return false;
 }
 

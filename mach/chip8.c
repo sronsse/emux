@@ -16,7 +16,6 @@
 
 static bool chip8_init();
 static void chip8_deinit();
-static void chip8_print_usage();
 
 struct chip8_data {
 	uint8_t ram[RAM_SIZE];
@@ -49,31 +48,19 @@ static uint8_t char_mem[] = {
 	0xF0, 0x80, 0xF0, 0x80, 0x80
 };
 
-void chip8_print_usage()
-{
-	fprintf(stderr, "Valid chip8 options:\n");
-	fprintf(stderr, "  --rom    ROM path\n");
-}
-
 bool chip8_init(struct machine *machine)
 {
 	struct chip8_data *chip8_data;
-	char *rom_path;
 	FILE *f;
+	char *rom_path;
 	unsigned int size;
 	unsigned int max_rom_size;
 
 	/* Create machine data structure */
 	chip8_data = malloc(sizeof(struct chip8_data));
 
-	/* Get ROM option */
-	if (!cmdline_parse_string("rom", &rom_path)) {
-		LOG_E("Please provide a rom option!\n");
-		chip8_print_usage();
-		return false;
-	}
-
 	/* Open ROM file */
+	rom_path = cmdline_get_path();
 	f = fopen(rom_path, "rb");
 	if (!f) {
 		LOG_E("Could not open ROM from \"%s\"!\n", rom_path);

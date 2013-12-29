@@ -66,7 +66,6 @@ struct nes_data {
 
 static bool nes_init();
 static void nes_deinit();
-static void nes_print_usage();
 static uint8_t palette_readb(region_data_t *data, address_t address);
 static void palette_writeb(region_data_t *data, uint8_t b, address_t address);
 
@@ -203,26 +202,19 @@ void palette_writeb(region_data_t *data, uint8_t b, address_t address)
 	ram[address] = b;
 }
 
-void nes_print_usage()
-{
-	fprintf(stderr, "Valid nes options:\n");
-	fprintf(stderr, "  --cart    Game cart path\n");
-}
-
 bool nes_init(struct machine *machine)
 {
 	struct nes_data *nes_data;
+	char *cart_path;
 
 	/* Create machine data structure */
 	nes_data = malloc(sizeof(struct nes_data));
 
 	/* Get cart option */
-	if (!cmdline_parse_string("cart", &nes_mapper_mach_data.path)) {
-		free(nes_data);
-		LOG_E("Please provide a cart option!\n");
-		nes_print_usage();
-		return false;
-	}
+	cart_path = cmdline_get_path();
+
+	/* Set mapper path */
+	nes_mapper_mach_data.path = cart_path;
 
 	/* Add memory busses */
 	memory_bus_add(16); /* CPU bus */

@@ -14,7 +14,6 @@ enum log_level {
 	NUM_LOG_LEVELS
 };
 
-void log_init();
 void log_print(enum log_level lvl, const char *fmt, ...);
 
 #endif

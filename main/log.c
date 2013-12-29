@@ -5,8 +5,9 @@
 
 static void log_fprint(enum log_level lvl, FILE *f, const char *fmt, va_list a);
 
-/* Initialize default log level */
+/* Command-line parameter */
 static enum log_level log_level = LOG_INFO;
+PARAM(log_level, int, "log-level", NULL, "Specifies log level (0 to 3)")
 
 /* Prefixes matching log level enumeration */
 static char prefixes[] = {
@@ -21,22 +22,6 @@ void log_fprint(enum log_level lvl, FILE *f, const char *fmt, va_list a)
 	/* Print to requested output */
 	fprintf(f, "[%c] ", prefixes[(int)lvl]);
 	vfprintf(f, fmt, a);
-}
-
-void log_init()
-{
-	int lvl;
-
-	/* Get log level from command line or set default value */
-	if (!cmdline_parse_int("log-level", &lvl))
-		return;
-
-	/* Validate argument */
-	if ((lvl < 0) || (log_level >= NUM_LOG_LEVELS))
-		return;
-
-	/* Assign log level to user-specified level */
-	log_level = lvl;
 }
 
 void log_print(enum log_level lvl, const char *fmt, ...)
