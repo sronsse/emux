@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <config.h>
 #include <libretro.h>
 
 static uint16_t *frame_buf;
@@ -48,8 +49,8 @@ void retro_set_controller_port_device(unsigned int port, unsigned int device)
 void retro_get_system_info(struct retro_system_info *info)
 {
 	memset(info, 0, sizeof(*info));
-	info->library_name = "TestCore";
-	info->library_version = "v1";
+	info->library_name = PACKAGE_NAME;
+	info->library_version = PACKAGE_VERSION;
 	info->need_fullpath = false;
 	info->valid_extensions = NULL;
 }

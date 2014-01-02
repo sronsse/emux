@@ -16,7 +16,7 @@ else ifneq ($(findstring win,$(shell uname -a)),)
 endif
 endif
 
-TARGET_NAME := test
+TARGET_NAME := emux
 
 ifeq ($(platform), unix)
    TARGET := $(TARGET_NAME)_libretro.so
@@ -52,8 +52,8 @@ else
    CFLAGS += -O3
 endif
 
-OBJECTS := libretro-test.o
-CFLAGS += -Wall -pedantic -I../include $(fpic)
+OBJECTS := libretro.o
+CFLAGS += -Wall -pedantic -I../include -I.. $(fpic)
 
 ifeq ($(platform), qnx)
 CFLAGS += -Wc,-std=gnu99

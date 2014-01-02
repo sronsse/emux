@@ -18,7 +18,7 @@ ifeq ($(TARGET_ARCH),mips)
 LOCAL_CFLAGS += -DANDROID_MIPS -D__mips__ -D__MIPSEL__
 endif
 
-LOCAL_SRC_FILES    += ../libretro-test.c
+LOCAL_SRC_FILES    += ../libretro.c
 LOCAL_CFLAGS += -O3 -std=gnu99 -ffast-math -funroll-loops
 
 
