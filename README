@@ -72,6 +72,11 @@ BUILDING EMUX
   the following command:
     make
 
+  By default, no particular optimization level is selected for compilation.
+  CFLAGS can be appended to the make command for this purpose.
+  Example:
+    make CFLAGS=-O2
+
   As the standard GNU make utility is used, you may append the -j<n> option
   to speed up the build process, where n is your number of execution units.
   Example:
@@ -98,11 +103,11 @@ RUNNING EMUX
 
   If you would like to run INVADERS (CHIP-8) using libcaca for graphics, SDL for
   audio, and use the default window size, the command would be:
-    emux --machine=chip8 --video=caca --audio=sdl --rom=INVADERS
+    emux --machine=chip8 --video=caca --audio=sdl INVADERS
 
-  Every machine has its subset of options which can be displayed by executing
+  Some machine have a subset of options which can be displayed by executing
   emux --machine=MACH where MACH is the machine name. Example:
-    emux --machine=nes
+    emux --machine=gb
 
 HELP
   If you need help with Emux, or would like to report bugs (as long as these are
