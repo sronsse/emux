@@ -4,6 +4,7 @@
 #include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
+#include <env.h>
 #include <log.h>
 #include <machine.h>
 #include <memory.h>
@@ -205,16 +206,12 @@ void palette_writeb(region_data_t *data, uint8_t b, address_t address)
 bool nes_init(struct machine *machine)
 {
 	struct nes_data *nes_data;
-	char *cart_path;
 
 	/* Create machine data structure */
 	nes_data = malloc(sizeof(struct nes_data));
 
-	/* Get cart option */
-	cart_path = cmdline_get_path();
-
 	/* Set mapper path */
-	nes_mapper_mach_data.path = cart_path;
+	nes_mapper_mach_data.path = env_get_data_path();
 
 	/* Add memory busses */
 	memory_bus_add(16); /* CPU bus */

@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cmdline.h>
 #include <cpu.h>
+#include <env.h>
 #include <log.h>
 #include <machine.h>
 #include <memory.h>
@@ -60,7 +60,7 @@ bool chip8_init(struct machine *machine)
 	chip8_data = malloc(sizeof(struct chip8_data));
 
 	/* Open ROM file */
-	rom_path = cmdline_get_path();
+	rom_path = env_get_data_path();
 	f = fopen(rom_path, "rb");
 	if (!f) {
 		LOG_E("Could not open ROM from \"%s\"!\n", rom_path);

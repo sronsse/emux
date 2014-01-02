@@ -2,6 +2,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <cmdline.h>
+#include <env.h>
 #include <log.h>
 #include <machine.h>
 
@@ -19,8 +20,8 @@ int main(int argc, char *argv[])
 	/* Initialize random seed */
 	srand(time(NULL));
 
-	/* Parse command line and fill all parameters */
-	cmdline_parse(argc, argv);
+	/* Initialize command line and fill all parameters */
+	cmdline_init(argc, argv);
 
 	/* Check if user requires help */
 	if (help) {
@@ -29,7 +30,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Validate that a path was given */
-	if (!cmdline_get_path()) {
+	if (!env_get_data_path()) {
 		LOG_E("No path specified!\n");
 		goto err;
 	}

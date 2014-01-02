@@ -34,6 +34,12 @@ int param_sort_compare(const void *a, const void *b)
 	struct param *p2 = *(struct param **)b;
 	int result;
 
+	/* Non-options come last */
+	if (!p1->name)
+		return 1;
+	else if (!p2->name)
+		return -1;
+
 	/* Global options have a higher priority */
 	if (!p1->module && p2->module)
 		return -1;
@@ -95,7 +101,7 @@ void cmdline_unregister_param(struct param *param)
 	params = realloc(params, --num_params * sizeof(struct param *));
 }
 
-void cmdline_parse(int argc, char *argv[])
+void cmdline_init(int argc, char *argv[])
 {
 	struct param *p;
 	int i;
@@ -110,9 +116,6 @@ void cmdline_parse(int argc, char *argv[])
 	for (i = 0; i < argc; i++)
 		fprintf(stdout, " %s", argv[i]);
 	fprintf(stdout, "\n");
-
-	/* Parse path */
-	cmdline_parse_string(NULL, &path);
 
 	/* Parse and fill parameters */
 	for (i = 0; i < num_params; i++) {
@@ -155,13 +158,11 @@ void cmdline_print_usage(bool error)
 		if (p->module)
 			break;
 
-		/* Store argument name and type (not applicable for booleans) */
+		/* Print argument name and type (not applicable to booleans) */
 		if (!strcmp(p->type, "bool"))
 			snprintf(str, 20, "%s", p->name);
 		else
 			snprintf(str, 20, "%s=%s", p->name, p->type);
-
-		/* Print name and type (not needed for boolean parameters) */
 		fprintf(stream, "  --%-20s", str);
 
 		/* Print description */

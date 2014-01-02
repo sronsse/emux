@@ -88,10 +88,12 @@ RUNNING EMUX
   Once installed on your system, you should now be able to run Emux. Here is a
   list of the available options:
   --audio=string        Selects audio frontend
+  --config-dir=string   Path to config directory
   --help                Display this help and exit
   --log-level=int       Specifies log level (0 to 3)
   --machine=string      Selects machine to emulate
   --scale=int           Applies a screen scale ratio
+  --system-dir=string   Path to system directory
   --video=string        Selects video frontend
 
   If you would like to run INVADERS (CHIP-8) using libcaca for graphics, SDL for

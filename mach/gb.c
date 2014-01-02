@@ -4,6 +4,7 @@
 #include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
+#include <env.h>
 #include <log.h>
 #include <machine.h>
 #include <memory.h>
@@ -120,7 +121,6 @@ static struct controller_instance lcdc_instance = {
 bool gb_init(struct machine *machine)
 {
 	struct gb_data *gb_data;
-	char *cart_path;
 
 	/* Create machine data structure */
 	gb_data = malloc(sizeof(struct gb_data));
@@ -131,9 +131,6 @@ bool gb_init(struct machine *machine)
 		LOG_E("Please provide a bootrom option!\n");
 		return false;
 	}
-
-	/* Get cart option */
-	cart_path = cmdline_get_path();
 
 	/* Add 16-bit memory bus */
 	memory_bus_add(16);
@@ -146,7 +143,7 @@ bool gb_init(struct machine *machine)
 
 	/* Set GB mapper controller machine data */
 	gb_mapper_mach_data.bootrom_path = bootrom_path;
-	gb_mapper_mach_data.cart_path = cart_path;
+	gb_mapper_mach_data.cart_path = env_get_data_path();
 
 	/* Add controllers and CPU */
 	if (!controller_add(&gb_mapper_instance) ||
