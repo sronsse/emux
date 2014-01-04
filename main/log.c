@@ -3,7 +3,10 @@
 #include <cmdline.h>
 #include <log.h>
 
+static void log_print(enum log_level lvl, const char *fmt, ...);
 static void log_fprint(enum log_level lvl, FILE *f, const char *fmt, va_list a);
+
+log_print_t log_cb = log_print;
 
 /* Command-line parameter */
 static enum log_level log_level = LOG_INFO;
@@ -16,13 +19,6 @@ static char prefixes[] = {
 	'W',
 	'E'
 };
-
-void log_fprint(enum log_level lvl, FILE *f, const char *fmt, va_list a)
-{
-	/* Print to requested output */
-	fprintf(f, "[%c] ", prefixes[(int)lvl]);
-	vfprintf(f, fmt, a);
-}
 
 void log_print(enum log_level lvl, const char *fmt, ...)
 {
@@ -46,5 +42,12 @@ void log_print(enum log_level lvl, const char *fmt, ...)
 		log_fprint(lvl, stdout, fmt, args);
 		va_end(args);
 	}
+}
+
+void log_fprint(enum log_level lvl, FILE *f, const char *fmt, va_list a)
+{
+	/* Print to requested output */
+	fprintf(f, "[%c] ", prefixes[(int)lvl]);
+	vfprintf(f, fmt, a);
 }
 
