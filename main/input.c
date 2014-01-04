@@ -6,6 +6,9 @@
 #include <input.h>
 #include <list.h>
 #include <log.h>
+#ifdef LIBRETRO
+#undef CONFIG_INPUT_XML
+#endif
 #ifdef CONFIG_INPUT_XML
 #include <roxml.h>
 #endif

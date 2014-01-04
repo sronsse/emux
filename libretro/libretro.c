@@ -5,24 +5,15 @@
 #include <stdarg.h>
 #include <config.h>
 #include <libretro.h>
+#include <log.h>
 
 static uint16_t *frame_buf;
-static struct retro_log_callback logging;
 static retro_video_refresh_t video_cb;
 static retro_audio_sample_t audio_cb;
 static retro_audio_sample_batch_t audio_batch_cb;
 static retro_environment_t environ_cb;
 static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
-
-static void fallback_log(enum retro_log_level level, const char *fmt, ...)
-{
-	(void)level;
-	va_list va;
-	va_start(va, fmt);
-	vfprintf(stderr, fmt, va);
-	va_end(va);
-}
 
 void retro_init(void)
 {
@@ -73,13 +64,15 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 void retro_set_environment(retro_environment_t cb)
 {
+	struct retro_log_callback log_callback;
 	bool no_rom = true;
 
 	environ_cb = cb;
 	cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &no_rom);
 
-	if (!cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &logging))
-		logging.log = fallback_log;
+	/* Override log callback if supported by frontend */
+	if (cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log_callback))
+		log_cb = (log_print_t)log_callback.log;
 }
 
 void retro_set_audio_sample(retro_audio_sample_t cb)

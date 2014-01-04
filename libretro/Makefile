@@ -46,7 +46,7 @@ else
    SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=link.T -Wl,--no-undefined
 endif
 
-override CFLAGS =
+override CFLAGS = -DLIBRETRO
 
 ifeq ($(DEBUG), 1)
    override CFLAGS += -O0 -g
@@ -54,7 +54,19 @@ else
    override CFLAGS += -O3
 endif
 
-OBJECTS := libretro.o
+OBJECTS := libretro.o \
+	../main/audio.o \
+	../main/clock.o \
+	../main/cmdline.o \
+	../main/controller.o \
+	../main/cpu.o \
+	../main/input.o \
+	../main/log.o \
+	../main/list.o \
+	../main/machine.o \
+	../main/memory.o \
+	../main/video.o
+
 override CFLAGS += -Wall -pedantic -I../include -I.. $(fpic)
 
 ifeq ($(platform), qnx)
