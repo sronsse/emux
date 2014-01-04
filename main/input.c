@@ -1,21 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <roxml.h>
+#include <config.h>
 #include <cmdline.h>
 #include <input.h>
 #include <list.h>
 #include <log.h>
+#ifdef CONFIG_INPUT_XML
+#include <roxml.h>
+#endif
 
+#ifdef CONFIG_INPUT_XML
 /* Configuration file and node definitions */
 #define DOC_FILENAME		"config.xml"
 #define DOC_CONFIG_NODE_NAME	"config"
 #define DOC_KEY_NODE_NAME	"key"
+#endif
 
 struct list_link *input_frontends;
 static struct input_frontend *frontend;
 static struct list_link *listeners;
+#ifdef CONFIG_INPUT_XML
 static node_t *config_doc;
+#endif
 
 bool input_init(char *name, video_window_t *window)
 {
@@ -27,8 +34,10 @@ bool input_init(char *name, video_window_t *window)
 		return false;
 	}
 
+#ifdef CONFIG_INPUT_XML
 	/* Load input configuration file */
 	config_doc = roxml_load_doc(DOC_FILENAME);
+#endif
 
 	/* Find input frontend and initialize it */
 	while ((fe = list_get_next(&link)))
@@ -47,6 +56,7 @@ bool input_init(char *name, video_window_t *window)
 
 bool input_load(char *name, struct input_event *events, int num_events)
 {
+#ifdef CONFIG_INPUT_XML
 	node_t *node;
 	node_t *child;
 	int i;
@@ -106,6 +116,13 @@ err:
 	if (!rc)
 		LOG_W("Error parsing input configuration file!\n");
 	return rc;
+#else
+	/* Do nothing */
+	(void)name;
+	(void)events;
+	(void)num_events;
+	return false;
+#endif
 }
 
 void input_update()
@@ -157,7 +174,9 @@ void input_deinit()
 {
 	if (frontend->deinit)
 		frontend->deinit();
-	roxml_close(config_doc);
 	frontend = NULL;
+#ifdef CONFIG_INPUT_XML
+	roxml_close(config_doc);
+#endif
 }
 

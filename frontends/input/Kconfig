@@ -1,4 +1,4 @@
-menu "Input frontend selection"
+menu "Input frontend configuration"
 
 config INPUT
 	bool
@@ -17,6 +17,12 @@ config INPUT_SDL
 	default y
 	help
 		Enable SDL (Simple DirectMedia Layer) input frontend
+
+config INPUT_XML
+	bool "XML input configuration"
+	default y
+	help
+		Add support for XML input configuration
 
 endmenu
 
