@@ -47,6 +47,12 @@ EXTRA_DIST = Kconfig \
 	frontends/audio/Kconfig \
 	frontends/input/Kconfig \
 	frontends/video/Kconfig \
+	include/libretro.h \
+	libretro/jni/Android.mk \
+	libretro/jni/Application.mk \
+	libretro/libretro.c \
+	libretro/link.T \
+	libretro/Makefile \
 	mach/Kconfig
 
 # Machines
@@ -119,6 +125,11 @@ if CONFIG_CONTROLLER_VIDEO_PPU
 emux_SOURCES += controllers/video/ppu.c
 endif
 
+libretro:
+	make -C libretro/
+
+.PHONY: libretro
+
 clean-local:
-	rm -f .config
+	rm -f .config && make -C libretro/ clean
 
