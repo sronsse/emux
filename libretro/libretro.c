@@ -9,9 +9,9 @@
 
 static uint16_t *frame_buf;
 static retro_video_refresh_t video_cb;
+retro_environment_t retro_environment_cb;
 static retro_audio_sample_t audio_cb;
 static retro_audio_sample_batch_t audio_batch_cb;
-static retro_environment_t environ_cb;
 static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
 
@@ -67,7 +67,9 @@ void retro_set_environment(retro_environment_t cb)
 	struct retro_log_callback log_callback;
 	bool no_rom = true;
 
-	environ_cb = cb;
+	/* Set retro environment callback */
+	retro_environment_cb = cb;
+
 	cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &no_rom);
 
 	/* Override log callback if supported by frontend */
