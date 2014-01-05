@@ -1266,495 +1266,740 @@ void lr35902_tick(clock_data_t *data)
 	/* Execute opcode */
 	switch (opcode) {
 	case 0x00:
-		return NOP(cpu);
+		NOP(cpu);
+		break;
 	case 0x01:
-		return LD_rr_nn(cpu, &cpu->BC);
+		LD_rr_nn(cpu, &cpu->BC);
+		break;
 	case 0x02:
-		return LD_cBC_A(cpu);
+		LD_cBC_A(cpu);
+		break;
 	case 0x03:
-		return INC_rr(cpu, &cpu->BC);
+		INC_rr(cpu, &cpu->BC);
+		break;
 	case 0x04:
-		return INC_r(cpu, &cpu->B);
+		INC_r(cpu, &cpu->B);
+		break;
 	case 0x05:
-		return DEC_r(cpu, &cpu->B);
+		DEC_r(cpu, &cpu->B);
+		break;
 	case 0x06:
-		return LD_r_n(cpu, &cpu->B);
+		LD_r_n(cpu, &cpu->B);
+		break;
 	case 0x07:
-		return RLCA(cpu);
+		RLCA(cpu);
+		break;
 	case 0x08:
-		return LD_cnn_SP(cpu);
+		LD_cnn_SP(cpu);
+		break;
 	case 0x09:
-		return ADD_HL_rr(cpu, &cpu->BC);
+		ADD_HL_rr(cpu, &cpu->BC);
+		break;
 	case 0x0A:
-		return LD_A_cBC(cpu);
+		LD_A_cBC(cpu);
+		break;
 	case 0x0B:
-		return DEC_rr(cpu, &cpu->BC);
+		DEC_rr(cpu, &cpu->BC);
+		break;
 	case 0x0C:
-		return INC_r(cpu, &cpu->C);
+		INC_r(cpu, &cpu->C);
+		break;
 	case 0x0D:
-		return DEC_r(cpu, &cpu->C);
+		DEC_r(cpu, &cpu->C);
+		break;
 	case 0x0E:
-		return LD_r_n(cpu, &cpu->C);
+		LD_r_n(cpu, &cpu->C);
+		break;
 	case 0x0F:
-		return RRCA(cpu);
+		RRCA(cpu);
+		break;
 	case 0x10:
-		return STOP(cpu);
+		STOP(cpu);
+		break;
 	case 0x11:
-		return LD_rr_nn(cpu, &cpu->DE);
+		LD_rr_nn(cpu, &cpu->DE);
+		break;
 	case 0x12:
-		return LD_cDE_A(cpu);
+		LD_cDE_A(cpu);
+		break;
 	case 0x13:
-		return INC_rr(cpu, &cpu->DE);
+		INC_rr(cpu, &cpu->DE);
+		break;
 	case 0x14:
-		return INC_r(cpu, &cpu->D);
+		INC_r(cpu, &cpu->D);
+		break;
 	case 0x15:
-		return DEC_r(cpu, &cpu->D);
+		DEC_r(cpu, &cpu->D);
+		break;
 	case 0x16:
-		return LD_r_n(cpu, &cpu->D);
+		LD_r_n(cpu, &cpu->D);
+		break;
 	case 0x17:
-		return RLA(cpu);
+		RLA(cpu);
+		break;
 	case 0x18:
-		return JR_d(cpu);
+		JR_d(cpu);
+		break;
 	case 0x19:
-		return ADD_HL_rr(cpu, &cpu->DE);
+		ADD_HL_rr(cpu, &cpu->DE);
+		break;
 	case 0x1A:
-		return LD_A_cDE(cpu);
+		LD_A_cDE(cpu);
+		break;
 	case 0x1B:
-		return DEC_rr(cpu, &cpu->DE);
+		DEC_rr(cpu, &cpu->DE);
+		break;
 	case 0x1C:
-		return INC_r(cpu, &cpu->E);
+		INC_r(cpu, &cpu->E);
+		break;
 	case 0x1D:
-		return DEC_r(cpu, &cpu->E);
+		DEC_r(cpu, &cpu->E);
+		break;
 	case 0x1E:
-		return LD_r_n(cpu, &cpu->E);
+		LD_r_n(cpu, &cpu->E);
+		break;
 	case 0x1F:
-		return RRA(cpu);
+		RRA(cpu);
+		break;
 	case 0x20:
-		return JR_NZ_d(cpu);
+		JR_NZ_d(cpu);
+		break;
 	case 0x21:
-		return LD_rr_nn(cpu, &cpu->HL);
+		LD_rr_nn(cpu, &cpu->HL);
+		break;
 	case 0x22:
-		return LDI_cHL_A(cpu);
+		LDI_cHL_A(cpu);
+		break;
 	case 0x23:
-		return INC_rr(cpu, &cpu->HL);
+		INC_rr(cpu, &cpu->HL);
+		break;
 	case 0x24:
-		return INC_r(cpu, &cpu->H);
+		INC_r(cpu, &cpu->H);
+		break;
 	case 0x25:
-		return DEC_r(cpu, &cpu->H);
+		DEC_r(cpu, &cpu->H);
+		break;
 	case 0x26:
-		return LD_r_n(cpu, &cpu->H);
+		LD_r_n(cpu, &cpu->H);
+		break;
 	case 0x27:
-		return DAA(cpu);
+		DAA(cpu);
+		break;
 	case 0x28:
-		return JR_Z_d(cpu);
+		JR_Z_d(cpu);
+		break;
 	case 0x29:
-		return ADD_HL_rr(cpu, &cpu->HL);
+		ADD_HL_rr(cpu, &cpu->HL);
+		break;
 	case 0x2A:
-		return LDI_A_cHL(cpu);
+		LDI_A_cHL(cpu);
+		break;
 	case 0x2B:
-		return DEC_rr(cpu, &cpu->HL);
+		DEC_rr(cpu, &cpu->HL);
+		break;
 	case 0x2C:
-		return INC_r(cpu, &cpu->L);
+		INC_r(cpu, &cpu->L);
+		break;
 	case 0x2D:
-		return DEC_r(cpu, &cpu->L);
+		DEC_r(cpu, &cpu->L);
+		break;
 	case 0x2E:
-		return LD_r_n(cpu, &cpu->L);
+		LD_r_n(cpu, &cpu->L);
+		break;
 	case 0x2F:
-		return CPL(cpu);
+		CPL(cpu);
+		break;
 	case 0x30:
-		return JR_NC_d(cpu);
+		JR_NC_d(cpu);
+		break;
 	case 0x31:
-		return LD_rr_nn(cpu, &cpu->SP);
+		LD_rr_nn(cpu, &cpu->SP);
+		break;
 	case 0x32:
-		return LDD_cHL_A(cpu);
+		LDD_cHL_A(cpu);
+		break;
 	case 0x33:
-		return INC_rr(cpu, &cpu->SP);
+		INC_rr(cpu, &cpu->SP);
+		break;
 	case 0x34:
-		return INC_cHL(cpu);
+		INC_cHL(cpu);
+		break;
 	case 0x35:
-		return DEC_cHL(cpu);
+		DEC_cHL(cpu);
+		break;
 	case 0x36:
-		return LD_cHL_n(cpu);
+		LD_cHL_n(cpu);
+		break;
 	case 0x37:
-		return SCF(cpu);
+		SCF(cpu);
+		break;
 	case 0x38:
-		return JR_C_d(cpu);
+		JR_C_d(cpu);
+		break;
 	case 0x39:
-		return ADD_HL_rr(cpu, &cpu->SP);
+		ADD_HL_rr(cpu, &cpu->SP);
+		break;
 	case 0x3A:
-		return LDD_A_cHL(cpu);
+		LDD_A_cHL(cpu);
+		break;
 	case 0x3B:
-		return DEC_rr(cpu, &cpu->SP);
+		DEC_rr(cpu, &cpu->SP);
+		break;
 	case 0x3C:
-		return INC_r(cpu, &cpu->A);
+		INC_r(cpu, &cpu->A);
+		break;
 	case 0x3D:
-		return DEC_r(cpu, &cpu->A);
+		DEC_r(cpu, &cpu->A);
+		break;
 	case 0x3E:
-		return LD_r_n(cpu, &cpu->A);
+		LD_r_n(cpu, &cpu->A);
+		break;
 	case 0x3F:
-		return CCF(cpu);
+		CCF(cpu);
+		break;
 	case 0x40:
-		return LD_r_r(cpu, &cpu->B, &cpu->B);
+		LD_r_r(cpu, &cpu->B, &cpu->B);
+		break;
 	case 0x41:
-		return LD_r_r(cpu, &cpu->B, &cpu->C);
+		LD_r_r(cpu, &cpu->B, &cpu->C);
+		break;
 	case 0x42:
-		return LD_r_r(cpu, &cpu->B, &cpu->D);
+		LD_r_r(cpu, &cpu->B, &cpu->D);
+		break;
 	case 0x43:
-		return LD_r_r(cpu, &cpu->B, &cpu->E);
+		LD_r_r(cpu, &cpu->B, &cpu->E);
+		break;
 	case 0x44:
-		return LD_r_r(cpu, &cpu->B, &cpu->H);
+		LD_r_r(cpu, &cpu->B, &cpu->H);
+		break;
 	case 0x45:
-		return LD_r_r(cpu, &cpu->B, &cpu->L);
+		LD_r_r(cpu, &cpu->B, &cpu->L);
+		break;
 	case 0x46:
-		return LD_r_cHL(cpu, &cpu->B);
+		LD_r_cHL(cpu, &cpu->B);
+		break;
 	case 0x47:
-		return LD_r_r(cpu, &cpu->B, &cpu->A);
+		LD_r_r(cpu, &cpu->B, &cpu->A);
+		break;
 	case 0x48:
-		return LD_r_r(cpu, &cpu->C, &cpu->B);
+		LD_r_r(cpu, &cpu->C, &cpu->B);
+		break;
 	case 0x49:
-		return LD_r_r(cpu, &cpu->C, &cpu->C);
+		LD_r_r(cpu, &cpu->C, &cpu->C);
+		break;
 	case 0x4A:
-		return LD_r_r(cpu, &cpu->C, &cpu->D);
+		LD_r_r(cpu, &cpu->C, &cpu->D);
+		break;
 	case 0x4B:
-		return LD_r_r(cpu, &cpu->C, &cpu->E);
+		LD_r_r(cpu, &cpu->C, &cpu->E);
+		break;
 	case 0x4C:
-		return LD_r_r(cpu, &cpu->C, &cpu->H);
+		LD_r_r(cpu, &cpu->C, &cpu->H);
+		break;
 	case 0x4D:
-		return LD_r_r(cpu, &cpu->C, &cpu->L);
+		LD_r_r(cpu, &cpu->C, &cpu->L);
+		break;
 	case 0x4E:
-		return LD_r_cHL(cpu, &cpu->C);
+		LD_r_cHL(cpu, &cpu->C);
+		break;
 	case 0x4F:
-		return LD_r_r(cpu, &cpu->C, &cpu->A);
+		LD_r_r(cpu, &cpu->C, &cpu->A);
+		break;
 	case 0x50:
-		return LD_r_r(cpu, &cpu->D, &cpu->B);
+		LD_r_r(cpu, &cpu->D, &cpu->B);
+		break;
 	case 0x51:
-		return LD_r_r(cpu, &cpu->D, &cpu->C);
+		LD_r_r(cpu, &cpu->D, &cpu->C);
+		break;
 	case 0x52:
-		return LD_r_r(cpu, &cpu->D, &cpu->D);
+		LD_r_r(cpu, &cpu->D, &cpu->D);
+		break;
 	case 0x53:
-		return LD_r_r(cpu, &cpu->D, &cpu->E);
+		LD_r_r(cpu, &cpu->D, &cpu->E);
+		break;
 	case 0x54:
-		return LD_r_r(cpu, &cpu->D, &cpu->H);
+		LD_r_r(cpu, &cpu->D, &cpu->H);
+		break;
 	case 0x55:
-		return LD_r_r(cpu, &cpu->D, &cpu->L);
+		LD_r_r(cpu, &cpu->D, &cpu->L);
+		break;
 	case 0x56:
-		return LD_r_cHL(cpu, &cpu->D);
+		LD_r_cHL(cpu, &cpu->D);
+		break;
 	case 0x57:
-		return LD_r_r(cpu, &cpu->D, &cpu->A);
+		LD_r_r(cpu, &cpu->D, &cpu->A);
+		break;
 	case 0x58:
-		return LD_r_r(cpu, &cpu->E, &cpu->B);
+		LD_r_r(cpu, &cpu->E, &cpu->B);
+		break;
 	case 0x59:
-		return LD_r_r(cpu, &cpu->E, &cpu->C);
+		LD_r_r(cpu, &cpu->E, &cpu->C);
+		break;
 	case 0x5A:
-		return LD_r_r(cpu, &cpu->E, &cpu->D);
+		LD_r_r(cpu, &cpu->E, &cpu->D);
+		break;
 	case 0x5B:
-		return LD_r_r(cpu, &cpu->E, &cpu->E);
+		LD_r_r(cpu, &cpu->E, &cpu->E);
+		break;
 	case 0x5C:
-		return LD_r_r(cpu, &cpu->E, &cpu->H);
+		LD_r_r(cpu, &cpu->E, &cpu->H);
+		break;
 	case 0x5D:
-		return LD_r_r(cpu, &cpu->E, &cpu->L);
+		LD_r_r(cpu, &cpu->E, &cpu->L);
+		break;
 	case 0x5E:
-		return LD_r_cHL(cpu, &cpu->E);
+		LD_r_cHL(cpu, &cpu->E);
+		break;
 	case 0x5F:
-		return LD_r_r(cpu, &cpu->E, &cpu->A);
+		LD_r_r(cpu, &cpu->E, &cpu->A);
+		break;
 	case 0x60:
-		return LD_r_r(cpu, &cpu->H, &cpu->B);
+		LD_r_r(cpu, &cpu->H, &cpu->B);
+		break;
 	case 0x61:
-		return LD_r_r(cpu, &cpu->H, &cpu->C);
+		LD_r_r(cpu, &cpu->H, &cpu->C);
+		break;
 	case 0x62:
-		return LD_r_r(cpu, &cpu->H, &cpu->D);
+		LD_r_r(cpu, &cpu->H, &cpu->D);
+		break;
 	case 0x63:
-		return LD_r_r(cpu, &cpu->H, &cpu->E);
+		LD_r_r(cpu, &cpu->H, &cpu->E);
+		break;
 	case 0x64:
-		return LD_r_r(cpu, &cpu->H, &cpu->H);
+		LD_r_r(cpu, &cpu->H, &cpu->H);
+		break;
 	case 0x65:
-		return LD_r_r(cpu, &cpu->H, &cpu->L);
+		LD_r_r(cpu, &cpu->H, &cpu->L);
+		break;
 	case 0x66:
-		return LD_r_cHL(cpu, &cpu->H);
+		LD_r_cHL(cpu, &cpu->H);
+		break;
 	case 0x67:
-		return LD_r_r(cpu, &cpu->H, &cpu->A);
+		LD_r_r(cpu, &cpu->H, &cpu->A);
+		break;
 	case 0x68:
-		return LD_r_r(cpu, &cpu->L, &cpu->B);
+		LD_r_r(cpu, &cpu->L, &cpu->B);
+		break;
 	case 0x69:
-		return LD_r_r(cpu, &cpu->L, &cpu->C);
+		LD_r_r(cpu, &cpu->L, &cpu->C);
+		break;
 	case 0x6A:
-		return LD_r_r(cpu, &cpu->L, &cpu->D);
+		LD_r_r(cpu, &cpu->L, &cpu->D);
+		break;
 	case 0x6B:
-		return LD_r_r(cpu, &cpu->L, &cpu->E);
+		LD_r_r(cpu, &cpu->L, &cpu->E);
+		break;
 	case 0x6C:
-		return LD_r_r(cpu, &cpu->L, &cpu->H);
+		LD_r_r(cpu, &cpu->L, &cpu->H);
+		break;
 	case 0x6D:
-		return LD_r_r(cpu, &cpu->L, &cpu->L);
+		LD_r_r(cpu, &cpu->L, &cpu->L);
+		break;
 	case 0x6E:
-		return LD_r_cHL(cpu, &cpu->L);
+		LD_r_cHL(cpu, &cpu->L);
+		break;
 	case 0x6F:
-		return LD_r_r(cpu, &cpu->L, &cpu->A);
+		LD_r_r(cpu, &cpu->L, &cpu->A);
+		break;
 	case 0x70:
-		return LD_cHL_r(cpu, &cpu->B);
+		LD_cHL_r(cpu, &cpu->B);
+		break;
 	case 0x71:
-		return LD_cHL_r(cpu, &cpu->C);
+		LD_cHL_r(cpu, &cpu->C);
+		break;
 	case 0x72:
-		return LD_cHL_r(cpu, &cpu->D);
+		LD_cHL_r(cpu, &cpu->D);
+		break;
 	case 0x73:
-		return LD_cHL_r(cpu, &cpu->E);
+		LD_cHL_r(cpu, &cpu->E);
+		break;
 	case 0x74:
-		return LD_cHL_r(cpu, &cpu->H);
+		LD_cHL_r(cpu, &cpu->H);
+		break;
 	case 0x75:
-		return LD_cHL_r(cpu, &cpu->L);
+		LD_cHL_r(cpu, &cpu->L);
+		break;
 	case 0x76:
-		return HALT(cpu);
+		HALT(cpu);
+		break;
 	case 0x77:
-		return LD_cHL_r(cpu, &cpu->A);
+		LD_cHL_r(cpu, &cpu->A);
+		break;
 	case 0x78:
-		return LD_r_r(cpu, &cpu->A, &cpu->B);
+		LD_r_r(cpu, &cpu->A, &cpu->B);
+		break;
 	case 0x79:
-		return LD_r_r(cpu, &cpu->A, &cpu->C);
+		LD_r_r(cpu, &cpu->A, &cpu->C);
+		break;
 	case 0x7A:
-		return LD_r_r(cpu, &cpu->A, &cpu->D);
+		LD_r_r(cpu, &cpu->A, &cpu->D);
+		break;
 	case 0x7B:
-		return LD_r_r(cpu, &cpu->A, &cpu->E);
+		LD_r_r(cpu, &cpu->A, &cpu->E);
+		break;
 	case 0x7C:
-		return LD_r_r(cpu, &cpu->A, &cpu->H);
+		LD_r_r(cpu, &cpu->A, &cpu->H);
+		break;
 	case 0x7D:
-		return LD_r_r(cpu, &cpu->A, &cpu->L);
+		LD_r_r(cpu, &cpu->A, &cpu->L);
+		break;
 	case 0x7E:
-		return LD_r_cHL(cpu, &cpu->A);
+		LD_r_cHL(cpu, &cpu->A);
+		break;
 	case 0x7F:
-		return LD_r_r(cpu, &cpu->A, &cpu->A);
+		LD_r_r(cpu, &cpu->A, &cpu->A);
+		break;
 	case 0x80:
-		return ADD_A_r(cpu, &cpu->B);
+		ADD_A_r(cpu, &cpu->B);
+		break;
 	case 0x81:
-		return ADD_A_r(cpu, &cpu->C);
+		ADD_A_r(cpu, &cpu->C);
+		break;
 	case 0x82:
-		return ADD_A_r(cpu, &cpu->D);
+		ADD_A_r(cpu, &cpu->D);
+		break;
 	case 0x83:
-		return ADD_A_r(cpu, &cpu->E);
+		ADD_A_r(cpu, &cpu->E);
+		break;
 	case 0x84:
-		return ADD_A_r(cpu, &cpu->H);
+		ADD_A_r(cpu, &cpu->H);
+		break;
 	case 0x85:
-		return ADD_A_r(cpu, &cpu->L);
+		ADD_A_r(cpu, &cpu->L);
+		break;
 	case 0x86:
-		return ADD_A_cHL(cpu);
+		ADD_A_cHL(cpu);
+		break;
 	case 0x87:
-		return ADD_A_r(cpu, &cpu->A);
+		ADD_A_r(cpu, &cpu->A);
+		break;
 	case 0x88:
-		return ADC_A_r(cpu, &cpu->B);
+		ADC_A_r(cpu, &cpu->B);
+		break;
 	case 0x89:
-		return ADC_A_r(cpu, &cpu->C);
+		ADC_A_r(cpu, &cpu->C);
+		break;
 	case 0x8A:
-		return ADC_A_r(cpu, &cpu->D);
+		ADC_A_r(cpu, &cpu->D);
+		break;
 	case 0x8B:
-		return ADC_A_r(cpu, &cpu->E);
+		ADC_A_r(cpu, &cpu->E);
+		break;
 	case 0x8C:
-		return ADC_A_r(cpu, &cpu->H);
+		ADC_A_r(cpu, &cpu->H);
+		break;
 	case 0x8D:
-		return ADC_A_r(cpu, &cpu->L);
+		ADC_A_r(cpu, &cpu->L);
+		break;
 	case 0x8E:
-		return ADC_A_cHL(cpu);
+		ADC_A_cHL(cpu);
+		break;
 	case 0x8F:
-		return ADC_A_r(cpu, &cpu->A);
+		ADC_A_r(cpu, &cpu->A);
+		break;
 	case 0x90:
-		return SUB_A_r(cpu, &cpu->B);
+		SUB_A_r(cpu, &cpu->B);
+		break;
 	case 0x91:
-		return SUB_A_r(cpu, &cpu->C);
+		SUB_A_r(cpu, &cpu->C);
+		break;
 	case 0x92:
-		return SUB_A_r(cpu, &cpu->D);
+		SUB_A_r(cpu, &cpu->D);
+		break;
 	case 0x93:
-		return SUB_A_r(cpu, &cpu->E);
+		SUB_A_r(cpu, &cpu->E);
+		break;
 	case 0x94:
-		return SUB_A_r(cpu, &cpu->H);
+		SUB_A_r(cpu, &cpu->H);
+		break;
 	case 0x95:
-		return SUB_A_r(cpu, &cpu->L);
+		SUB_A_r(cpu, &cpu->L);
+		break;
 	case 0x96:
-		return SUB_A_cHL(cpu);
+		SUB_A_cHL(cpu);
+		break;
 	case 0x97:
-		return SUB_A_r(cpu, &cpu->A);
+		SUB_A_r(cpu, &cpu->A);
+		break;
 	case 0x98:
-		return SBC_A_r(cpu, &cpu->B);
+		SBC_A_r(cpu, &cpu->B);
+		break;
 	case 0x99:
-		return SBC_A_r(cpu, &cpu->C);
+		SBC_A_r(cpu, &cpu->C);
+		break;
 	case 0x9A:
-		return SBC_A_r(cpu, &cpu->D);
+		SBC_A_r(cpu, &cpu->D);
+		break;
 	case 0x9B:
-		return SBC_A_r(cpu, &cpu->E);
+		SBC_A_r(cpu, &cpu->E);
+		break;
 	case 0x9C:
-		return SBC_A_r(cpu, &cpu->H);
+		SBC_A_r(cpu, &cpu->H);
+		break;
 	case 0x9D:
-		return SBC_A_r(cpu, &cpu->L);
+		SBC_A_r(cpu, &cpu->L);
+		break;
 	case 0x9E:
-		return SBC_A_cHL(cpu);
+		SBC_A_cHL(cpu);
+		break;
 	case 0x9F:
-		return SBC_A_r(cpu, &cpu->A);
+		SBC_A_r(cpu, &cpu->A);
+		break;
 	case 0xA0:
-		return AND_r(cpu, &cpu->B);
+		AND_r(cpu, &cpu->B);
+		break;
 	case 0xA1:
-		return AND_r(cpu, &cpu->C);
+		AND_r(cpu, &cpu->C);
+		break;
 	case 0xA2:
-		return AND_r(cpu, &cpu->D);
+		AND_r(cpu, &cpu->D);
+		break;
 	case 0xA3:
-		return AND_r(cpu, &cpu->E);
+		AND_r(cpu, &cpu->E);
+		break;
 	case 0xA4:
-		return AND_r(cpu, &cpu->H);
+		AND_r(cpu, &cpu->H);
+		break;
 	case 0xA5:
-		return AND_r(cpu, &cpu->L);
+		AND_r(cpu, &cpu->L);
+		break;
 	case 0xA6:
-		return AND_cHL(cpu);
+		AND_cHL(cpu);
+		break;
 	case 0xA7:
-		return AND_r(cpu, &cpu->A);
+		AND_r(cpu, &cpu->A);
+		break;
 	case 0xA8:
-		return XOR_r(cpu, &cpu->B);
+		XOR_r(cpu, &cpu->B);
+		break;
 	case 0xA9:
-		return XOR_r(cpu, &cpu->C);
+		XOR_r(cpu, &cpu->C);
+		break;
 	case 0xAA:
-		return XOR_r(cpu, &cpu->D);
+		XOR_r(cpu, &cpu->D);
+		break;
 	case 0xAB:
-		return XOR_r(cpu, &cpu->E);
+		XOR_r(cpu, &cpu->E);
+		break;
 	case 0xAC:
-		return XOR_r(cpu, &cpu->H);
+		XOR_r(cpu, &cpu->H);
+		break;
 	case 0xAD:
-		return XOR_r(cpu, &cpu->L);
+		XOR_r(cpu, &cpu->L);
+		break;
 	case 0xAE:
-		return XOR_cHL(cpu);
+		XOR_cHL(cpu);
+		break;
 	case 0xAF:
-		return XOR_r(cpu, &cpu->A);
+		XOR_r(cpu, &cpu->A);
+		break;
 	case 0xB0:
-		return OR_r(cpu, &cpu->B);
+		OR_r(cpu, &cpu->B);
+		break;
 	case 0xB1:
-		return OR_r(cpu, &cpu->C);
+		OR_r(cpu, &cpu->C);
+		break;
 	case 0xB2:
-		return OR_r(cpu, &cpu->D);
+		OR_r(cpu, &cpu->D);
+		break;
 	case 0xB3:
-		return OR_r(cpu, &cpu->E);
+		OR_r(cpu, &cpu->E);
+		break;
 	case 0xB4:
-		return OR_r(cpu, &cpu->H);
+		OR_r(cpu, &cpu->H);
+		break;
 	case 0xB5:
-		return OR_r(cpu, &cpu->L);
+		OR_r(cpu, &cpu->L);
+		break;
 	case 0xB6:
-		return OR_cHL(cpu);
+		OR_cHL(cpu);
+		break;
 	case 0xB7:
-		return OR_r(cpu, &cpu->A);
+		OR_r(cpu, &cpu->A);
+		break;
 	case 0xB8:
-		return CP_r(cpu, &cpu->B);
+		CP_r(cpu, &cpu->B);
+		break;
 	case 0xB9:
-		return CP_r(cpu, &cpu->C);
+		CP_r(cpu, &cpu->C);
+		break;
 	case 0xBA:
-		return CP_r(cpu, &cpu->D);
+		CP_r(cpu, &cpu->D);
+		break;
 	case 0xBB:
-		return CP_r(cpu, &cpu->E);
+		CP_r(cpu, &cpu->E);
+		break;
 	case 0xBC:
-		return CP_r(cpu, &cpu->H);
+		CP_r(cpu, &cpu->H);
+		break;
 	case 0xBD:
-		return CP_r(cpu, &cpu->L);
+		CP_r(cpu, &cpu->L);
+		break;
 	case 0xBE:
-		return CP_cHL(cpu);
+		CP_cHL(cpu);
+		break;
 	case 0xBF:
-		return CP_r(cpu, &cpu->A);
+		CP_r(cpu, &cpu->A);
+		break;
 	case 0xC0:
-		return RET_NZ(cpu);
+		RET_NZ(cpu);
+		break;
 	case 0xC1:
-		return POP_rr(cpu, &cpu->BC);
+		POP_rr(cpu, &cpu->BC);
+		break;
 	case 0xC2:
-		return JP_NZ_nn(cpu);
+		JP_NZ_nn(cpu);
+		break;
 	case 0xC3:
-		return JP_nn(cpu);
+		JP_nn(cpu);
+		break;
 	case 0xC4:
-		return CALL_NZ_nn(cpu);
+		CALL_NZ_nn(cpu);
+		break;
 	case 0xC5:
-		return PUSH_rr(cpu, &cpu->BC);
+		PUSH_rr(cpu, &cpu->BC);
+		break;
 	case 0xC6:
-		return ADD_A_n(cpu);
+		ADD_A_n(cpu);
+		break;
 	case 0xC7:
-		return RST_n(cpu, 0x00);
+		RST_n(cpu, 0x00);
+		break;
 	case 0xC8:
-		return RET_Z(cpu);
+		RET_Z(cpu);
+		break;
 	case 0xC9:
-		return RET(cpu);
+		RET(cpu);
+		break;
 	case 0xCA:
-		return JP_Z_nn(cpu);
+		JP_Z_nn(cpu);
+		break;
 	case 0xCB:
-		return lr35902_opcode_CB(cpu);
+		lr35902_opcode_CB(cpu);
+		break;
 	case 0xCC:
-		return CALL_Z_nn(cpu);
+		CALL_Z_nn(cpu);
+		break;
 	case 0xCD:
-		return CALL_nn(cpu);
+		CALL_nn(cpu);
+		break;
 	case 0xCE:
-		return ADC_A_n(cpu);
+		ADC_A_n(cpu);
+		break;
 	case 0xCF:
-		return RST_n(cpu, 0x08);
+		RST_n(cpu, 0x08);
+		break;
 	case 0xD0:
-		return RET_NC(cpu);
+		RET_NC(cpu);
+		break;
 	case 0xD1:
-		return POP_rr(cpu, &cpu->DE);
+		POP_rr(cpu, &cpu->DE);
+		break;
 	case 0xD2:
-		return JP_NC_nn(cpu);
+		JP_NC_nn(cpu);
+		break;
 	case 0xD4:
-		return CALL_NC_nn(cpu);
+		CALL_NC_nn(cpu);
+		break;
 	case 0xD5:
-		return PUSH_rr(cpu, &cpu->DE);
+		PUSH_rr(cpu, &cpu->DE);
+		break;
 	case 0xD6:
-		return SUB_A_n(cpu);
+		SUB_A_n(cpu);
+		break;
 	case 0xD7:
-		return RST_n(cpu, 0x10);
+		RST_n(cpu, 0x10);
+		break;
 	case 0xD8:
-		return RET_C(cpu);
+		RET_C(cpu);
+		break;
 	case 0xD9:
-		return RETI(cpu);
+		RETI(cpu);
+		break;
 	case 0xDA:
-		return JP_C_nn(cpu);
+		JP_C_nn(cpu);
+		break;
 	case 0xDC:
-		return CALL_C_nn(cpu);
+		CALL_C_nn(cpu);
+		break;
 	case 0xDE:
-		return SBC_A_n(cpu);
+		SBC_A_n(cpu);
+		break;
 	case 0xDF:
-		return RST_n(cpu, 0x18);
+		RST_n(cpu, 0x18);
+		break;
 	case 0xE0:
-		return LD_cFF00pn_A(cpu);
+		LD_cFF00pn_A(cpu);
+		break;
 	case 0xE1:
-		return POP_rr(cpu, &cpu->HL);
+		POP_rr(cpu, &cpu->HL);
+		break;
 	case 0xE2:
-		return LD_cFF00pC_A(cpu);
+		LD_cFF00pC_A(cpu);
+		break;
 	case 0xE5:
-		return PUSH_rr(cpu, &cpu->HL);
+		PUSH_rr(cpu, &cpu->HL);
+		break;
 	case 0xE6:
-		return AND_n(cpu);
+		AND_n(cpu);
+		break;
 	case 0xE7:
-		return RST_n(cpu, 0x20);
+		RST_n(cpu, 0x20);
+		break;
 	case 0xE8:
-		return ADD_SP_d(cpu);
+		ADD_SP_d(cpu);
+		break;
 	case 0xE9:
-		return JP_HL(cpu);
+		JP_HL(cpu);
+		break;
 	case 0xEA:
-		return LD_cnn_A(cpu);
+		LD_cnn_A(cpu);
+		break;
 	case 0xEE:
-		return XOR_n(cpu);
+		XOR_n(cpu);
+		break;
 	case 0xEF:
-		return RST_n(cpu, 0x28);
+		RST_n(cpu, 0x28);
+		break;
 	case 0xF0:
-		return LD_A_cFF00pn(cpu);
+		LD_A_cFF00pn(cpu);
+		break;
 	case 0xF1:
-		return POP_AF(cpu);
+		POP_AF(cpu);
+		break;
 	case 0xF2:
-		return LD_A_cFF00pC(cpu);
+		LD_A_cFF00pC(cpu);
+		break;
 	case 0xF3:
-		return DI(cpu);
+		DI(cpu);
+		break;
 	case 0xF5:
-		return PUSH_rr(cpu, &cpu->AF);
+		PUSH_rr(cpu, &cpu->AF);
+		break;
 	case 0xF6:
-		return OR_n(cpu);
+		OR_n(cpu);
+		break;
 	case 0xF7:
-		return RST_n(cpu, 0x30);
+		RST_n(cpu, 0x30);
+		break;
 	case 0xF8:
-		return LD_HL_SPpd(cpu);
+		LD_HL_SPpd(cpu);
+		break;
 	case 0xF9:
-		return LD_SP_HL(cpu);
+		LD_SP_HL(cpu);
+		break;
 	case 0xFA:
-		return LD_A_cnn(cpu);
+		LD_A_cnn(cpu);
+		break;
 	case 0xFB:
-		return EI(cpu);
+		EI(cpu);
+		break;
 	case 0xFE:
-		return CP_n(cpu);
+		CP_n(cpu);
+		break;
 	case 0xFF:
-		return RST_n(cpu, 0x38);
+		RST_n(cpu, 0x38);
+		break;
 	default:
 		LOG_W("lr35902: unknown opcode (%02x)!\n", opcode);
 		clock_consume(1);
@@ -1772,517 +2017,773 @@ void lr35902_opcode_CB(struct lr35902 *cpu)
 	/* Execute CB opcode */
 	switch (opcode) {
 	case 0x00:
-		return RLC_r(cpu, &cpu->B);
+		RLC_r(cpu, &cpu->B);
+		break;
 	case 0x01:
-		return RLC_r(cpu, &cpu->C);
+		RLC_r(cpu, &cpu->C);
+		break;
 	case 0x02:
-		return RLC_r(cpu, &cpu->D);
+		RLC_r(cpu, &cpu->D);
+		break;
 	case 0x03:
-		return RLC_r(cpu, &cpu->E);
+		RLC_r(cpu, &cpu->E);
+		break;
 	case 0x04:
-		return RLC_r(cpu, &cpu->H);
+		RLC_r(cpu, &cpu->H);
+		break;
 	case 0x05:
-		return RLC_r(cpu, &cpu->L);
+		RLC_r(cpu, &cpu->L);
+		break;
 	case 0x06:
-		return RLC_cHL(cpu);
+		RLC_cHL(cpu);
+		break;
 	case 0x07:
-		return RLC_r(cpu, &cpu->A);
+		RLC_r(cpu, &cpu->A);
+		break;
 	case 0x08:
-		return RRC_r(cpu, &cpu->B);
+		RRC_r(cpu, &cpu->B);
+		break;
 	case 0x09:
-		return RRC_r(cpu, &cpu->C);
+		RRC_r(cpu, &cpu->C);
+		break;
 	case 0x0A:
-		return RRC_r(cpu, &cpu->D);
+		RRC_r(cpu, &cpu->D);
+		break;
 	case 0x0B:
-		return RRC_r(cpu, &cpu->E);
+		RRC_r(cpu, &cpu->E);
+		break;
 	case 0x0C:
-		return RRC_r(cpu, &cpu->H);
+		RRC_r(cpu, &cpu->H);
+		break;
 	case 0x0D:
-		return RRC_r(cpu, &cpu->L);
+		RRC_r(cpu, &cpu->L);
+		break;
 	case 0x0E:
-		return RRC_cHL(cpu);
+		RRC_cHL(cpu);
+		break;
 	case 0x0F:
-		return RRC_r(cpu, &cpu->A);
+		RRC_r(cpu, &cpu->A);
+		break;
 	case 0x10:
-		return RL_r(cpu, &cpu->B);
+		RL_r(cpu, &cpu->B);
+		break;
 	case 0x11:
-		return RL_r(cpu, &cpu->C);
+		RL_r(cpu, &cpu->C);
+		break;
 	case 0x12:
-		return RL_r(cpu, &cpu->D);
+		RL_r(cpu, &cpu->D);
+		break;
 	case 0x13:
-		return RL_r(cpu, &cpu->E);
+		RL_r(cpu, &cpu->E);
+		break;
 	case 0x14:
-		return RL_r(cpu, &cpu->H);
+		RL_r(cpu, &cpu->H);
+		break;
 	case 0x15:
-		return RL_r(cpu, &cpu->L);
+		RL_r(cpu, &cpu->L);
+		break;
 	case 0x16:
-		return RL_cHL(cpu);
+		RL_cHL(cpu);
+		break;
 	case 0x17:
-		return RL_r(cpu, &cpu->A);
+		RL_r(cpu, &cpu->A);
+		break;
 	case 0x18:
-		return RR_r(cpu, &cpu->B);
+		RR_r(cpu, &cpu->B);
+		break;
 	case 0x19:
-		return RR_r(cpu, &cpu->C);
+		RR_r(cpu, &cpu->C);
+		break;
 	case 0x1A:
-		return RR_r(cpu, &cpu->D);
+		RR_r(cpu, &cpu->D);
+		break;
 	case 0x1B:
-		return RR_r(cpu, &cpu->E);
+		RR_r(cpu, &cpu->E);
+		break;
 	case 0x1C:
-		return RR_r(cpu, &cpu->H);
+		RR_r(cpu, &cpu->H);
+		break;
 	case 0x1D:
-		return RR_r(cpu, &cpu->L);
+		RR_r(cpu, &cpu->L);
+		break;
 	case 0x1E:
-		return RR_cHL(cpu);
+		RR_cHL(cpu);
+		break;
 	case 0x1F:
-		return RR_r(cpu, &cpu->A);
+		RR_r(cpu, &cpu->A);
+		break;
 	case 0x20:
-		return SLA_r(cpu, &cpu->B);
+		SLA_r(cpu, &cpu->B);
+		break;
 	case 0x21:
-		return SLA_r(cpu, &cpu->C);
+		SLA_r(cpu, &cpu->C);
+		break;
 	case 0x22:
-		return SLA_r(cpu, &cpu->D);
+		SLA_r(cpu, &cpu->D);
+		break;
 	case 0x23:
-		return SLA_r(cpu, &cpu->E);
+		SLA_r(cpu, &cpu->E);
+		break;
 	case 0x24:
-		return SLA_r(cpu, &cpu->H);
+		SLA_r(cpu, &cpu->H);
+		break;
 	case 0x25:
-		return SLA_r(cpu, &cpu->L);
+		SLA_r(cpu, &cpu->L);
+		break;
 	case 0x26:
-		return SLA_cHL(cpu);
+		SLA_cHL(cpu);
+		break;
 	case 0x27:
-		return SLA_r(cpu, &cpu->A);
+		SLA_r(cpu, &cpu->A);
+		break;
 	case 0x28:
-		return SRA_r(cpu, &cpu->B);
+		SRA_r(cpu, &cpu->B);
+		break;
 	case 0x29:
-		return SRA_r(cpu, &cpu->C);
+		SRA_r(cpu, &cpu->C);
+		break;
 	case 0x2A:
-		return SRA_r(cpu, &cpu->D);
+		SRA_r(cpu, &cpu->D);
+		break;
 	case 0x2B:
-		return SRA_r(cpu, &cpu->E);
+		SRA_r(cpu, &cpu->E);
+		break;
 	case 0x2C:
-		return SRA_r(cpu, &cpu->H);
+		SRA_r(cpu, &cpu->H);
+		break;
 	case 0x2D:
-		return SRA_r(cpu, &cpu->L);
+		SRA_r(cpu, &cpu->L);
+		break;
 	case 0x2E:
-		return SRA_cHL(cpu);
+		SRA_cHL(cpu);
+		break;
 	case 0x2F:
-		return SRA_r(cpu, &cpu->A);
+		SRA_r(cpu, &cpu->A);
+		break;
 	case 0x30:
-		return SWAP_r(cpu, &cpu->B);
+		SWAP_r(cpu, &cpu->B);
+		break;
 	case 0x31:
-		return SWAP_r(cpu, &cpu->C);
+		SWAP_r(cpu, &cpu->C);
+		break;
 	case 0x32:
-		return SWAP_r(cpu, &cpu->D);
+		SWAP_r(cpu, &cpu->D);
+		break;
 	case 0x33:
-		return SWAP_r(cpu, &cpu->E);
+		SWAP_r(cpu, &cpu->E);
+		break;
 	case 0x34:
-		return SWAP_r(cpu, &cpu->H);
+		SWAP_r(cpu, &cpu->H);
+		break;
 	case 0x35:
-		return SWAP_r(cpu, &cpu->L);
+		SWAP_r(cpu, &cpu->L);
+		break;
 	case 0x36:
-		return SWAP_cHL(cpu);
+		SWAP_cHL(cpu);
+		break;
 	case 0x37:
-		return SWAP_r(cpu, &cpu->A);
+		SWAP_r(cpu, &cpu->A);
+		break;
 	case 0x38:
-		return SRL_r(cpu, &cpu->B);
+		SRL_r(cpu, &cpu->B);
+		break;
 	case 0x39:
-		return SRL_r(cpu, &cpu->C);
+		SRL_r(cpu, &cpu->C);
+		break;
 	case 0x3A:
-		return SRL_r(cpu, &cpu->D);
+		SRL_r(cpu, &cpu->D);
+		break;
 	case 0x3B:
-		return SRL_r(cpu, &cpu->E);
+		SRL_r(cpu, &cpu->E);
+		break;
 	case 0x3C:
-		return SRL_r(cpu, &cpu->H);
+		SRL_r(cpu, &cpu->H);
+		break;
 	case 0x3D:
-		return SRL_r(cpu, &cpu->L);
+		SRL_r(cpu, &cpu->L);
+		break;
 	case 0x3E:
-		return SRL_cHL(cpu);
+		SRL_cHL(cpu);
+		break;
 	case 0x3F:
-		return SRL_r(cpu, &cpu->A);
+		SRL_r(cpu, &cpu->A);
+		break;
 	case 0x40:
-		return BIT_n_r(cpu, 0, &cpu->B);
+		BIT_n_r(cpu, 0, &cpu->B);
+		break;
 	case 0x41:
-		return BIT_n_r(cpu, 0, &cpu->C);
+		BIT_n_r(cpu, 0, &cpu->C);
+		break;
 	case 0x42:
-		return BIT_n_r(cpu, 0, &cpu->D);
+		BIT_n_r(cpu, 0, &cpu->D);
+		break;
 	case 0x43:
-		return BIT_n_r(cpu, 0, &cpu->E);
+		BIT_n_r(cpu, 0, &cpu->E);
+		break;
 	case 0x44:
-		return BIT_n_r(cpu, 0, &cpu->H);
+		BIT_n_r(cpu, 0, &cpu->H);
+		break;
 	case 0x45:
-		return BIT_n_r(cpu, 0, &cpu->L);
+		BIT_n_r(cpu, 0, &cpu->L);
+		break;
 	case 0x46:
-		return BIT_n_cHL(cpu, 0);
+		BIT_n_cHL(cpu, 0);
+		break;
 	case 0x47:
-		return BIT_n_r(cpu, 0, &cpu->A);
+		BIT_n_r(cpu, 0, &cpu->A);
+		break;
 	case 0x48:
-		return BIT_n_r(cpu, 1, &cpu->B);
+		BIT_n_r(cpu, 1, &cpu->B);
+		break;
 	case 0x49:
-		return BIT_n_r(cpu, 1, &cpu->C);
+		BIT_n_r(cpu, 1, &cpu->C);
+		break;
 	case 0x4A:
-		return BIT_n_r(cpu, 1, &cpu->D);
+		BIT_n_r(cpu, 1, &cpu->D);
+		break;
 	case 0x4B:
-		return BIT_n_r(cpu, 1, &cpu->E);
+		BIT_n_r(cpu, 1, &cpu->E);
+		break;
 	case 0x4C:
-		return BIT_n_r(cpu, 1, &cpu->H);
+		BIT_n_r(cpu, 1, &cpu->H);
+		break;
 	case 0x4D:
-		return BIT_n_r(cpu, 1, &cpu->L);
+		BIT_n_r(cpu, 1, &cpu->L);
+		break;
 	case 0x4E:
-		return BIT_n_cHL(cpu, 1);
+		BIT_n_cHL(cpu, 1);
+		break;
 	case 0x4F:
-		return BIT_n_r(cpu, 1, &cpu->A);
+		BIT_n_r(cpu, 1, &cpu->A);
+		break;
 	case 0x50:
-		return BIT_n_r(cpu, 2, &cpu->B);
+		BIT_n_r(cpu, 2, &cpu->B);
+		break;
 	case 0x51:
-		return BIT_n_r(cpu, 2, &cpu->C);
+		BIT_n_r(cpu, 2, &cpu->C);
+		break;
 	case 0x52:
-		return BIT_n_r(cpu, 2, &cpu->D);
+		BIT_n_r(cpu, 2, &cpu->D);
+		break;
 	case 0x53:
-		return BIT_n_r(cpu, 2, &cpu->E);
+		BIT_n_r(cpu, 2, &cpu->E);
+		break;
 	case 0x54:
-		return BIT_n_r(cpu, 2, &cpu->H);
+		BIT_n_r(cpu, 2, &cpu->H);
+		break;
 	case 0x55:
-		return BIT_n_r(cpu, 2, &cpu->L);
+		BIT_n_r(cpu, 2, &cpu->L);
+		break;
 	case 0x56:
-		return BIT_n_cHL(cpu, 2);
+		BIT_n_cHL(cpu, 2);
+		break;
 	case 0x57:
-		return BIT_n_r(cpu, 2, &cpu->A);
+		BIT_n_r(cpu, 2, &cpu->A);
+		break;
 	case 0x58:
-		return BIT_n_r(cpu, 3, &cpu->B);
+		BIT_n_r(cpu, 3, &cpu->B);
+		break;
 	case 0x59:
-		return BIT_n_r(cpu, 3, &cpu->C);
+		BIT_n_r(cpu, 3, &cpu->C);
+		break;
 	case 0x5A:
-		return BIT_n_r(cpu, 3, &cpu->D);
+		BIT_n_r(cpu, 3, &cpu->D);
+		break;
 	case 0x5B:
-		return BIT_n_r(cpu, 3, &cpu->E);
+		BIT_n_r(cpu, 3, &cpu->E);
+		break;
 	case 0x5C:
-		return BIT_n_r(cpu, 3, &cpu->H);
+		BIT_n_r(cpu, 3, &cpu->H);
+		break;
 	case 0x5D:
-		return BIT_n_r(cpu, 3, &cpu->L);
+		BIT_n_r(cpu, 3, &cpu->L);
+		break;
 	case 0x5E:
-		return BIT_n_cHL(cpu, 3);
+		BIT_n_cHL(cpu, 3);
+		break;
 	case 0x5F:
-		return BIT_n_r(cpu, 3, &cpu->A);
+		BIT_n_r(cpu, 3, &cpu->A);
+		break;
 	case 0x60:
-		return BIT_n_r(cpu, 4, &cpu->B);
+		BIT_n_r(cpu, 4, &cpu->B);
+		break;
 	case 0x61:
-		return BIT_n_r(cpu, 4, &cpu->C);
+		BIT_n_r(cpu, 4, &cpu->C);
+		break;
 	case 0x62:
-		return BIT_n_r(cpu, 4, &cpu->D);
+		BIT_n_r(cpu, 4, &cpu->D);
+		break;
 	case 0x63:
-		return BIT_n_r(cpu, 4, &cpu->E);
+		BIT_n_r(cpu, 4, &cpu->E);
+		break;
 	case 0x64:
-		return BIT_n_r(cpu, 4, &cpu->H);
+		BIT_n_r(cpu, 4, &cpu->H);
+		break;
 	case 0x65:
-		return BIT_n_r(cpu, 4, &cpu->L);
+		BIT_n_r(cpu, 4, &cpu->L);
+		break;
 	case 0x66:
-		return BIT_n_cHL(cpu, 4);
+		BIT_n_cHL(cpu, 4);
+		break;
 	case 0x67:
-		return BIT_n_r(cpu, 4, &cpu->A);
+		BIT_n_r(cpu, 4, &cpu->A);
+		break;
 	case 0x68:
-		return BIT_n_r(cpu, 5, &cpu->B);
+		BIT_n_r(cpu, 5, &cpu->B);
+		break;
 	case 0x69:
-		return BIT_n_r(cpu, 5, &cpu->C);
+		BIT_n_r(cpu, 5, &cpu->C);
+		break;
 	case 0x6A:
-		return BIT_n_r(cpu, 5, &cpu->D);
+		BIT_n_r(cpu, 5, &cpu->D);
+		break;
 	case 0x6B:
-		return BIT_n_r(cpu, 5, &cpu->E);
+		BIT_n_r(cpu, 5, &cpu->E);
+		break;
 	case 0x6C:
-		return BIT_n_r(cpu, 5, &cpu->H);
+		BIT_n_r(cpu, 5, &cpu->H);
+		break;
 	case 0x6D:
-		return BIT_n_r(cpu, 5, &cpu->L);
+		BIT_n_r(cpu, 5, &cpu->L);
+		break;
 	case 0x6E:
-		return BIT_n_cHL(cpu, 5);
+		BIT_n_cHL(cpu, 5);
+		break;
 	case 0x6F:
-		return BIT_n_r(cpu, 5, &cpu->A);
+		BIT_n_r(cpu, 5, &cpu->A);
+		break;
 	case 0x70:
-		return BIT_n_r(cpu, 6, &cpu->B);
+		BIT_n_r(cpu, 6, &cpu->B);
+		break;
 	case 0x71:
-		return BIT_n_r(cpu, 6, &cpu->C);
+		BIT_n_r(cpu, 6, &cpu->C);
+		break;
 	case 0x72:
-		return BIT_n_r(cpu, 6, &cpu->D);
+		BIT_n_r(cpu, 6, &cpu->D);
+		break;
 	case 0x73:
-		return BIT_n_r(cpu, 6, &cpu->E);
+		BIT_n_r(cpu, 6, &cpu->E);
+		break;
 	case 0x74:
-		return BIT_n_r(cpu, 6, &cpu->H);
+		BIT_n_r(cpu, 6, &cpu->H);
+		break;
 	case 0x75:
-		return BIT_n_r(cpu, 6, &cpu->L);
+		BIT_n_r(cpu, 6, &cpu->L);
+		break;
 	case 0x76:
-		return BIT_n_cHL(cpu, 6);
+		BIT_n_cHL(cpu, 6);
+		break;
 	case 0x77:
-		return BIT_n_r(cpu, 6, &cpu->A);
+		BIT_n_r(cpu, 6, &cpu->A);
+		break;
 	case 0x78:
-		return BIT_n_r(cpu, 7, &cpu->B);
+		BIT_n_r(cpu, 7, &cpu->B);
+		break;
 	case 0x79:
-		return BIT_n_r(cpu, 7, &cpu->C);
+		BIT_n_r(cpu, 7, &cpu->C);
+		break;
 	case 0x7A:
-		return BIT_n_r(cpu, 7, &cpu->D);
+		BIT_n_r(cpu, 7, &cpu->D);
+		break;
 	case 0x7B:
-		return BIT_n_r(cpu, 7, &cpu->E);
+		BIT_n_r(cpu, 7, &cpu->E);
+		break;
 	case 0x7C:
-		return BIT_n_r(cpu, 7, &cpu->H);
+		BIT_n_r(cpu, 7, &cpu->H);
+		break;
 	case 0x7D:
-		return BIT_n_r(cpu, 7, &cpu->L);
+		BIT_n_r(cpu, 7, &cpu->L);
+		break;
 	case 0x7E:
-		return BIT_n_cHL(cpu, 7);
+		BIT_n_cHL(cpu, 7);
+		break;
 	case 0x7F:
-		return BIT_n_r(cpu, 7, &cpu->A);
+		BIT_n_r(cpu, 7, &cpu->A);
+		break;
 	case 0x80:
-		return RES_n_r(cpu, 0, &cpu->B);
+		RES_n_r(cpu, 0, &cpu->B);
+		break;
 	case 0x81:
-		return RES_n_r(cpu, 0, &cpu->C);
+		RES_n_r(cpu, 0, &cpu->C);
+		break;
 	case 0x82:
-		return RES_n_r(cpu, 0, &cpu->D);
+		RES_n_r(cpu, 0, &cpu->D);
+		break;
 	case 0x83:
-		return RES_n_r(cpu, 0, &cpu->E);
+		RES_n_r(cpu, 0, &cpu->E);
+		break;
 	case 0x84:
-		return RES_n_r(cpu, 0, &cpu->H);
+		RES_n_r(cpu, 0, &cpu->H);
+		break;
 	case 0x85:
-		return RES_n_r(cpu, 0, &cpu->L);
+		RES_n_r(cpu, 0, &cpu->L);
+		break;
 	case 0x86:
-		return RES_n_cHL(cpu, 0);
+		RES_n_cHL(cpu, 0);
+		break;
 	case 0x87:
-		return RES_n_r(cpu, 0, &cpu->A);
+		RES_n_r(cpu, 0, &cpu->A);
+		break;
 	case 0x88:
-		return RES_n_r(cpu, 1, &cpu->B);
+		RES_n_r(cpu, 1, &cpu->B);
+		break;
 	case 0x89:
-		return RES_n_r(cpu, 1, &cpu->C);
+		RES_n_r(cpu, 1, &cpu->C);
+		break;
 	case 0x8A:
-		return RES_n_r(cpu, 1, &cpu->D);
+		RES_n_r(cpu, 1, &cpu->D);
+		break;
 	case 0x8B:
-		return RES_n_r(cpu, 1, &cpu->E);
+		RES_n_r(cpu, 1, &cpu->E);
+		break;
 	case 0x8C:
-		return RES_n_r(cpu, 1, &cpu->H);
+		RES_n_r(cpu, 1, &cpu->H);
+		break;
 	case 0x8D:
-		return RES_n_r(cpu, 1, &cpu->L);
+		RES_n_r(cpu, 1, &cpu->L);
+		break;
 	case 0x8E:
-		return RES_n_cHL(cpu, 1);
+		RES_n_cHL(cpu, 1);
+		break;
 	case 0x8F:
-		return RES_n_r(cpu, 1, &cpu->A);
+		RES_n_r(cpu, 1, &cpu->A);
+		break;
 	case 0x90:
-		return RES_n_r(cpu, 2, &cpu->B);
+		RES_n_r(cpu, 2, &cpu->B);
+		break;
 	case 0x91:
-		return RES_n_r(cpu, 2, &cpu->C);
+		RES_n_r(cpu, 2, &cpu->C);
+		break;
 	case 0x92:
-		return RES_n_r(cpu, 2, &cpu->D);
+		RES_n_r(cpu, 2, &cpu->D);
+		break;
 	case 0x93:
-		return RES_n_r(cpu, 2, &cpu->E);
+		RES_n_r(cpu, 2, &cpu->E);
+		break;
 	case 0x94:
-		return RES_n_r(cpu, 2, &cpu->H);
+		RES_n_r(cpu, 2, &cpu->H);
+		break;
 	case 0x95:
-		return RES_n_r(cpu, 2, &cpu->L);
+		RES_n_r(cpu, 2, &cpu->L);
+		break;
 	case 0x96:
-		return RES_n_cHL(cpu, 2);
+		RES_n_cHL(cpu, 2);
+		break;
 	case 0x97:
-		return RES_n_r(cpu, 2, &cpu->A);
+		RES_n_r(cpu, 2, &cpu->A);
+		break;
 	case 0x98:
-		return RES_n_r(cpu, 3, &cpu->B);
+		RES_n_r(cpu, 3, &cpu->B);
+		break;
 	case 0x99:
-		return RES_n_r(cpu, 3, &cpu->C);
+		RES_n_r(cpu, 3, &cpu->C);
+		break;
 	case 0x9A:
-		return RES_n_r(cpu, 3, &cpu->D);
+		RES_n_r(cpu, 3, &cpu->D);
+		break;
 	case 0x9B:
-		return RES_n_r(cpu, 3, &cpu->E);
+		RES_n_r(cpu, 3, &cpu->E);
+		break;
 	case 0x9C:
-		return RES_n_r(cpu, 3, &cpu->H);
+		RES_n_r(cpu, 3, &cpu->H);
+		break;
 	case 0x9D:
-		return RES_n_r(cpu, 3, &cpu->L);
+		RES_n_r(cpu, 3, &cpu->L);
+		break;
 	case 0x9E:
-		return RES_n_cHL(cpu, 3);
+		RES_n_cHL(cpu, 3);
+		break;
 	case 0x9F:
-		return RES_n_r(cpu, 3, &cpu->A);
+		RES_n_r(cpu, 3, &cpu->A);
+		break;
 	case 0xA0:
-		return RES_n_r(cpu, 4, &cpu->B);
+		RES_n_r(cpu, 4, &cpu->B);
+		break;
 	case 0xA1:
-		return RES_n_r(cpu, 4, &cpu->C);
+		RES_n_r(cpu, 4, &cpu->C);
+		break;
 	case 0xA2:
-		return RES_n_r(cpu, 4, &cpu->D);
+		RES_n_r(cpu, 4, &cpu->D);
+		break;
 	case 0xA3:
-		return RES_n_r(cpu, 4, &cpu->E);
+		RES_n_r(cpu, 4, &cpu->E);
+		break;
 	case 0xA4:
-		return RES_n_r(cpu, 4, &cpu->H);
+		RES_n_r(cpu, 4, &cpu->H);
+		break;
 	case 0xA5:
-		return RES_n_r(cpu, 4, &cpu->L);
+		RES_n_r(cpu, 4, &cpu->L);
+		break;
 	case 0xA6:
-		return RES_n_cHL(cpu, 4);
+		RES_n_cHL(cpu, 4);
+		break;
 	case 0xA7:
-		return RES_n_r(cpu, 4, &cpu->A);
+		RES_n_r(cpu, 4, &cpu->A);
+		break;
 	case 0xA8:
-		return RES_n_r(cpu, 5, &cpu->B);
+		RES_n_r(cpu, 5, &cpu->B);
+		break;
 	case 0xA9:
-		return RES_n_r(cpu, 5, &cpu->C);
+		RES_n_r(cpu, 5, &cpu->C);
+		break;
 	case 0xAA:
-		return RES_n_r(cpu, 5, &cpu->D);
+		RES_n_r(cpu, 5, &cpu->D);
+		break;
 	case 0xAB:
-		return RES_n_r(cpu, 5, &cpu->E);
+		RES_n_r(cpu, 5, &cpu->E);
+		break;
 	case 0xAC:
-		return RES_n_r(cpu, 5, &cpu->H);
+		RES_n_r(cpu, 5, &cpu->H);
+		break;
 	case 0xAD:
-		return RES_n_r(cpu, 5, &cpu->L);
+		RES_n_r(cpu, 5, &cpu->L);
+		break;
 	case 0xAE:
-		return RES_n_cHL(cpu, 5);
+		RES_n_cHL(cpu, 5);
+		break;
 	case 0xAF:
-		return RES_n_r(cpu, 5, &cpu->A);
+		RES_n_r(cpu, 5, &cpu->A);
+		break;
 	case 0xB0:
-		return RES_n_r(cpu, 6, &cpu->B);
+		RES_n_r(cpu, 6, &cpu->B);
+		break;
 	case 0xB1:
-		return RES_n_r(cpu, 6, &cpu->C);
+		RES_n_r(cpu, 6, &cpu->C);
+		break;
 	case 0xB2:
-		return RES_n_r(cpu, 6, &cpu->D);
+		RES_n_r(cpu, 6, &cpu->D);
+		break;
 	case 0xB3:
-		return RES_n_r(cpu, 6, &cpu->E);
+		RES_n_r(cpu, 6, &cpu->E);
+		break;
 	case 0xB4:
-		return RES_n_r(cpu, 6, &cpu->H);
+		RES_n_r(cpu, 6, &cpu->H);
+		break;
 	case 0xB5:
-		return RES_n_r(cpu, 6, &cpu->L);
+		RES_n_r(cpu, 6, &cpu->L);
+		break;
 	case 0xB6:
-		return RES_n_cHL(cpu, 6);
+		RES_n_cHL(cpu, 6);
+		break;
 	case 0xB7:
-		return RES_n_r(cpu, 6, &cpu->A);
+		RES_n_r(cpu, 6, &cpu->A);
+		break;
 	case 0xB8:
-		return RES_n_r(cpu, 7, &cpu->B);
+		RES_n_r(cpu, 7, &cpu->B);
+		break;
 	case 0xB9:
-		return RES_n_r(cpu, 7, &cpu->C);
+		RES_n_r(cpu, 7, &cpu->C);
+		break;
 	case 0xBA:
-		return RES_n_r(cpu, 7, &cpu->D);
+		RES_n_r(cpu, 7, &cpu->D);
+		break;
 	case 0xBB:
-		return RES_n_r(cpu, 7, &cpu->E);
+		RES_n_r(cpu, 7, &cpu->E);
+		break;
 	case 0xBC:
-		return RES_n_r(cpu, 7, &cpu->H);
+		RES_n_r(cpu, 7, &cpu->H);
+		break;
 	case 0xBD:
-		return RES_n_r(cpu, 7, &cpu->L);
+		RES_n_r(cpu, 7, &cpu->L);
+		break;
 	case 0xBE:
-		return RES_n_cHL(cpu, 7);
+		RES_n_cHL(cpu, 7);
+		break;
 	case 0xBF:
-		return RES_n_r(cpu, 7, &cpu->A);
+		RES_n_r(cpu, 7, &cpu->A);
+		break;
 	case 0xC0:
-		return SET_n_r(cpu, 0, &cpu->B);
+		SET_n_r(cpu, 0, &cpu->B);
+		break;
 	case 0xC1:
-		return SET_n_r(cpu, 0, &cpu->C);
+		SET_n_r(cpu, 0, &cpu->C);
+		break;
 	case 0xC2:
-		return SET_n_r(cpu, 0, &cpu->D);
+		SET_n_r(cpu, 0, &cpu->D);
+		break;
 	case 0xC3:
-		return SET_n_r(cpu, 0, &cpu->E);
+		SET_n_r(cpu, 0, &cpu->E);
+		break;
 	case 0xC4:
-		return SET_n_r(cpu, 0, &cpu->H);
+		SET_n_r(cpu, 0, &cpu->H);
+		break;
 	case 0xC5:
-		return SET_n_r(cpu, 0, &cpu->L);
+		SET_n_r(cpu, 0, &cpu->L);
+		break;
 	case 0xC6:
-		return SET_n_cHL(cpu, 0);
+		SET_n_cHL(cpu, 0);
+		break;
 	case 0xC7:
-		return SET_n_r(cpu, 0, &cpu->A);
+		SET_n_r(cpu, 0, &cpu->A);
+		break;
 	case 0xC8:
-		return SET_n_r(cpu, 1, &cpu->B);
+		SET_n_r(cpu, 1, &cpu->B);
+		break;
 	case 0xC9:
-		return SET_n_r(cpu, 1, &cpu->C);
+		SET_n_r(cpu, 1, &cpu->C);
+		break;
 	case 0xCA:
-		return SET_n_r(cpu, 1, &cpu->D);
+		SET_n_r(cpu, 1, &cpu->D);
+		break;
 	case 0xCB:
-		return SET_n_r(cpu, 1, &cpu->E);
+		SET_n_r(cpu, 1, &cpu->E);
+		break;
 	case 0xCC:
-		return SET_n_r(cpu, 1, &cpu->H);
+		SET_n_r(cpu, 1, &cpu->H);
+		break;
 	case 0xCD:
-		return SET_n_r(cpu, 1, &cpu->L);
+		SET_n_r(cpu, 1, &cpu->L);
+		break;
 	case 0xCE:
-		return SET_n_cHL(cpu, 1);
+		SET_n_cHL(cpu, 1);
+		break;
 	case 0xCF:
-		return SET_n_r(cpu, 1, &cpu->A);
+		SET_n_r(cpu, 1, &cpu->A);
+		break;
 	case 0xD0:
-		return SET_n_r(cpu, 2, &cpu->B);
+		SET_n_r(cpu, 2, &cpu->B);
+		break;
 	case 0xD1:
-		return SET_n_r(cpu, 2, &cpu->C);
+		SET_n_r(cpu, 2, &cpu->C);
+		break;
 	case 0xD2:
-		return SET_n_r(cpu, 2, &cpu->D);
+		SET_n_r(cpu, 2, &cpu->D);
+		break;
 	case 0xD3:
-		return SET_n_r(cpu, 2, &cpu->E);
+		SET_n_r(cpu, 2, &cpu->E);
+		break;
 	case 0xD4:
-		return SET_n_r(cpu, 2, &cpu->H);
+		SET_n_r(cpu, 2, &cpu->H);
+		break;
 	case 0xD5:
-		return SET_n_r(cpu, 2, &cpu->L);
+		SET_n_r(cpu, 2, &cpu->L);
+		break;
 	case 0xD6:
-		return SET_n_cHL(cpu, 2);
+		SET_n_cHL(cpu, 2);
+		break;
 	case 0xD7:
-		return SET_n_r(cpu, 2, &cpu->A);
+		SET_n_r(cpu, 2, &cpu->A);
+		break;
 	case 0xD8:
-		return SET_n_r(cpu, 3, &cpu->B);
+		SET_n_r(cpu, 3, &cpu->B);
+		break;
 	case 0xD9:
-		return SET_n_r(cpu, 3, &cpu->C);
+		SET_n_r(cpu, 3, &cpu->C);
+		break;
 	case 0xDA:
-		return SET_n_r(cpu, 3, &cpu->D);
+		SET_n_r(cpu, 3, &cpu->D);
+		break;
 	case 0xDB:
-		return SET_n_r(cpu, 3, &cpu->E);
+		SET_n_r(cpu, 3, &cpu->E);
+		break;
 	case 0xDC:
-		return SET_n_r(cpu, 3, &cpu->H);
+		SET_n_r(cpu, 3, &cpu->H);
+		break;
 	case 0xDD:
-		return SET_n_r(cpu, 3, &cpu->L);
+		SET_n_r(cpu, 3, &cpu->L);
+		break;
 	case 0xDE:
-		return SET_n_cHL(cpu, 3);
+		SET_n_cHL(cpu, 3);
+		break;
 	case 0xDF:
-		return SET_n_r(cpu, 3, &cpu->A);
+		SET_n_r(cpu, 3, &cpu->A);
+		break;
 	case 0xE0:
-		return SET_n_r(cpu, 4, &cpu->B);
+		SET_n_r(cpu, 4, &cpu->B);
+		break;
 	case 0xE1:
-		return SET_n_r(cpu, 4, &cpu->C);
+		SET_n_r(cpu, 4, &cpu->C);
+		break;
 	case 0xE2:
-		return SET_n_r(cpu, 4, &cpu->D);
+		SET_n_r(cpu, 4, &cpu->D);
+		break;
 	case 0xE3:
-		return SET_n_r(cpu, 4, &cpu->E);
+		SET_n_r(cpu, 4, &cpu->E);
+		break;
 	case 0xE4:
-		return SET_n_r(cpu, 4, &cpu->H);
+		SET_n_r(cpu, 4, &cpu->H);
+		break;
 	case 0xE5:
-		return SET_n_r(cpu, 4, &cpu->L);
+		SET_n_r(cpu, 4, &cpu->L);
+		break;
 	case 0xE6:
-		return SET_n_cHL(cpu, 4);
+		SET_n_cHL(cpu, 4);
+		break;
 	case 0xE7:
-		return SET_n_r(cpu, 4, &cpu->A);
+		SET_n_r(cpu, 4, &cpu->A);
+		break;
 	case 0xE8:
-		return SET_n_r(cpu, 5, &cpu->B);
+		SET_n_r(cpu, 5, &cpu->B);
+		break;
 	case 0xE9:
-		return SET_n_r(cpu, 5, &cpu->C);
+		SET_n_r(cpu, 5, &cpu->C);
+		break;
 	case 0xEA:
-		return SET_n_r(cpu, 5, &cpu->D);
+		SET_n_r(cpu, 5, &cpu->D);
+		break;
 	case 0xEB:
-		return SET_n_r(cpu, 5, &cpu->E);
+		SET_n_r(cpu, 5, &cpu->E);
+		break;
 	case 0xEC:
-		return SET_n_r(cpu, 5, &cpu->H);
+		SET_n_r(cpu, 5, &cpu->H);
+		break;
 	case 0xED:
-		return SET_n_r(cpu, 5, &cpu->L);
+		SET_n_r(cpu, 5, &cpu->L);
+		break;
 	case 0xEE:
-		return SET_n_cHL(cpu, 5);
+		SET_n_cHL(cpu, 5);
+		break;
 	case 0xEF:
-		return SET_n_r(cpu, 5, &cpu->A);
+		SET_n_r(cpu, 5, &cpu->A);
+		break;
 	case 0xF0:
-		return SET_n_r(cpu, 6, &cpu->B);
+		SET_n_r(cpu, 6, &cpu->B);
+		break;
 	case 0xF1:
-		return SET_n_r(cpu, 6, &cpu->C);
+		SET_n_r(cpu, 6, &cpu->C);
+		break;
 	case 0xF2:
-		return SET_n_r(cpu, 6, &cpu->D);
+		SET_n_r(cpu, 6, &cpu->D);
+		break;
 	case 0xF3:
-		return SET_n_r(cpu, 6, &cpu->E);
+		SET_n_r(cpu, 6, &cpu->E);
+		break;
 	case 0xF4:
-		return SET_n_r(cpu, 6, &cpu->H);
+		SET_n_r(cpu, 6, &cpu->H);
+		break;
 	case 0xF5:
-		return SET_n_r(cpu, 6, &cpu->L);
+		SET_n_r(cpu, 6, &cpu->L);
+		break;
 	case 0xF6:
-		return SET_n_cHL(cpu, 6);
+		SET_n_cHL(cpu, 6);
+		break;
 	case 0xF7:
-		return SET_n_r(cpu, 6, &cpu->A);
+		SET_n_r(cpu, 6, &cpu->A);
+		break;
 	case 0xF8:
-		return SET_n_r(cpu, 7, &cpu->B);
+		SET_n_r(cpu, 7, &cpu->B);
+		break;
 	case 0xF9:
-		return SET_n_r(cpu, 7, &cpu->C);
+		SET_n_r(cpu, 7, &cpu->C);
+		break;
 	case 0xFA:
-		return SET_n_r(cpu, 7, &cpu->D);
+		SET_n_r(cpu, 7, &cpu->D);
+		break;
 	case 0xFB:
-		return SET_n_r(cpu, 7, &cpu->E);
+		SET_n_r(cpu, 7, &cpu->E);
+		break;
 	case 0xFC:
-		return SET_n_r(cpu, 7, &cpu->H);
+		SET_n_r(cpu, 7, &cpu->H);
+		break;
 	case 0xFD:
-		return SET_n_r(cpu, 7, &cpu->L);
+		SET_n_r(cpu, 7, &cpu->L);
+		break;
 	case 0xFE:
-		return SET_n_cHL(cpu, 7);
+		SET_n_cHL(cpu, 7);
+		break;
 	case 0xFF:
-		return SET_n_r(cpu, 7, &cpu->A);
+		SET_n_r(cpu, 7, &cpu->A);
+		break;
 	default:
 		LOG_W("lr35902: unknown opcode (%02x)!\n", opcode);
 		clock_consume(1);

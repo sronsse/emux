@@ -67,7 +67,7 @@ OBJECTS := libretro.o \
 	../main/memory.o \
 	../main/video.o
 
-override CFLAGS += -Wall -pedantic -I../include -I.. $(fpic)
+override CFLAGS += -Wall -I../include -I.. $(fpic)
 
 ifeq ($(platform), qnx)
 override CFLAGS += -Wc,-std=gnu99

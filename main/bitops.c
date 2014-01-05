@@ -20,10 +20,10 @@
 	}
 
 /* Define bitops functions */
-DEFINE_BITOPS_GET(b, uint8_t);
-DEFINE_BITOPS_SET(b, uint8_t);
-DEFINE_BITOPS_GET(w, uint16_t);
-DEFINE_BITOPS_SET(w, uint16_t);
+DEFINE_BITOPS_GET(b, uint8_t)
+DEFINE_BITOPS_SET(b, uint8_t)
+DEFINE_BITOPS_GET(w, uint16_t)
+DEFINE_BITOPS_SET(w, uint16_t)
 
 int bitops_ffs(int i)
 {

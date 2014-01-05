@@ -1,10 +1,10 @@
 #ifndef _LOG_H
 #define _LOG_H
 
-#define LOG_D(fmt, ...) log_cb(LOG_DEBUG, fmt, ##__VA_ARGS__)
-#define LOG_I(fmt, ...) log_cb(LOG_INFO, fmt, ##__VA_ARGS__)
-#define LOG_W(fmt, ...) log_cb(LOG_WARNING, fmt, ##__VA_ARGS__)
-#define LOG_E(fmt, ...) log_cb(LOG_ERROR, fmt, ##__VA_ARGS__)
+#define LOG_D(...) log_cb(LOG_DEBUG, __VA_ARGS__)
+#define LOG_I(...) log_cb(LOG_INFO, __VA_ARGS__)
+#define LOG_W(...) log_cb(LOG_WARNING, __VA_ARGS__)
+#define LOG_E(...) log_cb(LOG_ERROR, __VA_ARGS__)
 
 enum log_level {
 	LOG_DEBUG,

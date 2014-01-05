@@ -1770,313 +1770,467 @@ void rp2a03_tick(clock_data_t *data)
 	/* Execute opcode */
 	switch (opcode) {
 	case 0x00:
-		return BRK(rp2a03);
+		BRK(rp2a03);
+		break;
 	case 0x01:
-		return ORA_IX(rp2a03);
+		ORA_IX(rp2a03);
+		break;
 	case 0x04:
-		return NOP_D(rp2a03);
+		NOP_D(rp2a03);
+		break;
 	case 0x05:
-		return ORA_ZP(rp2a03);
+		ORA_ZP(rp2a03);
+		break;
 	case 0x06:
-		return ASL_ZP(rp2a03);
+		ASL_ZP(rp2a03);
+		break;
 	case 0x08:
-		return PHP(rp2a03);
+		PHP(rp2a03);
+		break;
 	case 0x09:
-		return ORA_I(rp2a03);
+		ORA_I(rp2a03);
+		break;
 	case 0x0A:
-		return ASL_ACC(rp2a03);
+		ASL_ACC(rp2a03);
+		break;
 	case 0x0C:
-		return NOP_A(rp2a03);
+		NOP_A(rp2a03);
+		break;
 	case 0x0D:
-		return ORA_A(rp2a03);
+		ORA_A(rp2a03);
+		break;
 	case 0x0E:
-		return ASL_A(rp2a03);
+		ASL_A(rp2a03);
+		break;
 	case 0x10:
-		return BPL(rp2a03);
+		BPL(rp2a03);
+		break;
 	case 0x11:
-		return ORA_IY(rp2a03);
+		ORA_IY(rp2a03);
+		break;
 	case 0x15:
-		return ORA_ZPX(rp2a03);
+		ORA_ZPX(rp2a03);
+		break;
 	case 0x16:
-		return ASL_ZPX(rp2a03);
+		ASL_ZPX(rp2a03);
+		break;
 	case 0x18:
-		return CLC(rp2a03);
+		CLC(rp2a03);
+		break;
 	case 0x19:
-		return ORA_AY(rp2a03);
+		ORA_AY(rp2a03);
+		break;
 	case 0x1D:
-		return ORA_AX(rp2a03);
+		ORA_AX(rp2a03);
+		break;
 	case 0x1E:
-		return ASL_AX(rp2a03);
+		ASL_AX(rp2a03);
+		break;
 	case 0x20:
-		return JSR(rp2a03);
+		JSR(rp2a03);
+		break;
 	case 0x21:
-		return AND_IX(rp2a03);
+		AND_IX(rp2a03);
+		break;
 	case 0x24:
-		return BIT_ZP(rp2a03);
+		BIT_ZP(rp2a03);
+		break;
 	case 0x25:
-		return AND_ZP(rp2a03);
+		AND_ZP(rp2a03);
+		break;
 	case 0x26:
-		return ROL_ZP(rp2a03);
+		ROL_ZP(rp2a03);
+		break;
 	case 0x28:
-		return PLP(rp2a03);
+		PLP(rp2a03);
+		break;
 	case 0x29:
-		return AND_I(rp2a03);
+		AND_I(rp2a03);
+		break;
 	case 0x2A:
-		return ROL_ACC(rp2a03);
+		ROL_ACC(rp2a03);
+		break;
 	case 0x2C:
-		return BIT_A(rp2a03);
+		BIT_A(rp2a03);
+		break;
 	case 0x2D:
-		return AND_A(rp2a03);
+		AND_A(rp2a03);
+		break;
 	case 0x2E:
-		return ROL_A(rp2a03);
+		ROL_A(rp2a03);
+		break;
 	case 0x30:
-		return BMI(rp2a03);
+		BMI(rp2a03);
+		break;
 	case 0x31:
-		return AND_IY(rp2a03);
+		AND_IY(rp2a03);
+		break;
 	case 0x35:
-		return AND_ZPX(rp2a03);
+		AND_ZPX(rp2a03);
+		break;
 	case 0x36:
-		return ROL_ZPX(rp2a03);
+		ROL_ZPX(rp2a03);
+		break;
 	case 0x38:
-		return SEC(rp2a03);
+		SEC(rp2a03);
+		break;
 	case 0x39:
-		return AND_AY(rp2a03);
+		AND_AY(rp2a03);
+		break;
 	case 0x3D:
-		return AND_AX(rp2a03);
+		AND_AX(rp2a03);
+		break;
 	case 0x3E:
-		return ROL_AX(rp2a03);
+		ROL_AX(rp2a03);
+		break;
 	case 0x40:
-		return RTI(rp2a03);
+		RTI(rp2a03);
+		break;
 	case 0x41:
-		return EOR_IX(rp2a03);
+		EOR_IX(rp2a03);
+		break;
 	case 0x44:
-		return NOP_D(rp2a03);
+		NOP_D(rp2a03);
+		break;
 	case 0x45:
-		return EOR_ZP(rp2a03);
+		EOR_ZP(rp2a03);
+		break;
 	case 0x46:
-		return LSR_ZP(rp2a03);
+		LSR_ZP(rp2a03);
+		break;
 	case 0x48:
-		return PHA(rp2a03);
+		PHA(rp2a03);
+		break;
 	case 0x49:
-		return EOR_I(rp2a03);
+		EOR_I(rp2a03);
+		break;
 	case 0x4A:
-		return LSR_ACC(rp2a03);
+		LSR_ACC(rp2a03);
+		break;
 	case 0x4C:
-		return JMP_A(rp2a03);
+		JMP_A(rp2a03);
+		break;
 	case 0x4D:
-		return EOR_A(rp2a03);
+		EOR_A(rp2a03);
+		break;
 	case 0x4E:
-		return LSR_A(rp2a03);
+		LSR_A(rp2a03);
+		break;
 	case 0x50:
-		return BVC(rp2a03);
+		BVC(rp2a03);
+		break;
 	case 0x51:
-		return EOR_IY(rp2a03);
+		EOR_IY(rp2a03);
+		break;
 	case 0x55:
-		return EOR_ZPX(rp2a03);
+		EOR_ZPX(rp2a03);
+		break;
 	case 0x56:
-		return LSR_ZPX(rp2a03);
+		LSR_ZPX(rp2a03);
+		break;
 	case 0x59:
-		return EOR_AY(rp2a03);
+		EOR_AY(rp2a03);
+		break;
 	case 0x5D:
-		return EOR_AX(rp2a03);
+		EOR_AX(rp2a03);
+		break;
 	case 0x5E:
-		return LSR_AX(rp2a03);
+		LSR_AX(rp2a03);
+		break;
 	case 0x60:
-		return RTS(rp2a03);
+		RTS(rp2a03);
+		break;
 	case 0x61:
-		return ADC_IX(rp2a03);
+		ADC_IX(rp2a03);
+		break;
 	case 0x64:
-		return NOP_D(rp2a03);
+		NOP_D(rp2a03);
+		break;
 	case 0x65:
-		return ADC_ZP(rp2a03);
+		ADC_ZP(rp2a03);
+		break;
 	case 0x66:
-		return ROR_ZP(rp2a03);
+		ROR_ZP(rp2a03);
+		break;
 	case 0x68:
-		return PLA(rp2a03);
+		PLA(rp2a03);
+		break;
 	case 0x69:
-		return ADC_I(rp2a03);
+		ADC_I(rp2a03);
+		break;
 	case 0x6A:
-		return ROR_ACC(rp2a03);
+		ROR_ACC(rp2a03);
+		break;
 	case 0x6C:
-		return JMP_I(rp2a03);
+		JMP_I(rp2a03);
+		break;
 	case 0x6D:
-		return ADC_A(rp2a03);
+		ADC_A(rp2a03);
+		break;
 	case 0x6E:
-		return ROR_A(rp2a03);
+		ROR_A(rp2a03);
+		break;
 	case 0x70:
-		return BVS(rp2a03);
+		BVS(rp2a03);
+		break;
 	case 0x71:
-		return ADC_IY(rp2a03);
+		ADC_IY(rp2a03);
+		break;
 	case 0x75:
-		return ADC_ZPX(rp2a03);
+		ADC_ZPX(rp2a03);
+		break;
 	case 0x76:
-		return ROR_ZPX(rp2a03);
+		ROR_ZPX(rp2a03);
+		break;
 	case 0x78:
-		return SEI(rp2a03);
+		SEI(rp2a03);
+		break;
 	case 0x79:
-		return ADC_AY(rp2a03);
+		ADC_AY(rp2a03);
+		break;
 	case 0x7D:
-		return ADC_AX(rp2a03);
+		ADC_AX(rp2a03);
+		break;
 	case 0x7E:
-		return ROR_AX(rp2a03);
+		ROR_AX(rp2a03);
+		break;
 	case 0x81:
-		return STA_IX(rp2a03);
+		STA_IX(rp2a03);
+		break;
 	case 0x84:
-		return STY_ZP(rp2a03);
+		STY_ZP(rp2a03);
+		break;
 	case 0x85:
-		return STA_ZP(rp2a03);
+		STA_ZP(rp2a03);
+		break;
 	case 0x86:
-		return STX_ZP(rp2a03);
+		STX_ZP(rp2a03);
+		break;
 	case 0x88:
-		return DEY(rp2a03);
+		DEY(rp2a03);
+		break;
 	case 0x8A:
-		return TXA(rp2a03);
+		TXA(rp2a03);
+		break;
 	case 0x8C:
-		return STY_A(rp2a03);
+		STY_A(rp2a03);
+		break;
 	case 0x8D:
-		return STA_A(rp2a03);
+		STA_A(rp2a03);
+		break;
 	case 0x8E:
-		return STX_A(rp2a03);
+		STX_A(rp2a03);
+		break;
 	case 0x90:
-		return BCC(rp2a03);
+		BCC(rp2a03);
+		break;
 	case 0x91:
-		return STA_IY(rp2a03);
+		STA_IY(rp2a03);
+		break;
 	case 0x94:
-		return STY_ZPX(rp2a03);
+		STY_ZPX(rp2a03);
+		break;
 	case 0x95:
-		return STA_ZPX(rp2a03);
+		STA_ZPX(rp2a03);
+		break;
 	case 0x96:
-		return STX_ZPY(rp2a03);
+		STX_ZPY(rp2a03);
+		break;
 	case 0x98:
-		return TYA(rp2a03);
+		TYA(rp2a03);
+		break;
 	case 0x99:
-		return STA_AY(rp2a03);
+		STA_AY(rp2a03);
+		break;
 	case 0x9A:
-		return TXS(rp2a03);
+		TXS(rp2a03);
+		break;
 	case 0x9D:
-		return STA_AX(rp2a03);
+		STA_AX(rp2a03);
+		break;
 	case 0xA0:
-		return LDY_I(rp2a03);
+		LDY_I(rp2a03);
+		break;
 	case 0xA1:
-		return LDA_IX(rp2a03);
+		LDA_IX(rp2a03);
+		break;
 	case 0xA2:
-		return LDX_I(rp2a03);
+		LDX_I(rp2a03);
+		break;
 	case 0xA4:
-		return LDY_ZP(rp2a03);
+		LDY_ZP(rp2a03);
+		break;
 	case 0xA5:
-		return LDA_ZP(rp2a03);
+		LDA_ZP(rp2a03);
+		break;
 	case 0xA6:
-		return LDX_ZP(rp2a03);
+		LDX_ZP(rp2a03);
+		break;
 	case 0xA8:
-		return TAY(rp2a03);
+		TAY(rp2a03);
+		break;
 	case 0xA9:
-		return LDA_I(rp2a03);
+		LDA_I(rp2a03);
+		break;
 	case 0xAC:
-		return LDY_A(rp2a03);
+		LDY_A(rp2a03);
+		break;
 	case 0xAD:
-		return LDA_A(rp2a03);
+		LDA_A(rp2a03);
+		break;
 	case 0xAE:
-		return LDX_A(rp2a03);
+		LDX_A(rp2a03);
+		break;
 	case 0xAA:
-		return TAX(rp2a03);
+		TAX(rp2a03);
+		break;
 	case 0xB0:
-		return BCS(rp2a03);
+		BCS(rp2a03);
+		break;
 	case 0xB1:
-		return LDA_IY(rp2a03);
+		LDA_IY(rp2a03);
+		break;
 	case 0xB4:
-		return LDY_ZPX(rp2a03);
+		LDY_ZPX(rp2a03);
+		break;
 	case 0xB5:
-		return LDA_ZPX(rp2a03);
+		LDA_ZPX(rp2a03);
+		break;
 	case 0xB6:
-		return LDX_ZPY(rp2a03);
+		LDX_ZPY(rp2a03);
+		break;
 	case 0xB8:
-		return CLV(rp2a03);
+		CLV(rp2a03);
+		break;
 	case 0xB9:
-		return LDA_AY(rp2a03);
+		LDA_AY(rp2a03);
+		break;
 	case 0xBA:
-		return TSX(rp2a03);
+		TSX(rp2a03);
+		break;
 	case 0xBC:
-		return LDY_AX(rp2a03);
+		LDY_AX(rp2a03);
+		break;
 	case 0xBD:
-		return LDA_AX(rp2a03);
+		LDA_AX(rp2a03);
+		break;
 	case 0xBE:
-		return LDX_AY(rp2a03);
+		LDX_AY(rp2a03);
+		break;
 	case 0xC0:
-		return CPY_I(rp2a03);
+		CPY_I(rp2a03);
+		break;
 	case 0xC1:
-		return CMP_IX(rp2a03);
+		CMP_IX(rp2a03);
+		break;
 	case 0xC4:
-		return CPY_ZP(rp2a03);
+		CPY_ZP(rp2a03);
+		break;
 	case 0xC5:
-		return CMP_ZP(rp2a03);
+		CMP_ZP(rp2a03);
+		break;
 	case 0xC6:
-		return DEC_ZP(rp2a03);
+		DEC_ZP(rp2a03);
+		break;
 	case 0xC8:
-		return INY(rp2a03);
+		INY(rp2a03);
+		break;
 	case 0xC9:
-		return CMP_I(rp2a03);
+		CMP_I(rp2a03);
+		break;
 	case 0xCA:
-		return DEX(rp2a03);
+		DEX(rp2a03);
+		break;
 	case 0xCC:
-		return CPY_A(rp2a03);
+		CPY_A(rp2a03);
+		break;
 	case 0xCD:
-		return CMP_A(rp2a03);
+		CMP_A(rp2a03);
+		break;
 	case 0xCE:
-		return DEC_A(rp2a03);
+		DEC_A(rp2a03);
+		break;
 	case 0xD0:
-		return BNE(rp2a03);
+		BNE(rp2a03);
+		break;
 	case 0xD1:
-		return CMP_IY(rp2a03);
+		CMP_IY(rp2a03);
+		break;
 	case 0xD5:
-		return CMP_ZPX(rp2a03);
+		CMP_ZPX(rp2a03);
+		break;
 	case 0xD6:
-		return DEC_ZPX(rp2a03);
+		DEC_ZPX(rp2a03);
+		break;
 	case 0xD8:
-		return CLD(rp2a03);
+		CLD(rp2a03);
+		break;
 	case 0xD9:
-		return CMP_AY(rp2a03);
+		CMP_AY(rp2a03);
+		break;
 	case 0xDD:
-		return CMP_AX(rp2a03);
+		CMP_AX(rp2a03);
+		break;
 	case 0xDE:
-		return DEC_AX(rp2a03);
+		DEC_AX(rp2a03);
+		break;
 	case 0xE0:
-		return CPX_I(rp2a03);
+		CPX_I(rp2a03);
+		break;
 	case 0xE1:
-		return SBC_IX(rp2a03);
+		SBC_IX(rp2a03);
+		break;
 	case 0xE4:
-		return CPX_ZP(rp2a03);
+		CPX_ZP(rp2a03);
+		break;
 	case 0xE5:
-		return SBC_ZP(rp2a03);
+		SBC_ZP(rp2a03);
+		break;
 	case 0xE6:
-		return INC_ZP(rp2a03);
+		INC_ZP(rp2a03);
+		break;
 	case 0xE8:
-		return INX(rp2a03);
+		INX(rp2a03);
+		break;
 	case 0xE9:
-		return SBC_I(rp2a03);
+		SBC_I(rp2a03);
+		break;
 	case 0xEA:
-		return NOP(rp2a03);
+		NOP(rp2a03);
+		break;
 	case 0xEC:
-		return CPX_A(rp2a03);
+		CPX_A(rp2a03);
+		break;
 	case 0xED:
-		return SBC_A(rp2a03);
+		SBC_A(rp2a03);
+		break;
 	case 0xEE:
-		return INC_A(rp2a03);
+		INC_A(rp2a03);
+		break;
 	case 0xF0:
-		return BEQ(rp2a03);
+		BEQ(rp2a03);
+		break;
 	case 0xF1:
-		return SBC_IY(rp2a03);
+		SBC_IY(rp2a03);
+		break;
 	case 0xF5:
-		return SBC_ZPX(rp2a03);
+		SBC_ZPX(rp2a03);
+		break;
 	case 0xF6:
-		return INC_ZPX(rp2a03);
+		INC_ZPX(rp2a03);
+		break;
 	case 0xF8:
-		return SED(rp2a03);
+		SED(rp2a03);
+		break;
 	case 0xF9:
-		return SBC_AY(rp2a03);
+		SBC_AY(rp2a03);
+		break;
 	case 0xFD:
-		return SBC_AX(rp2a03);
+		SBC_AX(rp2a03);
+		break;
 	case 0xFE:
-		return INC_AX(rp2a03);
+		INC_AX(rp2a03);
+		break;
 	default:
 		LOG_W("rp2a03: unknown opcode (%02x)!\n", opcode);
 		clock_consume(1);

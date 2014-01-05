@@ -372,9 +372,11 @@ void opcode_0(struct chip8 *chip8)
 {
 	switch (chip8->opcode.kk) {
 	case 0xE0:
-		return CLS(chip8);
+		CLS(chip8);
+		break;
 	case 0xEE:
-		return RET(chip8);
+		RET(chip8);
+		break;
 	default:
 		LOG_W("chip8: unknown opcode (%04x)!\n", chip8->opcode.raw);
 		break;
@@ -385,23 +387,32 @@ void opcode_8(struct chip8 *chip8)
 {
 	switch (chip8->opcode.n) {
 	case 0x00:
-		return LD_Vx_Vy(chip8);
+		LD_Vx_Vy(chip8);
+		break;
 	case 0x01:
-		return OR_Vx_Vy(chip8);
+		OR_Vx_Vy(chip8);
+		break;
 	case 0x02:
-		return AND_Vx_Vy(chip8);
+		AND_Vx_Vy(chip8);
+		break;
 	case 0x03:
-		return XOR_Vx_Vy(chip8);
+		XOR_Vx_Vy(chip8);
+		break;
 	case 0x04:
-		return ADD_Vx_Vy(chip8);
+		ADD_Vx_Vy(chip8);
+		break;
 	case 0x05:
-		return SUB_Vx_Vy(chip8);
+		SUB_Vx_Vy(chip8);
+		break;
 	case 0x06:
-		return SHR_Vx(chip8);
+		SHR_Vx(chip8);
+		break;
 	case 0x07:
-		return SUBN_Vx_Vy(chip8);
+		SUBN_Vx_Vy(chip8);
+		break;
 	case 0x0E:
-		return SHL_Vx(chip8);
+		SHL_Vx(chip8);
+		break;
 	default:
 		LOG_W("chip8: unknown opcode (%04x)!\n", chip8->opcode.raw);
 		break;
@@ -412,9 +423,11 @@ void opcode_E(struct chip8 *chip8)
 {
 	switch (chip8->opcode.kk) {
 	case 0x9E:
-		return SKP_Vx(chip8);
+		SKP_Vx(chip8);
+		break;
 	case 0xA1:
-		return SKNP_Vx(chip8);
+		SKNP_Vx(chip8);
+		break;
 	default:
 		LOG_W("chip8: unknown opcode (%04x)!\n", chip8->opcode.raw);
 		break;
@@ -425,23 +438,32 @@ void opcode_F(struct chip8 *chip8)
 {
 	switch (chip8->opcode.kk) {
 	case 0x07:
-		return LD_Vx_DT(chip8);
+		LD_Vx_DT(chip8);
+		break;
 	case 0x0A:
-		return LD_Vx_K(chip8);
+		LD_Vx_K(chip8);
+		break;
 	case 0x15:
-		return LD_DT_Vx(chip8);
+		LD_DT_Vx(chip8);
+		break;
 	case 0x18:
-		return LD_ST_Vx(chip8);
+		LD_ST_Vx(chip8);
+		break;
 	case 0x1E:
-		return ADD_I_Vx(chip8);
+		ADD_I_Vx(chip8);
+		break;
 	case 0x29:
-		return LD_F_Vx(chip8);
+		LD_F_Vx(chip8);
+		break;
 	case 0x33:
-		return LD_B_Vx(chip8);
+		LD_B_Vx(chip8);
+		break;
 	case 0x55:
-		return LD_cI_Vx(chip8);
+		LD_cI_Vx(chip8);
+		break;
 	case 0x65:
-		return LD_Vx_cI(chip8);
+		LD_Vx_cI(chip8);
+		break;
 	default:
 		LOG_W("chip8: unknown opcode (%04x)!\n", chip8->opcode.raw);
 		break;

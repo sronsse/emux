@@ -15,7 +15,7 @@ static void machine_input_event(int id,	struct input_state *state,
 	input_data_t *data);
 
 static char *machine_name;
-PARAM(machine_name, string, "machine", NULL, "Selects machine to emulate");
+PARAM(machine_name, string, "machine", NULL, "Selects machine to emulate")
 
 struct list_link *machines;
 static struct machine *machine;
