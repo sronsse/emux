@@ -53,7 +53,7 @@ struct input_frontend {
 	void (*deinit)();
 };
 
-bool input_init(char *name, video_window_t *window);
+bool input_init(char *name);
 bool input_load(char *name, struct input_event *events, int num_events);
 void input_update();
 void input_report(struct input_event *event, struct input_state *state);

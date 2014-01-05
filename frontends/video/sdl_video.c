@@ -4,7 +4,8 @@
 #include <log.h>
 #include <video.h>
 
-static video_window_t *sdl_init(int width, int height, int scale);
+static bool sdl_init(int width, int height, int scale);
+static video_window_t *sdl_get_window();
 static void sdl_update();
 static void sdl_lock();
 static void sdl_unlock();
@@ -15,14 +16,14 @@ static void sdl_deinit();
 static SDL_Surface *screen;
 static int scale_factor;
 
-video_window_t *sdl_init(int width, int height, int scale)
+bool sdl_init(int width, int height, int scale)
 {
 	Uint32 flags = SDL_SWSURFACE;
 
 	/* Initialize video sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
 		LOG_E("Error initializing SDL video: %s\n", SDL_GetError());
-		return NULL;
+		return false;
 	}
 
 	/* Set window position and title */
@@ -34,12 +35,17 @@ video_window_t *sdl_init(int width, int height, int scale)
 	if (!screen) {
 		LOG_E("Error creating video surface: %s\n", SDL_GetError());
 		SDL_VideoQuit();
-		return NULL;
+		return false;
 	}
 
 	/* Save scaling factor */
 	scale_factor = scale;
 
+	return true;
+}
+
+video_window_t *sdl_get_window()
+{
 	return screen;
 }
 
@@ -166,6 +172,7 @@ void sdl_deinit()
 VIDEO_START(sdl)
 	.input = "sdl",
 	.init = sdl_init,
+	.get_window = sdl_get_window,
 	.update = sdl_update,
 	.lock = sdl_lock,
 	.unlock = sdl_unlock,

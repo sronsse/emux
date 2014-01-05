@@ -24,10 +24,11 @@ static struct list_link *listeners;
 static node_t *config_doc;
 #endif
 
-bool input_init(char *name, video_window_t *window)
+bool input_init(char *name)
 {
 	struct list_link *link = input_frontends;
 	struct input_frontend *fe;
+	video_window_t *window;
 
 	if (frontend) {
 		LOG_E("Input frontend already initialized!\n");
@@ -38,6 +39,9 @@ bool input_init(char *name, video_window_t *window)
 	/* Load input configuration file */
 	config_doc = roxml_load_doc(DOC_FILENAME);
 #endif
+
+	/* Get window from video frontend */
+	window = video_get_window();
 
 	/* Find input frontend and initialize it */
 	while ((fe = list_get_next(&link)))

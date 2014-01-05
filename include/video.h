@@ -30,7 +30,8 @@ struct color {
 struct video_frontend {
 	char *name;
 	char *input;
-	video_window_t *(*init)(int width, int height, int scale);
+	bool (*init)(int width, int height, int scale);
+	video_window_t *(*get_window)();
 	void (*update)();
 	void (*lock)();
 	void (*unlock)();
@@ -40,6 +41,7 @@ struct video_frontend {
 };
 
 bool video_init(int width, int height);
+video_window_t *video_get_window();
 void video_update();
 void video_lock();
 void video_unlock();

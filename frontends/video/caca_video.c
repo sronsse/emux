@@ -23,7 +23,8 @@ struct caca_surface {
 	caca_dither_t *dither;
 };
 
-static video_window_t *caca_init(int width, int height, int scale);
+static bool caca_init(int width, int height, int scale);
+static video_window_t *caca_get_window();
 static void caca_update();
 static struct color caca_get_pixel(int x, int y);
 static void caca_set_pixel(int x, int y, struct color color);
@@ -32,7 +33,7 @@ static void caca_deinit();
 static caca_display_t *dp;
 static struct caca_surface *surface;
 
-video_window_t *caca_init(int width, int height, int scale)
+bool caca_init(int width, int height, int scale)
 {
 	caca_canvas_t *cv;
 	int pitch;
@@ -42,7 +43,7 @@ video_window_t *caca_init(int width, int height, int scale)
 	dp = caca_create_display(cv);
 	if (!dp) {
 		LOG_E("Could not create caca display!\n");
-		return NULL;
+		return false;
 	}
 
 	/* Set window title */
@@ -63,6 +64,11 @@ video_window_t *caca_init(int width, int height, int scale)
 	surface->dither = caca_create_dither(BPP, width, height, pitch, R_MASK,
 		G_MASK, B_MASK, A_MASK);
 
+	return true;
+}
+
+video_window_t *caca_get_window()
+{
 	return dp;
 }
 
@@ -105,6 +111,7 @@ void caca_deinit()
 VIDEO_START(caca)
 	.input = "caca",
 	.init = caca_init,
+	.get_window = caca_get_window,
 	.update = caca_update,
 	.get_pixel = caca_get_pixel,
 	.set_pixel = caca_set_pixel,

@@ -20,7 +20,6 @@ bool video_init(int width, int height)
 	struct list_link *link = video_frontends;
 	struct video_frontend *fe;
 	int scale = 1;
-	video_window_t *window;
 
 	if (frontend) {
 		LOG_E("Video frontend already initialized!\n");
@@ -46,14 +45,13 @@ bool video_init(int width, int height)
 
 		if (fe->init) {
 			/* Initialize video frontend */
-			window = fe->init(width, height, scale);
-			if (!window)
+			if (!fe->init(width, height, scale))
 				return false;
 
 			frontend = fe;
 
 			/* Initialize input frontend */
-			return input_init(fe->input, window);
+			return input_init(fe->input);
 		}
 		return false;
 	}
@@ -61,6 +59,13 @@ bool video_init(int width, int height)
 	/* Warn as video frontend was not found */
 	LOG_E("Video frontend \"%s\" not recognized!\n", video_fe_name);
 	return false;
+}
+
+video_window_t *video_get_window()
+{
+	if (frontend->get_window)
+		return frontend->get_window();
+	return NULL;
 }
 
 void video_update()

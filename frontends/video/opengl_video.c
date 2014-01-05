@@ -35,7 +35,8 @@ struct vertex {
 	GLfloat uv[NUM_TEX_COORDS];
 };
 
-static video_window_t *gl_init(int width, int height, int scale);
+static bool gl_init(int width, int height, int scale);
+static video_window_t *gl_get_window();
 static void gl_deinit();
 static void gl_update();
 static struct color gl_get_pixel(int x, int y);
@@ -162,14 +163,14 @@ void init_pixels()
 		gl.pixels);
 }
 
-video_window_t *gl_init(int width, int height, int scale)
+bool gl_init(int width, int height, int scale)
 {
 	Uint32 flags = SDL_OPENGL;
 
 	/* Initialize video sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
 		LOG_E("Error initializing SDL video: %s\n", SDL_GetError());
-		return NULL;
+		return false;
 	}
 
 	/* Set window position and title */
@@ -181,7 +182,7 @@ video_window_t *gl_init(int width, int height, int scale)
 	if (!gl.screen) {
 		LOG_E("Error creating video surface: %s\n", SDL_GetError());
 		SDL_VideoQuit();
-		return NULL;
+		return false;
 	}
 
 	/* Save parameters */
@@ -192,13 +193,18 @@ video_window_t *gl_init(int width, int height, int scale)
 	/* Initialize shaders and return in case of failure */
 	if (!init_shaders()) {
 		LOG_E("Error initializing shaders!\n");
-		return NULL;
+		return false;
 	}
 
 	/* Initialize buffers and pixels */
 	init_buffers();
 	init_pixels();
 
+	return true;
+}
+
+video_window_t *gl_get_window()
+{
 	return gl.screen;
 }
 
@@ -280,6 +286,7 @@ void gl_deinit()
 VIDEO_START(opengl)
 	.input = "sdl",
 	.init = gl_init,
+	.get_window = gl_get_window,
 	.update = gl_update,
 	.get_pixel = gl_get_pixel,
 	.set_pixel = gl_set_pixel,
