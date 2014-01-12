@@ -55,16 +55,33 @@ else
 endif
 
 OBJECTS := libretro.o \
+	../controllers/dma/nes_sprite.o \
+	../controllers/input/nes_controller.o \
+	../controllers/mapper/gb_mapper.o \
+	../controllers/mapper/nes_mapper.o \
+	../controllers/mapper/nrom.o \
+	../controllers/mapper/rom.o \
+	../controllers/video/lcdc.o \
+	../controllers/video/ppu.o \
+	../cpu/chip8_cpu.o \
+	../cpu/lr35902.o \
+	../cpu/rp2a03.o \
+	../mach/chip8.o \
+	../mach/gb.o \
+	../mach/nes.o \
 	../main/audio.o \
+	../main/bitops.o \
 	../main/clock.o \
 	../main/cmdline.o \
 	../main/controller.o \
 	../main/cpu.o \
+	../main/env.o \
 	../main/input.o \
 	../main/log.o \
 	../main/list.o \
 	../main/machine.o \
 	../main/memory.o \
+	../main/resource.o \
 	../main/video.o
 
 override CFLAGS += -Wall -I../include -I.. $(fpic)
@@ -78,7 +95,7 @@ endif
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(fpic) $(SHARED) $(INCLUDES) -o $@ $(OBJECTS) -lm
+	$(CC) $(fpic) $(SHARED) $(INCLUDES) -o $@ $(OBJECTS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
