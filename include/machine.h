@@ -34,6 +34,7 @@ struct machine {
 bool machine_init();
 void machine_reset();
 void machine_run();
+void machine_step();
 void machine_deinit();
 
 extern struct list_link *machines;

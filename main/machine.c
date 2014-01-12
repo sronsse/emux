@@ -98,10 +98,16 @@ void machine_run()
 
 	/* Run until user quits */
 	while (machine->running)
-		clock_tick_all();
+		clock_tick_all(true);
 
 	/* Unregister quit events */
 	input_unregister(&input_config);
+}
+
+void machine_step()
+{
+	/* Step one machine cycle with no delay handling */
+	clock_tick_all(false);
 }
 
 void machine_deinit()
