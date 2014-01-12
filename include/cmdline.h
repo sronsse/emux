@@ -31,6 +31,7 @@ struct param {
 
 void cmdline_register_param(struct param *param);
 void cmdline_unregister_param(struct param *param);
+bool cmdline_set_param(char *name, char *module, char *value);
 void cmdline_init(int argc, char *argv[]);
 void cmdline_print_usage(bool error);
 void cmdline_print_module_options(char *module);

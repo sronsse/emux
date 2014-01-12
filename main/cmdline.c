@@ -101,6 +101,68 @@ void cmdline_unregister_param(struct param *param)
 	params = realloc(params, --num_params * sizeof(struct param *));
 }
 
+bool cmdline_set_param(char *name, char *module, char *value)
+{
+	struct param *p = NULL;
+	int i;
+	bool *bool_p;
+	char **string_p;
+	int *int_p;
+	char *end;
+
+	/* Find requested parameter */
+	for (i = 0; i < num_params; i++) {
+		p = params[i];
+
+		/* Skip parameter if module presence does not match */
+		if (!module != !p->module)
+			continue;
+
+		/* Skip parameter if name presence does not match */
+		if (!name != !p->name)
+			continue;
+
+		/* Skip if module name does not match */
+		if (module && strcmp(module, p->module))
+			continue;
+
+		/* Stop if parameter is found */
+		if ((!name && !p->name) || !strcmp(name, p->name))
+			break;
+	}
+
+	/* Leave if parameter was not found */
+	if (i == num_params)
+		return false;
+
+	/* Set bool if needed */
+	if (!strcmp(p->type, "bool")) {
+		bool_p = p->address;
+		*bool_p = !strcmp(value, "true");
+		return true;
+	}
+
+	/* Set int if needed */
+	if (!strcmp(p->type, "int")) {
+		i = strtol(value, &end, 10);
+		if (*end)
+			return false;
+		int_p = p->address;
+		*int_p = i;
+		return true;
+	}
+
+	/* Set string if needed */
+	if (!strcmp(p->type, "string")) {
+		string_p = p->address;
+		*string_p = value;
+		return true;
+	}
+
+	/* Parameter could not be converted */
+	return false;
+}
+
 void cmdline_init(int argc, char *argv[])
 {
 	struct param *p;
