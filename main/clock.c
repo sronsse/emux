@@ -76,9 +76,10 @@ void clock_reset()
 	gettimeofday(&start_time, NULL);
 }
 
-void clock_tick_all()
+void clock_tick_all(bool handle_delay)
 {
 	unsigned int real_delay;
+	unsigned int d;
 	int num_remaining_cycles;
 	struct timeval current_time;
 	int i;
@@ -113,18 +114,24 @@ void clock_tick_all()
 	for (i = 0; i < num_clocks; i++)
 		clocks[i]->num_remaining_cycles -= num_remaining_cycles;
 
-	/* Get actual delay (in ns) */
-	gettimeofday(&current_time, NULL);
-	real_delay = NS(current_time.tv_sec - start_time.tv_sec) +
-		(current_time.tv_usec - start_time.tv_usec) * 1000;
+	/* Only sleep if delay handling is needed */
+	if (handle_delay) {
+		/* Get actual delay (in ns) */
+		gettimeofday(&current_time, NULL);
+		real_delay = NS(current_time.tv_sec - start_time.tv_sec) +
+			(current_time.tv_usec - start_time.tv_usec) * 1000;
 
-	/* Sleep to match machine delay */
-	if (current_cycle * mach_delay > real_delay)
-		usleep((current_cycle * mach_delay - real_delay) / 1000);
+		/* Sleep to match machine delay if needed */
+		if (current_cycle * mach_delay > real_delay) {
+			d = (current_cycle * mach_delay - real_delay) / 1000;
+			usleep(d);
+		}
+	}
 
 	/* Reset current cycle and start time if needed */
 	if (current_cycle >= machine_clock_rate) {
-		gettimeofday(&start_time, NULL);
+		if (handle_delay)
+			gettimeofday(&start_time, NULL);
 		current_cycle -= machine_clock_rate;
 	}
 }
