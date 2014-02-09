@@ -76,6 +76,7 @@ OBJECTS := libretro.o \
 	../main/controller.o \
 	../main/cpu.o \
 	../main/env.o \
+	../main/file.o \
 	../main/input.o \
 	../main/log.o \
 	../main/list.o \

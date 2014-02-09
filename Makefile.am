@@ -13,6 +13,7 @@ emux_SOURCES = include/audio.h \
 	include/controller.h \
 	include/cpu.h \
 	include/env.h \
+	include/file.h \
 	include/input.h \
 	include/list.h \
 	include/log.h \
@@ -28,6 +29,7 @@ emux_SOURCES = include/audio.h \
 	main/controller.c \
 	main/cpu.c \
 	main/env.c \
+	main/file.c \
 	main/input.c \
 	main/list.c \
 	main/log.c \
