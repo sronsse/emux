@@ -24,8 +24,8 @@ bool audio_init(struct audio_specs *specs)
 
 	/* Validate audio option */
 	if (!audio_fe_name) {
-		LOG_E("No audio frontend selected!\n");
-		return false;
+		LOG_W("No audio frontend selected!\n");
+		return true;
 	}
 
 	/* Find frontend and initialize it */
@@ -45,18 +45,21 @@ bool audio_init(struct audio_specs *specs)
 
 void audio_start()
 {
-	if (frontend->start)
+	if (frontend && frontend->start)
 		frontend->start();
 }
 
 void audio_stop()
 {
-	if (frontend->stop)
+	if (frontend && frontend->stop)
 		frontend->stop();
 }
 
 void audio_deinit()
 {
+	if (!frontend)
+		return;
+
 	if (frontend->deinit)
 		frontend->deinit();
 	frontend = NULL;

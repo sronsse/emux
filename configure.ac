@@ -26,21 +26,6 @@ kconfig-mconf $EMUX_SRC_DIR/Kconfig <& AS_ORIGINAL_STDIN_FD
 # Set all CONFIG_xxx variables from .config file if found, otherwise exit
 test -f $PWD/.config && source $PWD/.config || exit
 
-# Make sure at least one audio frontend is selected
-if test "$CONFIG_AUDIO" != "y"; then
-	AC_MSG_ERROR([please select at least one audio frontend.])
-fi
-
-# Make sure at least one input frontend is selected
-if test "$CONFIG_INPUT" != "y"; then
-	AC_MSG_ERROR([please select at least one input frontend.])
-fi
-
-# Make sure at least one video frontend is selected
-if test "$CONFIG_VIDEO" != "y"; then
-	AC_MSG_ERROR([please select at least one video frontend.])
-fi
-
 # Make sure at least one machine is selected
 if test "$CONFIG_MACH" != "y"; then
 	AC_MSG_ERROR([please select at least one machine.])

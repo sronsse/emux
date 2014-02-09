@@ -63,6 +63,10 @@ bool input_init(char *name)
 
 bool input_load(char *name, struct input_event *events, int num_events)
 {
+	/* Leave already if input frontend is not initialized */
+	if (!frontend)
+		return false;
+
 #ifdef CONFIG_INPUT_XML
 	node_t *node;
 	node_t *child;
@@ -179,6 +183,9 @@ void input_unregister(struct input_config *config)
 
 void input_deinit()
 {
+	if (!frontend)
+		return;
+
 	if (frontend->deinit)
 		frontend->deinit();
 	frontend = NULL;

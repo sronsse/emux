@@ -28,8 +28,8 @@ bool video_init(int width, int height)
 
 	/* Validate video option */
 	if (!video_fe_name) {
-		LOG_E("No video frontend selected!\n");
-		return false;
+		LOG_W("No video frontend selected!\n");
+		return true;
 	}
 
 	/* Validate scaling factor */
@@ -63,13 +63,16 @@ bool video_init(int width, int height)
 
 video_window_t *video_get_window()
 {
-	if (frontend->get_window)
+	if (frontend)
 		return frontend->get_window();
 	return NULL;
 }
 
 void video_update()
 {
+	if (!frontend)
+		return;
+
 	if (frontend->update)
 		frontend->update();
 
@@ -79,32 +82,35 @@ void video_update()
 
 void video_lock()
 {
-	if (frontend->lock)
+	if (frontend && frontend->lock)
 		frontend->lock();
 }
 
 void video_unlock()
 {
-	if (frontend->unlock)
+	if (frontend && frontend->unlock)
 		frontend->unlock();
 }
 
 struct color video_get_pixel(int x, int y)
 {
 	struct color default_color = { 0, 0, 0 };
-	if (frontend->get_pixel)
+	if (frontend && frontend->get_pixel)
 		return frontend->get_pixel(x, y);
 	return default_color;
 }
 
 void video_set_pixel(int x, int y, struct color color)
 {
-	if (frontend->set_pixel)
+	if (frontend && frontend->set_pixel)
 		frontend->set_pixel(x, y, color);
 }
 
 void video_deinit()
 {
+	if (!frontend)
+		return;
+
 	if (frontend->deinit)
 		frontend->deinit();
 	input_deinit();
