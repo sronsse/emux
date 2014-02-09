@@ -19,7 +19,6 @@ bool video_init(int width, int height)
 {
 	struct list_link *link = video_frontends;
 	struct video_frontend *fe;
-	int scale = 1;
 
 	if (frontend) {
 		LOG_E("Video frontend already initialized!\n");
