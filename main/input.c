@@ -3,6 +3,7 @@
 #include <string.h>
 #include <config.h>
 #include <cmdline.h>
+#include <env.h>
 #include <input.h>
 #include <list.h>
 #include <log.h>
@@ -15,6 +16,7 @@
 
 #ifdef CONFIG_INPUT_XML
 /* Configuration file and node definitions */
+#define MAX_DOC_PATH_LENGTH	1024
 #define DOC_FILENAME		"config.xml"
 #define DOC_CONFIG_NODE_NAME	"config"
 #define DOC_KEY_NODE_NAME	"key"
@@ -32,6 +34,9 @@ bool input_init(char *name)
 	struct list_link *link = input_frontends;
 	struct input_frontend *fe;
 	video_window_t *window;
+#ifdef CONFIG_INPUT_XML
+	char doc_path[MAX_DOC_PATH_LENGTH + 1];
+#endif
 
 	if (frontend) {
 		LOG_E("Input frontend already initialized!\n");
@@ -39,8 +44,23 @@ bool input_init(char *name)
 	}
 
 #ifdef CONFIG_INPUT_XML
-	/* Load input configuration file */
-	config_doc = roxml_load_doc(DOC_FILENAME);
+	LOG_D("Opening input configuration file.\n");
+
+	/* Set config doc path */
+	snprintf(doc_path,
+		MAX_DOC_PATH_LENGTH,
+		"%s/%s",
+		env_get_config_path(),
+		DOC_FILENAME);
+
+	/* Load input config file and fall back to original path if needed */
+	config_doc = roxml_load_doc(doc_path);
+	if (!config_doc)
+		config_doc = roxml_load_doc(DOC_FILENAME);
+
+	/* Warn if file could not be opened */
+	if (!config_doc)
+		LOG_W("Could not open input configuration file!\n");
 #endif
 
 	/* Get window from video frontend */
@@ -79,7 +99,7 @@ bool input_load(char *name, struct input_event *events, int num_events)
 
 	/* Check if configuration file was loaded */
 	if (!config_doc)
-		goto err;
+		return false;
 
 	/* Find document initial node */
 	node = roxml_get_chld(config_doc, DOC_CONFIG_NODE_NAME, 0);
@@ -183,14 +203,16 @@ void input_unregister(struct input_config *config)
 
 void input_deinit()
 {
+#ifdef CONFIG_INPUT_XML
+	if (config_doc)
+		roxml_close(config_doc);
+#endif
+
 	if (!frontend)
 		return;
 
 	if (frontend->deinit)
 		frontend->deinit();
 	frontend = NULL;
-#ifdef CONFIG_INPUT_XML
-	roxml_close(config_doc);
-#endif
 }
 
