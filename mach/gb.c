@@ -62,7 +62,7 @@ static bool gb_init();
 static void gb_deinit();
 
 /* Command-line parameters */
-static char *bootrom_path;
+static char *bootrom_path = "DMG_ROM.bin";
 PARAM(bootrom_path, string, "bootrom", "gb", "GameBoy boot ROM path")
 
 /* Memory areas */
@@ -124,13 +124,6 @@ bool gb_init(struct machine *machine)
 
 	/* Create machine data structure */
 	gb_data = malloc(sizeof(struct gb_data));
-
-	/* Validate bootrom option */
-	if (!bootrom_path) {
-		free(gb_data);
-		LOG_E("Please provide a bootrom option!\n");
-		return false;
-	}
 
 	/* Add 16-bit memory bus */
 	memory_bus_add(16);

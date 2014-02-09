@@ -26,8 +26,6 @@ uint8_t memory_readb(int bus_id, address_t address);
 uint16_t memory_readw(int bus_id, address_t address);
 void memory_writeb(int bus_id, uint8_t b, address_t address);
 void memory_writew(int bus_id, uint16_t w, address_t address);
-void *memory_map_file(char *path, int offset, int size);
-void memory_unmap_file(void *data, int size);
 
 extern struct mops rom_mops;
 extern struct mops ram_mops;

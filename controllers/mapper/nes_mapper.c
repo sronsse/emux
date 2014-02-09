@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <controller.h>
+#include <file.h>
 #include <log.h>
-#include <memory.h>
 #include <util.h>
 #include <controllers/mapper/nes_mapper.h>
 
@@ -24,7 +24,7 @@ bool nes_mapper_init(struct controller_instance *instance)
 	uint8_t number;
 
 	/* Map cart header */
-	cart_header = memory_map_file(mach_data->path, 0,
+	cart_header = file_map(PATH_DATA, mach_data->path, 0,
 		sizeof(struct cart_header));
 	if (!cart_header) {
 		LOG_E("Could not map header from \"%s\"!\n", mach_data->path);
@@ -34,7 +34,7 @@ bool nes_mapper_init(struct controller_instance *instance)
 	/* Validate header */
 	if (cart_header->ines_constant != INES_CONSTANT) {
 		LOG_E("Cart header does not have valid format!\n");
-		memory_unmap_file(cart_header, sizeof(struct cart_header));
+		file_unmap(cart_header, sizeof(struct cart_header));
 		return false;
 	}
 
@@ -52,7 +52,7 @@ bool nes_mapper_init(struct controller_instance *instance)
 	number = (cart_header->flags6 >> 4) | (cart_header->flags7 & 0xF0);
 
 	/* Unmap cart header */
-	memory_unmap_file(cart_header, sizeof(struct cart_header));
+	file_unmap(cart_header, sizeof(struct cart_header));
 
 	/* Check if mapper is supported */
 	if ((number >= ARRAY_SIZE(mappers)) || !mappers[number]) {

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <controller.h>
+#include <file.h>
 #include <memory.h>
 #include <controllers/mapper/nes_mapper.h>
 
@@ -117,7 +118,7 @@ bool nrom_init(struct controller_instance *instance)
 	nrom = instance->priv_data;
 
 	/* Map cart header */
-	cart_header = memory_map_file(mach_data->path, 0,
+	cart_header = file_map(PATH_DATA, mach_data->path, 0,
 		sizeof(struct cart_header));
 
 	/* Get mirroring information (used for VRAM access) - NROM supports
@@ -136,9 +137,8 @@ bool nrom_init(struct controller_instance *instance)
 
 	/* Allocate and fill PRG ROM data */
 	nrom->prg_rom_size = PRG_ROM_SIZE(cart_header);
-	nrom->prg_rom = memory_map_file(mach_data->path,
-		PRG_ROM_OFFSET(cart_header),
-		nrom->prg_rom_size);
+	nrom->prg_rom = file_map(PATH_DATA, mach_data->path,
+		PRG_ROM_OFFSET(cart_header), nrom->prg_rom_size);
 
 	/* Fill and add PRG ROM region */
 	area = resource_get("prg_rom",
@@ -149,9 +149,8 @@ bool nrom_init(struct controller_instance *instance)
 
 	/* Allocate and fill CHR ROM data */
 	nrom->chr_rom_size = CHR_ROM_SIZE(cart_header);
-	nrom->chr_rom = memory_map_file(mach_data->path,
-		CHR_ROM_OFFSET(cart_header),
-		nrom->chr_rom_size);
+	nrom->chr_rom = file_map(PATH_DATA, mach_data->path,
+		CHR_ROM_OFFSET(cart_header), nrom->chr_rom_size);
 
 	/* Fill and add PRG ROM region */
 	area = resource_get("chr",
@@ -161,7 +160,7 @@ bool nrom_init(struct controller_instance *instance)
 	memory_region_add(area, &rom_mops, nrom->chr_rom);
 
 	/* Unmap cart header */
-	memory_unmap_file(cart_header, sizeof(struct cart_header));
+	file_unmap(cart_header, sizeof(struct cart_header));
 
 	return true;
 }
@@ -169,8 +168,8 @@ bool nrom_init(struct controller_instance *instance)
 void nrom_deinit(struct controller_instance *instance)
 {
 	struct nrom *nrom = instance->priv_data;
-	memory_unmap_file(nrom->chr_rom, nrom->chr_rom_size);
-	memory_unmap_file(nrom->prg_rom, nrom->prg_rom_size);
+	file_unmap(nrom->chr_rom, nrom->chr_rom_size);
+	file_unmap(nrom->prg_rom, nrom->prg_rom_size);
 	free(nrom);
 }
 

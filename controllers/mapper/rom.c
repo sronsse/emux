@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <controller.h>
+#include <file.h>
 #include <memory.h>
 #include <controllers/mapper/gb_mapper.h>
 
@@ -16,7 +17,7 @@ bool rom_init(struct controller_instance *instance)
 	uint8_t *bank;
 
 	/* Map second ROM bank */
-	bank = memory_map_file(mach_data->cart_path, BANK_START, BANK_SIZE);
+	bank = file_map(PATH_DATA, mach_data->cart_path, BANK_START, BANK_SIZE);
 
 	/* Add second ROM bank */
 	area = resource_get("rom1",
@@ -34,7 +35,7 @@ bool rom_init(struct controller_instance *instance)
 void rom_deinit(struct controller_instance *instance)
 {
 	uint8_t *bank = instance->priv_data;
-	memory_unmap_file(bank, BANK_SIZE);
+	file_unmap(bank, BANK_SIZE);
 }
 
 CONTROLLER_START(rom)

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <controller.h>
+#include <file.h>
 #include <log.h>
 #include <memory.h>
 #include <util.h>
@@ -46,11 +47,11 @@ void lock_writeb(region_data_t *data, uint8_t b, address_t UNUSED(address))
 	gb_mapper->bootrom_locked = true;
 
 	/* Unmap boot ROM and remove its region */
-	memory_unmap_file(gb_mapper->bootrom, gb_mapper->bootrom_size);
+	file_unmap(gb_mapper->bootrom, gb_mapper->bootrom_size);
 	memory_region_remove(gb_mapper->bootrom_area);
 
 	/* Unmap ROM0 */
-	memory_unmap_file(gb_mapper->rom0, gb_mapper->rom0_size);
+	file_unmap(gb_mapper->rom0, gb_mapper->rom0_size);
 	memory_region_remove(gb_mapper->rom0_area);
 
 	/* Remap ROM0 after changing its start address */
@@ -65,8 +66,8 @@ bool map_bootrom(struct gb_mapper *gb_mapper)
 		gb_mapper->bootrom_area->data.mem.start + 1;
 
 	/* Map boot ROM */
-	gb_mapper->bootrom = memory_map_file(gb_mapper->mach_data->bootrom_path,
-		0, gb_mapper->bootrom_size);
+	gb_mapper->bootrom = file_map(PATH_SYSTEM,
+		gb_mapper->mach_data->bootrom_path, 0, gb_mapper->bootrom_size);
 
 	/* Check if mapping was successful */
 	if (!gb_mapper->bootrom)
@@ -94,7 +95,7 @@ bool map_rom0(struct gb_mapper *gb_mapper)
 	offset = gb_mapper->bootrom_locked ? 0 : gb_mapper->bootrom_size;
 
 	/* Map ROM0 after boot ROM */
-	gb_mapper->rom0 = memory_map_file(gb_mapper->mach_data->cart_path,
+	gb_mapper->rom0 = file_map(PATH_DATA, gb_mapper->mach_data->cart_path,
 		offset, gb_mapper->rom0_size);
 	if (!gb_mapper->rom0) {
 		LOG_E("Could not map cart from \"%s\"!\n",
@@ -123,7 +124,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	gb_mapper->mach_data = instance->mach_data;
 
 	/* Map cart header */
-	cart_header = memory_map_file(gb_mapper->mach_data->cart_path,
+	cart_header = file_map(PATH_DATA, gb_mapper->mach_data->cart_path,
 		CART_HEADER_START, sizeof(struct cart_header));
 	if (!cart_header) {
 		LOG_E("Could not map header from \"%s\"!\n",
@@ -153,7 +154,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	number = cart_header->cartridge_type;
 
 	/* Unmap cart header */
-	memory_unmap_file(cart_header, sizeof(struct cart_header));
+	file_unmap(cart_header, sizeof(struct cart_header));
 
 	/* Check if cart type is supported */
 	if ((number >= ARRAY_SIZE(mbcs)) || !mbcs[number]) {
@@ -182,7 +183,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	/* Map ROM0 after changing its start address */
 	gb_mapper->rom0_area->data.mem.start += gb_mapper->bootrom_size;
 	if (!map_rom0(gb_mapper)) {
-		memory_unmap_file(gb_mapper->bootrom, gb_mapper->bootrom_size);
+		file_unmap(gb_mapper->bootrom, gb_mapper->bootrom_size);
 		free(gb_mapper);
 		LOG_E("Could not map ROM0!\n");
 		return false;
@@ -214,10 +215,10 @@ void gb_mapper_deinit(struct controller_instance *instance)
 
 	/* Unmap boot ROM if needed */
 	if (!gb_mapper->bootrom_locked)
-		memory_unmap_file(gb_mapper->bootrom, gb_mapper->bootrom_size);
+		file_unmap(gb_mapper->bootrom, gb_mapper->bootrom_size);
 
 	/* Unmap ROM0 */
-	memory_unmap_file(gb_mapper->rom0, gb_mapper->rom0_size);
+	file_unmap(gb_mapper->rom0, gb_mapper->rom0_size);
 
 	free(gb_mapper);
 }

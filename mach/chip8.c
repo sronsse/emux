@@ -1,8 +1,8 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <cpu.h>
 #include <env.h>
+#include <file.h>
 #include <log.h>
 #include <machine.h>
 #include <memory.h>
@@ -51,7 +51,7 @@ static uint8_t char_mem[] = {
 bool chip8_init(struct machine *machine)
 {
 	struct chip8_data *chip8_data;
-	FILE *f;
+	file_handle_t f;
 	char *rom_path;
 	unsigned int size;
 	unsigned int max_rom_size;
@@ -61,18 +61,14 @@ bool chip8_init(struct machine *machine)
 
 	/* Open ROM file */
 	rom_path = env_get_data_path();
-	f = fopen(rom_path, "rb");
+	f = file_open(PATH_DATA, rom_path, "rb");
 	if (!f) {
 		LOG_E("Could not open ROM from \"%s\"!\n", rom_path);
 		return false;
 	}
 
-	/* Get ROM file size */
-	fseek(f, 0, SEEK_END);
-	size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
 	/* Make sure ROM file is not too large */
+	size = file_get_size(f);
 	max_rom_size = RAM_SIZE - ROM_ADDRESS;
 	size = (size < max_rom_size) ? size : max_rom_size;
 
@@ -86,13 +82,13 @@ bool chip8_init(struct machine *machine)
 	memcpy(chip8_data->ram, char_mem, ARRAY_SIZE(char_mem));
 
 	/* Copy ROM contents to RAM (starting at ROM address) */
-	if (fread(&chip8_data->ram[ROM_ADDRESS], 1, size, f) != size) {
+	if (!file_read(f, &chip8_data->ram[ROM_ADDRESS], size)) {
 		free(chip8_data);
-		fclose(f);
+		file_close(f);
 		LOG_E("Could not read ROM from \"%s\"!\n", rom_path);
 		return false;
 	}
-	fclose(f);
+	file_close(f);
 
 	if (!cpu_add(&chip8_cpu_instance)) {
 		free(chip8_data);
