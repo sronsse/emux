@@ -2,6 +2,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <cmdline.h>
+#include <config.h>
 #include <env.h>
 #include <log.h>
 #include <machine.h>
