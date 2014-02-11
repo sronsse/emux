@@ -19,6 +19,7 @@ struct gb_mapper {
 	uint8_t *rom0;
 	uint16_t rom0_size;
 	bool bootrom_locked;
+	struct controller_instance *mbc_instance;
 };
 
 static bool gb_mapper_init(struct controller_instance *instance);
@@ -203,7 +204,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	mbc_instance->num_resources = instance->num_resources;
 	mbc_instance->resources = instance->resources;
 	mbc_instance->mach_data = instance->mach_data;
-	instance->priv_data = mbc_instance;
+	gb_mapper->mbc_instance = mbc_instance;
 	controller_add(mbc_instance);
 
 	return true;
@@ -220,6 +221,8 @@ void gb_mapper_deinit(struct controller_instance *instance)
 	/* Unmap ROM0 */
 	file_unmap(gb_mapper->rom0, gb_mapper->rom0_size);
 
+	/* Free allocated structures */
+	free(gb_mapper->mbc_instance);
 	free(gb_mapper);
 }
 
