@@ -20,6 +20,7 @@
 	}
 
 typedef void input_data_t;
+typedef void input_priv_data_t;
 
 enum input_event_type {
 	EVENT_KEYBOARD,
@@ -48,12 +49,13 @@ struct input_config {
 
 struct input_frontend {
 	char *name;
-	bool (*init)(video_window_t *window);
-	void (*update)();
-	void (*deinit)();
+	input_priv_data_t *priv_data;
+	bool (*init)(struct input_frontend *fe, window_t *window);
+	void (*update)(struct input_frontend *fe);
+	void (*deinit)(struct input_frontend *fe);
 };
 
-bool input_init(char *name);
+bool input_init(char *name, window_t *window);
 bool input_load(char *name, struct input_event *events, int num_events);
 void input_update();
 void input_report(struct input_event *event, struct input_state *state);

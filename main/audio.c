@@ -28,15 +28,20 @@ bool audio_init(struct audio_specs *specs)
 		return true;
 	}
 
-	/* Find frontend and initialize it */
-	while ((fe = list_get_next(&link)))
-		if (!strcmp(audio_fe_name, fe->name)) {
-			if ((fe->init && fe->init(specs))) {
-				frontend = fe;
-				return true;
-			}
+	/* Find audio frontend */
+	while ((fe = list_get_next(&link))) {
+		/* Skip if name does not match */
+		if (strcmp(audio_fe_name, fe->name))
+			continue;
+
+		/* Initialize frontend */
+		if (fe->init && !fe->init(fe, specs))
 			return false;
-		}
+
+		/* Save frontend and return success */
+		frontend = fe;
+		return true;
+	}
 
 	/* Warn as audio frontend was not found */
 	LOG_E("Audio frontend \"%s\" not recognized!\n", audio_fe_name);
@@ -46,13 +51,13 @@ bool audio_init(struct audio_specs *specs)
 void audio_start()
 {
 	if (frontend && frontend->start)
-		frontend->start();
+		frontend->start(frontend);
 }
 
 void audio_stop()
 {
 	if (frontend && frontend->stop)
-		frontend->stop();
+		frontend->stop(frontend);
 }
 
 void audio_deinit()
@@ -61,7 +66,7 @@ void audio_deinit()
 		return;
 
 	if (frontend->deinit)
-		frontend->deinit();
+		frontend->deinit(frontend);
 	frontend = NULL;
 }
 

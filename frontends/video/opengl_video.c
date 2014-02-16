@@ -20,9 +20,8 @@
 struct gl {
 	int width;
 	int height;
-	SDL_Surface *screen;
+	int scale;
 	uint8_t *pixels;
-	int scale_factor;
 	GLuint vbo;
 	GLuint program;
 	GLuint vertex_shader;
@@ -35,15 +34,14 @@ struct vertex {
 	GLfloat uv[NUM_TEX_COORDS];
 };
 
-static bool gl_init(int width, int height, int scale);
-static video_window_t *gl_get_window();
-static void gl_deinit();
-static void gl_update();
-static struct color gl_get_pixel(int x, int y);
-static void gl_set_pixel(int x, int y, struct color color);
-static bool init_shaders();
-static void init_buffers();
-static void init_pixels();
+static window_t *gl_init(struct video_frontend *fe, int w, int h, int s);
+static void gl_deinit(struct video_frontend *fe);
+static void gl_update(struct video_frontend *fe);
+static struct color gl_get_p(struct video_frontend *fe, int x, int y);
+static void gl_set_p(struct video_frontend *fe, int x, int y, struct color c);
+static bool init_shaders(struct video_frontend *fe);
+static void init_buffers(struct video_frontend *fe);
+static void init_pixels(struct video_frontend *fe);
 
 struct vertex vertices[] = {
 	{ { MIN_POS, MAX_POS }, { MIN_UV, MIN_UV } },
@@ -68,47 +66,47 @@ static const char *fragment_source =
 	"	gl_FragColor = texture2D(texture, gl_TexCoord[0].st);"
 	"}";
 
-static struct gl gl;
-
-bool init_shaders()
+bool init_shaders(struct video_frontend *fe)
 {
+	struct gl *gl = fe->priv_data;
 	int status;
 
 	/* Create program and associated shaders */
-	gl.program = glCreateProgram();
-	gl.vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-	gl.fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+	gl->program = glCreateProgram();
+	gl->vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+	gl->fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 
 	/* Assign vertex and fragment shader sources */
-	glShaderSource(gl.vertex_shader, 1, &vertex_source, NULL);
-	glShaderSource(gl.fragment_shader, 1, &fragment_source, NULL);
+	glShaderSource(gl->vertex_shader, 1, &vertex_source, NULL);
+	glShaderSource(gl->fragment_shader, 1, &fragment_source, NULL);
 
 	/* Compile shaders */
-	glCompileShader(gl.vertex_shader);
-	glCompileShader(gl.fragment_shader);
+	glCompileShader(gl->vertex_shader);
+	glCompileShader(gl->fragment_shader);
 
 	/* Attach shaders and link program */
-	glAttachShader(gl.program, gl.vertex_shader);
-	glAttachShader(gl.program, gl.fragment_shader);
-	glLinkProgram(gl.program);
+	glAttachShader(gl->program, gl->vertex_shader);
+	glAttachShader(gl->program, gl->fragment_shader);
+	glLinkProgram(gl->program);
 
 	/* Verify link was successful */
-	glGetProgramiv(gl.program, GL_LINK_STATUS, &status);
+	glGetProgramiv(gl->program, GL_LINK_STATUS, &status);
 	return (status == GL_TRUE);
 }
 
-void init_buffers()
+void init_buffers(struct video_frontend *fe)
 {
+	struct gl *gl = fe->priv_data;
 	int location;
 
 	/* Generate and fill VBO */
-	glGenBuffers(1, &gl.vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, gl.vbo);
+	glGenBuffers(1, &gl->vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, gl->vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices,
 		GL_STATIC_DRAW);
 
 	/* Set position attribute */
-	location = glGetAttribLocation(gl.program, "position");
+	location = glGetAttribLocation(gl->program, "position");
 	glEnableVertexAttribArray(location);
 	glVertexAttribPointer(location,
 		NUM_POS_COORDS,
@@ -118,7 +116,7 @@ void init_buffers()
 		(GLvoid *)offsetof(struct vertex, position));
 
 	/* Set texture coordinates attribute */
-	location = glGetAttribLocation(gl.program, "uv");
+	location = glGetAttribLocation(gl->program, "uv");
 	glEnableVertexAttribArray(location);
 	glVertexAttribPointer(location,
 		NUM_TEX_COORDS,
@@ -128,18 +126,19 @@ void init_buffers()
 		(GLvoid *)offsetof(struct vertex, uv));
 }
 
-void init_pixels()
+void init_pixels(struct video_frontend *fe)
 {
+	struct gl *gl = fe->priv_data;
 	int location;
 
 	/* Initialize pixels */
-	gl.pixels = malloc(gl.width * gl.height * 3 * sizeof(uint8_t));
-	memset(gl.pixels, 0, gl.width * gl.height * 3 * sizeof(uint8_t));
+	gl->pixels = malloc(gl->width * gl->height * 3 * sizeof(uint8_t));
+	memset(gl->pixels, 0, gl->width * gl->height * 3 * sizeof(uint8_t));
 
 	/* Generate and bind texture */
-	glGenTextures(1, &gl.texture);
+	glGenTextures(1, &gl->texture);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, gl.texture);
+	glBindTexture(GL_TEXTURE_2D, gl->texture);
 
 	/* Set texture parameters */
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -148,73 +147,74 @@ void init_pixels()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 
 	/* Allow texture 0 to be sampled from fragment shader */
-	location = glGetUniformLocation(gl.program, "rubyTexture");
+	location = glGetUniformLocation(gl->program, "texture");
 	glUniform1i(location, 0);
 
 	/* Fill texture data */
 	glTexImage2D(GL_TEXTURE_2D,
 		0,
 		GL_RGB,
-		gl.width,
-		gl.height,
+		gl->width,
+		gl->height,
 		0,
 		GL_RGB,
 		GL_UNSIGNED_BYTE,
-		gl.pixels);
+		gl->pixels);
 }
 
-bool gl_init(int width, int height, int scale)
+window_t *gl_init(struct video_frontend *fe, int w, int h, int s)
 {
+	SDL_Surface *screen;
 	Uint32 flags = SDL_OPENGL;
+	struct gl *gl;
 
 	/* Initialize video sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
 		LOG_E("Error initializing SDL video: %s\n", SDL_GetError());
-		return false;
+		return NULL;
 	}
 
 	/* Set window position and title */
 	SDL_putenv("SDL_VIDEO_CENTERED=center");
 	SDL_WM_SetCaption("emux", NULL);
 
+	/* Create frontend private structure */
+	gl = malloc(sizeof(struct gl));
+	gl->width = w;
+	gl->height = h;
+	gl->scale = s;
+	fe->priv_data = gl;
+
 	/* Create main video surface */
-	gl.screen = SDL_SetVideoMode(width * scale, height * scale, 0, flags);
-	if (!gl.screen) {
+	screen = SDL_SetVideoMode(w * s, h * s, 0, flags);
+	if (!screen) {
 		LOG_E("Error creating video surface: %s\n", SDL_GetError());
+		free(gl);
 		SDL_VideoQuit();
-		return false;
+		return NULL;
 	}
 
-	/* Save parameters */
-	gl.width = width;
-	gl.height = height;
-	gl.scale_factor = scale;
-
 	/* Initialize shaders and return in case of failure */
-	if (!init_shaders()) {
+	if (!init_shaders(fe)) {
 		LOG_E("Error initializing shaders!\n");
-		return false;
+		free(gl);
+		SDL_VideoQuit();
+		return NULL;
 	}
 
 	/* Initialize buffers and pixels */
-	init_buffers();
-	init_pixels();
+	init_buffers(fe);
+	init_pixels(fe);
 
-	return true;
+	return screen;
 }
 
-video_window_t *gl_get_window()
+void gl_update(struct video_frontend *fe)
 {
-	return gl.screen;
-}
+	struct gl *gl = fe->priv_data;
 
-void gl_update()
-{
 	/* Set viewport */
-	glViewport(0,
-		0,
-		gl.width * gl.scale_factor,
-		gl.height * gl.scale_factor);
+	glViewport(0, 0, gl->width * gl->scale, gl->height * gl->scale);
 
 	/* Clear screen */
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -225,14 +225,14 @@ void gl_update()
 		0,
 		0,
 		0,
-		gl.width,
-		gl.height,
+		gl->width,
+		gl->height,
 		GL_RGB,
 		GL_UNSIGNED_BYTE,
-		gl.pixels);
+		gl->pixels);
 
 	/* Set current program */
-	glUseProgram(gl.program);
+	glUseProgram(gl->program);
 
 	/* Paint a quad with our texture on it */
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -244,52 +244,59 @@ void gl_update()
 	SDL_GL_SwapBuffers();
 }
 
-struct color gl_get_pixel(int x, int y)
+struct color gl_get_p(struct video_frontend *fe, int x, int y)
 {
-	struct color color;
+	struct gl *gl = fe->priv_data;
+	struct color c;
 
 	/* Compute index of RGB triplet */
-	int index = 3 * (x + y * gl.width);
+	int index = 3 * (x + y * gl->width);
 
 	/* Fill color and return it */
-	color.r = gl.pixels[index];
-	color.g = gl.pixels[index + 1];
-	color.b = gl.pixels[index + 2];
-	return color;
+	c.r = gl->pixels[index];
+	c.g = gl->pixels[index + 1];
+	c.b = gl->pixels[index + 2];
+	return c;
 }
 
-void gl_set_pixel(int x, int y, struct color color)
+void gl_set_p(struct video_frontend *fe, int x, int y, struct color c)
 {
+	struct gl *gl = fe->priv_data;
+
 	/* Compute index of RGB triplet */
-	int index = 3 * (x + y * gl.width);
+	int index = 3 * (x + y * gl->width);
 
 	/* Save pixel */
-	gl.pixels[index] = color.r;
-	gl.pixels[index + 1] = color.g;
-	gl.pixels[index + 2] = color.b;
+	gl->pixels[index] = c.r;
+	gl->pixels[index + 1] = c.g;
+	gl->pixels[index + 2] = c.b;
 }
 
-void gl_deinit()
+void gl_deinit(struct video_frontend *fe)
 {
+	struct gl *gl = fe->priv_data;
+
 	/* Free allocated components */
-	free(gl.pixels);
-	glDeleteBuffers(1, &gl.vbo);
-	glDeleteTextures(1, &gl.texture);
-	glDeleteShader(gl.vertex_shader);
-	glDeleteShader(gl.fragment_shader);
-	glDeleteProgram(gl.program);
+	free(gl->pixels);
+	glDeleteBuffers(1, &gl->vbo);
+	glDeleteTextures(1, &gl->texture);
+	glDeleteShader(gl->vertex_shader);
+	glDeleteShader(gl->fragment_shader);
+	glDeleteProgram(gl->program);
 
 	/* Quit SDL video sub-system */
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
+
+	/* Free private data */
+	free(gl);
 }
 
 VIDEO_START(opengl)
 	.input = "sdl",
 	.init = gl_init,
-	.get_window = gl_get_window,
 	.update = gl_update,
-	.get_pixel = gl_get_pixel,
-	.set_pixel = gl_set_pixel,
+	.get_p = gl_get_p,
+	.set_p = gl_set_p,
 	.deinit = gl_deinit
 VIDEO_END
 

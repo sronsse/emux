@@ -4,15 +4,9 @@
 #include <input.h>
 #include <util.h>
 
-static bool sdl_init(video_window_t *window);
-static void sdl_deinit();
+static void sdl_update(struct input_frontend *fe);
 
-bool sdl_init(video_window_t *UNUSED(window))
-{
-	return true;
-}
-
-void sdl_update()
+void sdl_update(struct input_frontend *UNUSED(fe))
 {
 	SDL_Event e;
 	struct input_event event;
@@ -39,13 +33,8 @@ void sdl_update()
 	}
 }
 
-void sdl_deinit()
-{
-}
 
 INPUT_START(sdl)
-	.init = sdl_init,
-	.update = sdl_update,
-	.deinit = sdl_deinit
+	.update = sdl_update
 INPUT_END
 

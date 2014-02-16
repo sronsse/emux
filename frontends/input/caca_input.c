@@ -4,19 +4,21 @@
 #include <input.h>
 #include <util.h>
 
-static bool caca_init(video_window_t *window);
-static void caca_deinit();
+static bool caca_init(struct input_frontend *fe, window_t *window);
+static void caca_update(struct input_frontend *fe);
+static void caca_deinit(struct input_frontend *fe);
 
-static caca_display_t *dp;
-
-bool caca_init(video_window_t *window)
+bool caca_init(struct input_frontend *fe, window_t *window)
 {
-	dp = window;
+	/* Save window */
+	fe->priv_data = window;
+
 	return true;
 }
 
-void caca_update()
+void caca_update(struct input_frontend *fe)
 {
+	caca_display_t *dp = fe->priv_data;
 	caca_event_t e;
 	struct input_event event;
 	struct input_state state;
@@ -42,7 +44,7 @@ void caca_update()
 	}
 }
 
-void caca_deinit()
+void caca_deinit(struct input_frontend *UNUSED(fe))
 {
 }
 

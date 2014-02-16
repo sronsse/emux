@@ -16,105 +16,109 @@
 #define B_SHIFT	0
 #define A_MASK	0x00000000
 
-struct caca_surface {
+struct caca_data {
+	caca_display_t *dp;
 	int width;
 	int height;
 	uint32_t *pixels;
 	caca_dither_t *dither;
 };
 
-static bool caca_init(int width, int height, int scale);
-static video_window_t *caca_get_window();
-static void caca_update();
-static struct color caca_get_pixel(int x, int y);
-static void caca_set_pixel(int x, int y, struct color color);
-static void caca_deinit();
+static window_t *caca_init(struct video_frontend *fe, int w, int h, int s);
+static void caca_update(struct video_frontend *fe);
+static struct color caca_get_p(struct video_frontend *fe, int x, int y);
+static void caca_set_p(struct video_frontend *fe, int x, int y, struct color c);
+static void caca_deinit(struct video_frontend *fe);
 
-static caca_display_t *dp;
-static struct caca_surface *surface;
-
-bool caca_init(int width, int height, int scale)
+window_t *caca_init(struct video_frontend *fe, int w, int h, int s)
 {
 	caca_canvas_t *cv;
+	caca_display_t *dp;
+	struct caca_data *data;
 	int pitch;
 
 	/* Create canvas and display */
-	cv = caca_create_canvas(width * scale, height * scale);
+	cv = caca_create_canvas(w * s, h * s);
 	dp = caca_create_display(cv);
 	if (!dp) {
 		LOG_E("Could not create caca display!\n");
-		return false;
+		return NULL;
 	}
 
 	/* Set window title */
 	caca_set_display_title(dp, "emux");
 	caca_refresh_display(dp);
 
-	/* Create surface and assign dimensions */
-	surface = malloc(sizeof(struct caca_surface));
-	surface->width = width;
-	surface->height = height;
+	/* Create private data */
+	data = malloc(sizeof(struct caca_data));
+	data->dp = dp;
+	data->width = w;
+	data->height = h;
+	fe->priv_data = data;
 
 	/* Initialize pixels */
-	surface->pixels = malloc(width * height * sizeof(uint32_t));
-	memset(surface->pixels, 0, width * height * sizeof(uint32_t));
+	data->pixels = malloc(w * h * sizeof(uint32_t));
+	memset(data->pixels, 0, w * h * sizeof(uint32_t));
 
 	/* Initialize dither */
-	pitch = (BPP / 8) * width;
-	surface->dither = caca_create_dither(BPP, width, height, pitch, R_MASK,
-		G_MASK, B_MASK, A_MASK);
+	pitch = (BPP / 8) * w;
+	data->dither = caca_create_dither(BPP, w, h, pitch, R_MASK, G_MASK,
+		B_MASK, A_MASK);
 
-	return true;
-}
-
-video_window_t *caca_get_window()
-{
 	return dp;
 }
 
-void caca_update()
+void caca_update(struct video_frontend *fe)
 {
+	struct caca_data *data = fe->priv_data;
+	caca_display_t *dp = data->dp;
 	caca_canvas_t *cv = caca_get_canvas(dp);
 
 	/* Dither pixels and fill canvas */
 	caca_dither_bitmap(cv, 0, 0, caca_get_canvas_width(cv),
-		caca_get_canvas_height(cv), surface->dither, surface->pixels);
+		caca_get_canvas_height(cv), data->dither, data->pixels);
 
 	caca_refresh_display(dp);
 }
 
-struct color caca_get_pixel(int x, int y)
+struct color caca_get_p(struct video_frontend *fe, int x, int y)
 {
-	uint32_t pixel = surface->pixels[x + y * surface->width];
-	struct color color;
-	color.r = (pixel & R_MASK) >> R_SHIFT;
-	color.g = (pixel & G_MASK) >> G_SHIFT;
-	color.b = (pixel & B_MASK) >> B_SHIFT;
-	return color;
+	struct caca_data *data = fe->priv_data;
+	uint32_t pixel = data->pixels[x + y * data->width];
+	struct color c;
+	c.r = (pixel & R_MASK) >> R_SHIFT;
+	c.g = (pixel & G_MASK) >> G_SHIFT;
+	c.b = (pixel & B_MASK) >> B_SHIFT;
+	return c;
 }
 
-void caca_set_pixel(int x, int y, struct color color)
+void caca_set_p(struct video_frontend *fe, int x, int y, struct color c)
 {
+	struct caca_data *data = fe->priv_data;
 	uint32_t pixel = 0;
-	pixel |= color.r << R_SHIFT;
-	pixel |= color.g << G_SHIFT;
-	pixel |= color.b << B_SHIFT;
-	surface->pixels[x + y * surface->width] = pixel;
+	pixel |= c.r << R_SHIFT;
+	pixel |= c.g << G_SHIFT;
+	pixel |= c.b << B_SHIFT;
+	data->pixels[x + y * data->width] = pixel;
 }
 
-void caca_deinit()
+void caca_deinit(struct video_frontend *fe)
 {
+	struct caca_data *data = fe->priv_data;
+	caca_display_t *dp = data->dp;
+
 	caca_free_canvas(caca_get_canvas(dp));
 	caca_free_display(dp);
+	free(data->pixels);
+	free(data);
 }
 
 VIDEO_START(caca)
 	.input = "caca",
 	.init = caca_init,
-	.get_window = caca_get_window,
 	.update = caca_update,
-	.get_pixel = caca_get_pixel,
-	.set_pixel = caca_set_pixel,
+	.get_p = caca_get_p,
+	.set_p = caca_set_p,
 	.deinit = caca_deinit
 VIDEO_END
 

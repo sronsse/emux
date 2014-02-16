@@ -2,28 +2,32 @@
 #include <stdbool.h>
 #include <SDL.h>
 #include <log.h>
+#include <util.h>
 #include <video.h>
 
-static bool sdl_init(int width, int height, int scale);
-static video_window_t *sdl_get_window();
-static void sdl_update();
-static void sdl_lock();
-static void sdl_unlock();
-static struct color sdl_get_pixel(int x, int y);
-static void sdl_set_pixel(int x, int y, struct color color);
-static void sdl_deinit();
+struct sdl_data {
+	SDL_Surface *screen;
+	int scale;
+};
 
-static SDL_Surface *screen;
-static int scale_factor;
+static window_t *sdl_init(struct video_frontend *fe, int w, int h, int s);
+static void sdl_update(struct video_frontend *fe);
+static void sdl_lock(struct video_frontend *fe);
+static void sdl_unlock(struct video_frontend *fe);
+static struct color sdl_get_p(struct video_frontend *fe, int x, int y);
+static void sdl_set_p(struct video_frontend *fe, int x, int y, struct color c);
+static void sdl_deinit(struct video_frontend *fe);
 
-bool sdl_init(int width, int height, int scale)
+window_t *sdl_init(struct video_frontend *fe, int w, int h, int s)
 {
+	struct sdl_data *data;
+	SDL_Surface *screen;
 	Uint32 flags = SDL_SWSURFACE;
 
 	/* Initialize video sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
 		LOG_E("Error initializing SDL video: %s\n", SDL_GetError());
-		return false;
+		return NULL;
 	}
 
 	/* Set window position and title */
@@ -31,51 +35,56 @@ bool sdl_init(int width, int height, int scale)
 	SDL_WM_SetCaption("emux", NULL);
 
 	/* Create main video surface */
-	screen = SDL_SetVideoMode(width * scale, height * scale, 0, flags);
+	screen = SDL_SetVideoMode(w * s, h * s,	0, flags);
 	if (!screen) {
 		LOG_E("Error creating video surface: %s\n", SDL_GetError());
 		SDL_VideoQuit();
-		return false;
+		return NULL;
 	}
 
-	/* Save scaling factor */
-	scale_factor = scale;
+	/* Create and fill private data */
+	data = malloc(sizeof(struct sdl_data));
+	data->screen = screen;
+	data->scale = s;
+	fe->priv_data = data;
 
-	return true;
-}
-
-video_window_t *sdl_get_window()
-{
 	return screen;
 }
 
-void sdl_update()
+void sdl_update(struct video_frontend *fe)
 {
-	SDL_Flip(screen);
+	struct sdl_data *data = fe->priv_data;
+	SDL_Flip(data->screen);
 }
 
-void sdl_lock()
+void sdl_lock(struct video_frontend *fe)
 {
+	struct sdl_data *data = fe->priv_data;
+	SDL_Surface *screen = data->screen;
 	if (SDL_MUSTLOCK(screen) && (SDL_LockSurface(screen) < 0))
 		LOG_W("Couldn't lock surface: %s\n", SDL_GetError());
 }
 
-void sdl_unlock()
+void sdl_unlock(struct video_frontend *fe)
 {
+	struct sdl_data *data = fe->priv_data;
+	SDL_Surface *screen = data->screen;
 	if (SDL_MUSTLOCK(screen))
 		SDL_UnlockSurface(screen);
 }
 
-struct color sdl_get_pixel(int x, int y)
+struct color sdl_get_p(struct video_frontend *fe, int x, int y)
 {
+	struct sdl_data *data = fe->priv_data;
+	SDL_Surface *screen = data->screen;
 	int bpp = screen->format->BytesPerPixel;
 	uint8_t *p;
 	uint32_t pixel;
 	struct color color;
 
 	/* Apply scaling factor to coordinates and get pixel pointer */
-	x *= scale_factor;
-	y *= scale_factor;
+	x *= data->scale;
+	y *= data->scale;
 	p = (uint8_t *)screen->pixels + y * screen->pitch + x * bpp;
 
 	/* Read pixel */
@@ -105,8 +114,10 @@ struct color sdl_get_pixel(int x, int y)
 	return color;
 }
 
-void sdl_set_pixel(int x, int y, struct color color)
+void sdl_set_p(struct video_frontend *fe, int x, int y, struct color c)
 {
+	struct sdl_data *data = fe->priv_data;
+	SDL_Surface *screen = data->screen;
 	uint32_t pixel;
 	int bpp = screen->format->BytesPerPixel;
 	uint8_t *p1;
@@ -115,11 +126,11 @@ void sdl_set_pixel(int x, int y, struct color color)
 	int j;
 
 	/* Map color */
-	pixel = SDL_MapRGB(screen->format, color.r, color.g, color.b);
+	pixel = SDL_MapRGB(screen->format, c.r, c.g, c.b);
 
 	/* Apply scaling factor to coordinates */
-	x *= scale_factor;
-	y *= scale_factor;
+	x *= data->scale;
+	y *= data->scale;
 
 	/* Set pixel contents */
 	p1 = (uint8_t *)screen->pixels + y * screen->pitch + x * bpp;
@@ -149,8 +160,8 @@ void sdl_set_pixel(int x, int y, struct color color)
 	}
 
 	/* Write remaining square of pixels depending on scaling factor */
-	for (i = x; i < x + scale_factor; i++)
-		for (j = y; j < y + scale_factor; j++) {
+	for (i = x; i < x + data->scale; i++)
+		for (j = y; j < y + data->scale; j++) {
 			/* Skip source pixel */
 			if ((i == x) && (j == y))
 				continue;
@@ -164,20 +175,20 @@ void sdl_set_pixel(int x, int y, struct color color)
 		}
 }
 
-void sdl_deinit()
+void sdl_deinit(struct video_frontend *fe)
 {
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
+	free(fe->priv_data);
 }
 
 VIDEO_START(sdl)
 	.input = "sdl",
 	.init = sdl_init,
-	.get_window = sdl_get_window,
 	.update = sdl_update,
 	.lock = sdl_lock,
 	.unlock = sdl_unlock,
-	.get_pixel = sdl_get_pixel,
-	.set_pixel = sdl_set_pixel,
+	.get_p = sdl_get_p,
+	.set_p = sdl_set_p,
 	.deinit = sdl_deinit
 VIDEO_END
 

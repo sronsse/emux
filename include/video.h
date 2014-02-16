@@ -19,7 +19,8 @@
 		list_remove(&video_frontends, &_video_frontend); \
 	}
 
-typedef void video_window_t;
+typedef void window_t;
+typedef void video_priv_data_t;
 
 struct color {
 	uint8_t r;
@@ -30,18 +31,17 @@ struct color {
 struct video_frontend {
 	char *name;
 	char *input;
-	bool (*init)(int width, int height, int scale);
-	video_window_t *(*get_window)();
-	void (*update)();
-	void (*lock)();
-	void (*unlock)();
-	struct color (*get_pixel)(int x, int y);
-	void (*set_pixel)(int x, int y, struct color color);
-	void (*deinit)();
+	video_priv_data_t *priv_data;
+	window_t *(*init)(struct video_frontend *fe, int w, int h, int s);
+	void (*update)(struct video_frontend *fe);
+	void (*lock)(struct video_frontend *fe);
+	void (*unlock)(struct video_frontend *fe);
+	struct color (*get_p)(struct video_frontend *fe, int x, int y);
+	void (*set_p)(struct video_frontend *fe, int x, int y, struct color c);
+	void (*deinit)(struct video_frontend *fe);
 };
 
 bool video_init(int width, int height);
-video_window_t *video_get_window();
 void video_update();
 void video_lock();
 void video_unlock();

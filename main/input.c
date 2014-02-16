@@ -29,11 +29,10 @@ static struct list_link *listeners;
 static node_t *config_doc;
 #endif
 
-bool input_init(char *name)
+bool input_init(char *name, window_t *window)
 {
 	struct list_link *link = input_frontends;
 	struct input_frontend *fe;
-	video_window_t *window;
 #ifdef CONFIG_INPUT_XML
 	char doc_path[MAX_DOC_PATH_LENGTH + 1];
 #endif
@@ -63,18 +62,20 @@ bool input_init(char *name)
 		LOG_W("Could not open input configuration file!\n");
 #endif
 
-	/* Get window from video frontend */
-	window = video_get_window();
+	/* Find input frontend */
+	while ((fe = list_get_next(&link))) {
+		/* Skip if name does not match */
+		if (strcmp(name, fe->name))
+			continue;
 
-	/* Find input frontend and initialize it */
-	while ((fe = list_get_next(&link)))
-		if (!strcmp(name, fe->name)) {
-			if ((fe->init && fe->init(window))) {
-				frontend = fe;
-				return true;
-			}
+		/* Initialize frontend */
+		if (fe->init && !fe->init(fe, window))
 			return false;
-		}
+
+		/* Save frontend and return success */
+		frontend = fe;
+		return true;
+	}
 
 	/* Warn as input frontend was not found */
 	LOG_E("Input frontend \"%s\" not recognized!\n", name);
@@ -159,7 +160,7 @@ err:
 void input_update()
 {
 	if (frontend && frontend->update)
-		frontend->update();
+		frontend->update(frontend);
 }
 
 void input_report(struct input_event *event, struct input_state *state)
@@ -212,7 +213,7 @@ void input_deinit()
 		return;
 
 	if (frontend->deinit)
-		frontend->deinit();
+		frontend->deinit(frontend);
 	frontend = NULL;
 }
 

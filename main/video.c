@@ -19,6 +19,7 @@ bool video_init(int width, int height)
 {
 	struct list_link *link = video_frontends;
 	struct video_frontend *fe;
+	window_t *window = NULL;
 
 	if (frontend) {
 		LOG_E("Video frontend already initialized!\n");
@@ -39,32 +40,27 @@ bool video_init(int width, int height)
 
 	/* Find video frontend */
 	while ((fe = list_get_next(&link))) {
+		/* Skip if name does not match */
 		if (strcmp(video_fe_name, fe->name))
 			continue;
 
+		/* Initialize frontend */
 		if (fe->init) {
-			/* Initialize video frontend */
-			if (!fe->init(width, height, scale))
+			window = fe->init(fe, width, height, scale);
+			if (!window)
 				return false;
-
-			frontend = fe;
-
-			/* Initialize input frontend */
-			return input_init(fe->input);
 		}
-		return false;
+
+		/* Save frontend */
+		frontend = fe;
+
+		/* Initialize input frontend */
+		return input_init(fe->input, window);
 	}
 
 	/* Warn as video frontend was not found */
 	LOG_E("Video frontend \"%s\" not recognized!\n", video_fe_name);
 	return false;
-}
-
-video_window_t *video_get_window()
-{
-	if (frontend)
-		return frontend->get_window();
-	return NULL;
 }
 
 void video_update()
@@ -73,7 +69,7 @@ void video_update()
 		return;
 
 	if (frontend->update)
-		frontend->update();
+		frontend->update(frontend);
 
 	/* Update input sub-system as well */
 	input_update();
@@ -82,27 +78,27 @@ void video_update()
 void video_lock()
 {
 	if (frontend && frontend->lock)
-		frontend->lock();
+		frontend->lock(frontend);
 }
 
 void video_unlock()
 {
 	if (frontend && frontend->unlock)
-		frontend->unlock();
+		frontend->unlock(frontend);
 }
 
 struct color video_get_pixel(int x, int y)
 {
 	struct color default_color = { 0, 0, 0 };
-	if (frontend && frontend->get_pixel)
-		return frontend->get_pixel(x, y);
+	if (frontend && frontend->get_p)
+		return frontend->get_p(frontend, x, y);
 	return default_color;
 }
 
 void video_set_pixel(int x, int y, struct color color)
 {
-	if (frontend && frontend->set_pixel)
-		frontend->set_pixel(x, y, color);
+	if (frontend && frontend->set_p)
+		frontend->set_p(frontend, x, y, color);
 }
 
 void video_deinit()
@@ -111,7 +107,7 @@ void video_deinit()
 		return;
 
 	if (frontend->deinit)
-		frontend->deinit();
+		frontend->deinit(frontend);
 	input_deinit();
 	frontend = NULL;
 }
