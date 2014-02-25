@@ -3,12 +3,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <cmdline.h>
 #include <config.h>
 #include <libretro.h>
 #include <log.h>
+#include <video.h>
 
-static uint16_t *frame_buf;
-static retro_video_refresh_t video_cb;
+/* Retro video frontend functions */
+void retro_video_fill_timing(struct retro_system_timing *timing);
+void retro_video_fill_geometry(struct retro_game_geometry *geometry);
+bool retro_video_updated();
+
 retro_environment_t retro_environment_cb;
 static retro_audio_sample_t audio_cb;
 static retro_audio_sample_batch_t audio_batch_cb;
@@ -17,13 +22,15 @@ static retro_input_state_t input_state_cb;
 
 void retro_init(void)
 {
-	frame_buf = calloc(320 * 240, sizeof(uint16_t));
+	/* Set retro as the video frontend */
+	cmdline_set_param("video", NULL, "retro");
+
+	video_init(320, 240);
 }
 
 void retro_deinit(void)
 {
-	free(frame_buf);
-	frame_buf = NULL;
+	video_deinit();
 }
 
 unsigned int retro_api_version(void)
@@ -48,18 +55,11 @@ void retro_get_system_info(struct retro_system_info *info)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-	info->timing = (struct retro_system_timing) {
-		.fps = 60.0,
-		.sample_rate = 30000.0
-	};
+	info->timing.sample_rate = 30000.0;
 
-	info->geometry = (struct retro_game_geometry) {
-		.base_width = 320,
-		.base_height = 240,
-		.max_width = 320,
-		.max_height = 240,
-		.aspect_ratio = 4.0 / 3.0
-	};
+	/* Let video frontend fill timing and geometry */
+	retro_video_fill_timing(&info->timing);
+	retro_video_fill_geometry(&info->geometry);
 }
 
 void retro_set_environment(retro_environment_t cb)
@@ -97,26 +97,17 @@ void retro_set_input_state(retro_input_state_t cb)
 	input_state_cb = cb;
 }
 
-void retro_set_video_refresh(retro_video_refresh_t cb)
-{
-	video_cb = cb;
-}
-
 void retro_reset(void)
 {
 }
 
 void retro_run(void)
 {
-	int x;
-	int y;
-
 	input_poll_cb();
 
-	for (y = 0; y < 240; y++)
-		for (x = 0; x < 320; x++)
-			frame_buf[y * 320 + x] = 0;
-	video_cb(frame_buf, 320, 240, 320 << 1);
+	/* Run until screen is updated */
+	while (!retro_video_updated())
+		video_update();
 }
 
 bool retro_load_game(const struct retro_game_info *info)

@@ -66,6 +66,7 @@ OBJECTS := libretro.o \
 	../cpu/chip8_cpu.o \
 	../cpu/lr35902.o \
 	../cpu/rp2a03.o \
+	../frontends/video/retro_video.o \
 	../mach/chip8.o \
 	../mach/gb.o \
 	../mach/nes.o \
