@@ -19,30 +19,30 @@ endif
 TARGET_NAME := emux
 
 ifeq ($(platform), unix)
-   TARGET := $(TARGET_NAME)_libretro.so
+   EXTENSION := libretro.so
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
 else ifeq ($(platform), osx)
-   TARGET := $(TARGET_NAME)_libretro.dylib
+   EXTENSION := libretro.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
 else ifeq ($(platform), ios)
-   TARGET := $(TARGET_NAME)_libretro_ios.dylib
-	fpic := -fPIC
-	SHARED := -dynamiclib
-	DEFINES := -DIOS
-	CC = clang -arch armv7 -isysroot $(IOSSDK)
+   EXTENSION := libretro_ios.dylib
+   fpic := -fPIC
+   SHARED := -dynamiclib
+   DEFINES := -DIOS
+   CC = clang -arch armv7 -isysroot $(IOSSDK)
 else ifeq ($(platform), qnx)
-	TARGET := $(TARGET_NAME)_libretro_qnx.so
+   EXTENSION := libretro_qnx.so
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
 else ifeq ($(platform), emscripten)
-   TARGET := $(TARGET_NAME)_libretro_emscripten.so
+   EXTENSION := libretro_emscripten.so
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
 else
    CC = gcc
-   TARGET := $(TARGET_NAME)_retro.dll
+   EXTENSION := retro.dll
    SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=link.T -Wl,--no-undefined
 endif
 
@@ -54,38 +54,6 @@ else
    override CFLAGS += -O3
 endif
 
-OBJECTS := libretro.o \
-	../controllers/dma/nes_sprite.o \
-	../controllers/input/nes_controller.o \
-	../controllers/mapper/gb_mapper.o \
-	../controllers/mapper/nes_mapper.o \
-	../controllers/mapper/nrom.o \
-	../controllers/mapper/rom.o \
-	../controllers/video/lcdc.o \
-	../controllers/video/ppu.o \
-	../cpu/chip8_cpu.o \
-	../cpu/lr35902.o \
-	../cpu/rp2a03.o \
-	../frontends/video/retro_video.o \
-	../mach/chip8.o \
-	../mach/gb.o \
-	../mach/nes.o \
-	../main/audio.o \
-	../main/bitops.o \
-	../main/clock.o \
-	../main/cmdline.o \
-	../main/controller.o \
-	../main/cpu.o \
-	../main/env.o \
-	../main/file.o \
-	../main/input.o \
-	../main/log.o \
-	../main/list.o \
-	../main/machine.o \
-	../main/memory.o \
-	../main/resource.o \
-	../main/video.o
-
 override CFLAGS += -Wall -I../include -I.. $(fpic)
 
 ifeq ($(platform), qnx)
@@ -94,16 +62,69 @@ else
 override CFLAGS += -std=gnu99
 endif
 
-all: $(TARGET)
+# Object files used in all implementations
+COMMON_OBJS := ../frontends/video/retro_video.o \
+   ../main/audio.o \
+   ../main/bitops.o \
+   ../main/clock.o \
+   ../main/cmdline.o \
+   ../main/controller.o \
+   ../main/cpu.o \
+   ../main/env.o \
+   ../main/file.o \
+   ../main/input.o \
+   ../main/log.o \
+   ../main/list.o \
+   ../main/machine.o \
+   ../main/memory.o \
+   ../main/resource.o \
+   ../main/video.o
 
-$(TARGET): $(OBJECTS)
-	$(CC) $(fpic) $(SHARED) $(INCLUDES) -o $@ $(OBJECTS)
+OBJECTS := $(COMMON_OBJS)
+
+# Macro used to define a libretro target (name, valid extensions, objects)
+define DEFINE_TARGET
+$(TARGET_NAME)_$(1)_$(EXTENSION)_MACH := $(1)
+$(TARGET_NAME)_$(1)_$(EXTENSION)_EXTS := $(2)
+$(TARGET_NAME)_$(1)_$(EXTENSION)_OBJS := $(COMMON_OBJS) $(3)
+TARGETS += $(TARGET_NAME)_$(1)_$(EXTENSION)
+OBJECTS += $(3)
+endef
+
+# CHIP-8 target definition
+$(eval $(call DEFINE_TARGET,chip8,ch8|bin|rom,\
+   ../cpu/chip8_cpu.o \
+   ../mach/chip8.o))
+
+# GB target definition
+$(eval $(call DEFINE_TARGET,gb,gb|bin|rom,\
+   ../controllers/mapper/gb_mapper.o \
+   ../controllers/mapper/rom.o \
+   ../controllers/video/lcdc.o \
+   ../cpu/lr35902.o \
+   ../mach/gb.o))
+
+# NES target definition
+$(eval $(call DEFINE_TARGET,nes,nes|bin|rom,\
+   ../controllers/dma/nes_sprite.o \
+   ../controllers/input/nes_controller.o \
+   ../controllers/mapper/nes_mapper.o \
+   ../controllers/mapper/nrom.o \
+   ../controllers/video/ppu.o \
+   ../cpu/rp2a03.o \
+   ../mach/nes.o))
+
+all: $(TARGETS)
+
+$(TARGETS): libretro.c $(OBJECTS)
+	$(CC) $(CFLAGS) -DMACHINE=\"$($@_MACH)\" -DVALID_EXTS="\"$($@_EXTS)\"" -c -o libretro.o libretro.c
+	$(CC) $(fpic) $(SHARED) $(INCLUDES) -o $@ libretro.o $($@_OBJS) -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f libretro.o $(OBJECTS) $(TARGETS)
 
 .PHONY: clean
 

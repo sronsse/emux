@@ -22,6 +22,9 @@ static retro_input_state_t input_state_cb;
 
 void retro_init(void)
 {
+	/* Set machine to be run */
+	cmdline_set_param("machine", NULL, MACHINE);
+
 	/* Set retro as the video frontend */
 	cmdline_set_param("video", NULL, "retro");
 
@@ -47,10 +50,10 @@ void retro_set_controller_port_device(unsigned int port, unsigned int device)
 void retro_get_system_info(struct retro_system_info *info)
 {
 	memset(info, 0, sizeof(*info));
-	info->library_name = PACKAGE_NAME;
+	info->library_name = PACKAGE_NAME " (" MACHINE ")";
 	info->library_version = PACKAGE_VERSION;
 	info->need_fullpath = false;
-	info->valid_extensions = NULL;
+	info->valid_extensions = VALID_EXTS;
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
