@@ -7,7 +7,7 @@
 #include <config.h>
 #include <libretro.h>
 #include <log.h>
-#include <video.h>
+#include <machine.h>
 
 /* Retro video frontend functions */
 void retro_video_fill_timing(struct retro_system_timing *timing);
@@ -25,13 +25,10 @@ void retro_init(void)
 
 	/* Set retro as the video frontend */
 	cmdline_set_param("video", NULL, "retro");
-
-	video_init(320, 240);
 }
 
 void retro_deinit(void)
 {
-	video_deinit();
 }
 
 unsigned int retro_api_version(void)
@@ -50,7 +47,7 @@ void retro_get_system_info(struct retro_system_info *info)
 	memset(info, 0, sizeof(*info));
 	info->library_name = PACKAGE_NAME " (" MACHINE ")";
 	info->library_version = PACKAGE_VERSION;
-	info->need_fullpath = false;
+	info->need_fullpath = true;
 	info->valid_extensions = VALID_EXTS;
 }
 
@@ -66,12 +63,9 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 void retro_set_environment(retro_environment_t cb)
 {
 	struct retro_log_callback log_callback;
-	bool no_rom = true;
 
 	/* Set retro environment callback */
 	retro_environment_cb = cb;
-
-	cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &no_rom);
 
 	/* Override log callback if supported by frontend */
 	if (cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log_callback))
@@ -96,16 +90,27 @@ void retro_run(void)
 {
 	/* Run until screen is updated */
 	while (!retro_video_updated())
-		video_update();
+		machine_step();
 }
 
 bool retro_load_game(const struct retro_game_info *info)
 {
+	/* Set data path */
+	cmdline_set_param(NULL, NULL, (char *)info->path);
+
+	/* Initialize machine */
+	if (!machine_init()) {
+		LOG_E("Failed to initialize machine!\n");
+		return false;
+	}
+
 	return true;
 }
 
 void retro_unload_game(void)
 {
+	/* Deinitialize machine */
+	machine_deinit();
 }
 
 unsigned int retro_get_region(void)
