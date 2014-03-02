@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <bitops.h>
 #include <clock.h>
 #include <controller.h>
@@ -26,30 +27,40 @@
 #define NUM_DOTS		341
 #define NUM_SCANLINES		262
 #define OAM_SIZE		256
+#define SEC_OAM_SIZE		32
 #define TILE_WIDTH		8
 #define TILE_HEIGHT		8
 #define PATTERN_TABLE_0_START	0x0000
 #define PATTERN_TABLE_1_START	0x1000
 #define NAME_TABLE_START	0x2000
 #define ATTRIBUTE_TABLE_START	0x23C0
-#define PALETTE_START		0x3F00
+#define BG_PALETTE_START	0x3F00
+#define SPRITE_PALETTE_START	0x3F10
 #define TILE_SIZE		16
+#define NUM_PALETTE_ENTRIES	4
 #define NUM_CHROMA_VALUES	16
 #define NUM_LUMA_VALUES		4
+#define NUM_SPRITES		64
+#define NUM_SPRITES_PER_LINE	8
 
 /* PPU events sorted by priority */
-#define EVENT_SHIFT_BG		BIT(0)
-#define EVENT_RELOAD_BG		BIT(1)
-#define EVENT_FETCH_NT		BIT(2)
-#define EVENT_FETCH_AT		BIT(3)
-#define EVENT_FETCH_LOW_BG	BIT(4)
-#define EVENT_FETCH_HIGH_BG	BIT(5)
-#define EVENT_VBLANK_SET	BIT(6)
-#define EVENT_VBLANK_CLEAR	BIT(7)
-#define EVENT_LOOPY_INC_HORI_V	BIT(8)
-#define EVENT_LOOPY_INC_VERT_V	BIT(9)
-#define EVENT_LOOPY_SET_HORI_V	BIT(10)
-#define EVENT_LOOPY_SET_VERT_V	BIT(11)
+#define EVENT_OUTPUT		BIT(0)
+#define EVENT_SHIFT_BG		BIT(1)
+#define EVENT_SHIFT_SPR		BIT(2)
+#define EVENT_RELOAD_BG		BIT(3)
+#define EVENT_FETCH_NT		BIT(4)
+#define EVENT_FETCH_AT		BIT(5)
+#define EVENT_FETCH_LOW_BG	BIT(6)
+#define EVENT_FETCH_HIGH_BG	BIT(7)
+#define EVENT_VBLANK_SET	BIT(8)
+#define EVENT_VBLANK_CLEAR	BIT(9)
+#define EVENT_LOOPY_INC_HORI_V	BIT(10)
+#define EVENT_LOOPY_INC_VERT_V	BIT(11)
+#define EVENT_LOOPY_SET_HORI_V	BIT(12)
+#define EVENT_LOOPY_SET_VERT_V	BIT(13)
+#define EVENT_SEC_OAM_CLEAR	BIT(14)
+#define EVENT_SPRITE_EVAL	BIT(15)
+#define EVENT_FETCH_SPRITE	BIT(16)
 
 union ppu_ctrl {
 	uint8_t value;
@@ -126,6 +137,27 @@ union ppu_palette_entry {
 	};
 };
 
+union ppu_sprite_attributes {
+	uint8_t value;
+	struct {
+		uint8_t palette:2;
+		uint8_t unimplemented:3;
+		uint8_t priority:1;
+		uint8_t h_flip:1;
+		uint8_t v_flip:1;
+	};
+};
+
+union ppu_sprite {
+	uint8_t values[4];
+	struct {
+		uint8_t y;
+		uint8_t tile_number;
+		union ppu_sprite_attributes attributes;
+		uint8_t x;
+	};
+};
+
 struct ppu_render_data {
 	uint8_t nt;
 	uint8_t at:2;
@@ -136,6 +168,10 @@ struct ppu_render_data {
 	uint8_t attr_latch:2;
 	uint8_t shift_at_low;
 	uint8_t shift_at_high;
+	uint8_t shift_spr_low[NUM_SPRITES_PER_LINE];
+	uint8_t shift_spr_high[NUM_SPRITES_PER_LINE];
+	uint8_t spr_attr_latches[NUM_SPRITES_PER_LINE];
+	uint8_t x_counters[NUM_SPRITES_PER_LINE];
 };
 
 struct ppu {
@@ -151,6 +187,7 @@ struct ppu {
 	bool odd_frame;
 	int h;
 	int v;
+	int sprite_counter;
 	int *events[NUM_SCANLINES];
 	int visible_scanline[NUM_DOTS];
 	int vblank_scanline[NUM_DOTS];
@@ -159,6 +196,7 @@ struct ppu {
 	struct ppu_render_data render_data;
 	struct clock clock;
 	uint8_t oam[OAM_SIZE];
+	uint8_t sec_oam[SEC_OAM_SIZE];
 	int bus_id;
 	int irq;
 };
@@ -172,7 +210,9 @@ static void ppu_update_counters(struct ppu *ppu);
 static void ppu_set_events(struct ppu *ppu);
 static uint8_t ppu_readb(region_data_t *data, address_t address);
 static void ppu_writeb(region_data_t *data, uint8_t b, address_t address);
+static void ppu_output(struct ppu *ppu);
 static void ppu_shift_bg(struct ppu *ppu);
+static void ppu_shift_spr(struct ppu *ppu);
 static void ppu_reload_bg(struct ppu *ppu);
 static void ppu_fetch_nt(struct ppu *ppu);
 static void ppu_fetch_at(struct ppu *ppu);
@@ -184,6 +224,9 @@ static void ppu_loopy_inc_hori_v(struct ppu *ppu);
 static void ppu_loopy_inc_vert_v(struct ppu *ppu);
 static void ppu_loopy_set_hori_v(struct ppu *ppu);
 static void ppu_loopy_set_vert_v(struct ppu *ppu);
+static void ppu_sec_oam_clear(struct ppu *ppu);
+static void ppu_sprite_eval(struct ppu *ppu);
+static void ppu_fetch_sprite(struct ppu *ppu);
 
 static struct mops ppu_mops = {
 	.readb = ppu_readb,
@@ -191,7 +234,9 @@ static struct mops ppu_mops = {
 };
 
 static ppu_event_t ppu_events[] = {
+	ppu_output,
 	ppu_shift_bg,
+	ppu_shift_spr,
 	ppu_reload_bg,
 	ppu_fetch_nt,
 	ppu_fetch_at,
@@ -202,7 +247,10 @@ static ppu_event_t ppu_events[] = {
 	ppu_loopy_inc_hori_v,
 	ppu_loopy_inc_vert_v,
 	ppu_loopy_set_hori_v,
-	ppu_loopy_set_vert_v
+	ppu_loopy_set_vert_v,
+	ppu_sec_oam_clear,
+	ppu_sprite_eval,
+	ppu_fetch_sprite
 };
 
 static struct color ppu_palette[NUM_LUMA_VALUES][NUM_CHROMA_VALUES] = {
@@ -269,7 +317,7 @@ uint8_t ppu_readb(region_data_t *data, address_t address)
 		ppu->vram_buffer = memory_readb(ppu->bus_id,
 			ppu->vram_addr.value);
 		ppu->vram_addr.value += ppu->ctrl.vram_addr_increment ? 32 : 1;
-		if (ppu->vram_addr.value >= PALETTE_START)
+		if (ppu->vram_addr.value >= BG_PALETTE_START)
 			b = ppu->vram_buffer;
 		return b;
 	default:
@@ -358,38 +406,87 @@ void ppu_writeb(region_data_t *data, uint8_t b, address_t address)
 	}
 }
 
+void ppu_output(struct ppu *ppu)
+{
+	struct ppu_render_data *r = &ppu->render_data;
+	union ppu_sprite_attributes attributes;
+	union ppu_palette_entry entry;
+	uint16_t address;
+	bool bg_priority;
+	uint8_t bg_color = 0;
+	uint8_t sprite_color = 0;
+	uint8_t bg_palette = 0;
+	uint8_t color;
+	uint8_t palette;
+	uint8_t l;
+	uint8_t h;
+	int i;
+
+	/* Only get data if background rendering is enabled */
+	if (ppu->mask.bg_visibility) {
+		/* Get palette index */
+		l = bitops_getb(&r->shift_at_low, 7 - ppu->fine_x_scroll, 1);
+		h = bitops_getb(&r->shift_at_high, 7 - ppu->fine_x_scroll, 1);
+		bg_palette = l | (h << 1);
+
+		/* Get pattern color */
+		l = bitops_getw(&r->shift_bg_low, 15 - ppu->fine_x_scroll, 1);
+		h = bitops_getw(&r->shift_bg_high, 15 - ppu->fine_x_scroll, 1);
+		bg_color = l | (h << 1);
+	}
+
+	/* Find first sprite opaque pixel if sprite rendering is enabled */
+	if (ppu->mask.sprite_visibility)
+		for (i = 0; i < NUM_SPRITES_PER_LINE; i++) {
+			/* Skip non-active sprites */
+			if (ppu->render_data.x_counters[i] > 0)
+				continue;
+
+			/* Get pattern color */
+			l = bitops_getb(&r->shift_spr_low[i], 7, 1);
+			h = bitops_getb(&r->shift_spr_high[i], 7, 1);
+			color = l | (h << 1);
+
+			/* Skip if pixel is transparent */
+			if (color == 0)
+				continue;
+
+			/* Save sprite information and break */
+			sprite_color = color;
+			attributes.value = r->spr_attr_latches[i];
+			break;
+		}
+
+	/* Handle priority (background or sprite) */
+	bg_priority = true;
+	if ((bg_color == 0) && (sprite_color != 0))
+		bg_priority = false;
+	if ((bg_color != 0) && (sprite_color != 0) && !attributes.priority)
+		bg_priority = false;
+
+	/* Set color and palette based on priority multiplexer decision */
+	color = bg_priority ? bg_color : sprite_color;
+	palette = bg_priority ? bg_palette : attributes.palette;
+
+	/* Compute palette entry (color 0 always points to first palette) */
+	address = bg_priority ? BG_PALETTE_START : SPRITE_PALETTE_START;
+	if (color != 0)
+		address += NUM_PALETTE_ENTRIES * palette + color;
+
+	/* Set pixel based on palette entry */
+	entry.value = memory_readb(ppu->bus_id, address);
+	video_set_pixel(ppu->h - 1, ppu->v,
+		ppu_palette[entry.luma][entry.chroma]);
+}
+
 void ppu_shift_bg(struct ppu *ppu)
 {
 	struct ppu_render_data *r = &ppu->render_data;
-	union ppu_palette_entry entry;
-	int low;
-	int high;
-	uint8_t palette;
-	uint8_t color;
-	int address;
 	uint8_t b;
-	int x;
-	int y;
 
-	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	/* Return already if BG rendering is not enabled */
+	if (!ppu->mask.bg_visibility)
 		return;
-
-	/* Get palette index */
-	low = bitops_getb(&r->shift_at_low, 7 - ppu->fine_x_scroll, 1);
-	high = bitops_getb(&r->shift_at_high, 7 - ppu->fine_x_scroll, 1);
-	palette = low | (high << 1);
-
-	/* Get pattern color */
-	low = bitops_getw(&r->shift_bg_low, 15 - ppu->fine_x_scroll, 1);
-	high = bitops_getw(&r->shift_bg_high, 15 - ppu->fine_x_scroll, 1);
-	color = low | (high << 1);
-
-	/* Get palette entry (color 0 always redirects to the same address) */
-	address = PALETTE_START;
-	if (color != 0)
-		address += 4 * palette + color;
-	entry.value = memory_readb(ppu->bus_id, address);
 
 	/* Shift background and palette shift registers */
 	r->shift_bg_low <<= 1;
@@ -401,20 +498,36 @@ void ppu_shift_bg(struct ppu *ppu)
 	b = r->attr_latch;
 	r->shift_at_low |= bitops_getb(&b, 0, 1);
 	r->shift_at_high |= bitops_getb(&b, 1, 1);
+}
 
-	/* Set pixel based on palette entry */
-	x = ppu->h - 2;
-	y = ppu->v;
-	if ((x < SCREEN_WIDTH) && (y < SCREEN_HEIGHT))
-		video_set_pixel(x, y, ppu_palette[entry.luma][entry.chroma]);
+void ppu_shift_spr(struct ppu *ppu)
+{
+	struct ppu_render_data *r = &ppu->render_data;
+	int i;
+
+	/* Return already if rendering is not enabled */
+	if (!ppu->mask.sprite_visibility)
+		return;
+
+	/* Shift sprite tile registers if needed */
+	for (i = 0; i < NUM_SPRITES_PER_LINE; i++)
+		if (r->x_counters[i] == 0) {
+			r->shift_spr_low[i] <<= 1;
+			r->shift_spr_high[i] <<= 1;
+		}
+
+	/* Decrement X counters if needed */
+	for (i = 0; i < NUM_SPRITES_PER_LINE; i++)
+		if (r->x_counters[i] > 0)
+			r->x_counters[i]--;
 }
 
 void ppu_reload_bg(struct ppu *ppu)
 {
 	struct ppu_render_data *r = &ppu->render_data;
 
-	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	/* Return already if BG rendering is not enabled */
+	if (!ppu->mask.bg_visibility)
 		return;
 
 	/* Load bitmap data into shift registers (lower 8 bits) */
@@ -431,8 +544,8 @@ void ppu_fetch_nt(struct ppu *ppu)
 	struct ppu_render_data *r = &ppu->render_data;
 	union ppu_vram_address nametable_addr;
 
-	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	/* Return already if BG rendering is not enabled */
+	if (!ppu->mask.bg_visibility)
 		return;
 
 	/* Compute NT address */
@@ -454,8 +567,8 @@ void ppu_fetch_at(struct ppu *ppu)
 	bool right;
 	bool bottom;
 
-	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	/* Return already if BG rendering is not enabled */
+	if (!ppu->mask.bg_visibility)
 		return;
 
 	/* Compute AT address */
@@ -483,8 +596,8 @@ void ppu_fetch_low_bg(struct ppu *ppu)
 	address_t address;
 	struct ppu_render_data *r = &ppu->render_data;
 
-	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	/* Return already if BG rendering is not enabled */
+	if (!ppu->mask.bg_visibility)
 		return;
 
 	/* Select appropriate pattern table and compute address */
@@ -502,7 +615,7 @@ void ppu_fetch_high_bg(struct ppu *ppu)
 	struct ppu_render_data *r = &ppu->render_data;
 
 	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	if (!ppu->mask.bg_visibility)
 		return;
 
 	/* Select appropriate pattern table and compute address */
@@ -530,14 +643,15 @@ void ppu_vblank_clear(struct ppu *ppu)
 {
 	/* Clear flags */
 	ppu->status.vblank_flag = 0;
+	ppu->status.sprite_overflow = 0;
 	ppu->status.sprite_0_hit = 0;
 	video_lock();
 }
 
 void ppu_loopy_inc_hori_v(struct ppu *ppu)
 {
-	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	/* Return already if BG rendering is not enabled */
+	if (!ppu->mask.bg_visibility)
 		return;
 
 	/* Increment coarse X */
@@ -550,8 +664,8 @@ void ppu_loopy_inc_hori_v(struct ppu *ppu)
 
 void ppu_loopy_inc_vert_v(struct ppu *ppu)
 {
-	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	/* Return already if BG rendering is not enabled */
+	if (!ppu->mask.bg_visibility)
 		return;
 
 	/* Increment fine Y */
@@ -573,8 +687,8 @@ void ppu_loopy_inc_vert_v(struct ppu *ppu)
 
 void ppu_loopy_set_hori_v(struct ppu *ppu)
 {
-	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	/* Return already if BG rendering is not enabled */
+	if (!ppu->mask.bg_visibility)
 		return;
 
 	/* Copy horizontal position from t to v */
@@ -584,14 +698,156 @@ void ppu_loopy_set_hori_v(struct ppu *ppu)
 
 void ppu_loopy_set_vert_v(struct ppu *ppu)
 {
-	/* Return already if rendering is not enabled */
-	if ((!ppu->mask.bg_visibility) && (!ppu->mask.sprite_visibility))
+	/* Return already if BG rendering is not enabled */
+	if (!ppu->mask.bg_visibility)
 		return;
 
 	/* Copy vertical position from t to v */
 	ppu->vram_addr.coarse_y_scroll = ppu->temp_vram_addr.coarse_y_scroll;
 	ppu->vram_addr.v_nametable = ppu->temp_vram_addr.v_nametable;
 	ppu->vram_addr.fine_y_scroll = ppu->temp_vram_addr.fine_y_scroll;
+}
+
+void ppu_sec_oam_clear(struct ppu *ppu)
+{
+	/* Return already if sprite rendering is not enabled */
+	if (!ppu->mask.sprite_visibility)
+		return;
+
+	/* Initialize secondary OAM */
+	memset(ppu->sec_oam, 0xFF, SEC_OAM_SIZE);
+}
+
+void ppu_sprite_eval(struct ppu *ppu)
+{
+	union ppu_sprite *sprites;
+	uint16_t address = 0;
+	int num_sprites_found = 0;
+	int height;
+	int y;
+	int n;
+	int m;
+
+	/* Return already if sprite rendering is not enabled */
+	if (!ppu->mask.sprite_visibility)
+		return;
+
+	/* Set sprites address from primary OAM */
+	sprites = (union ppu_sprite *)ppu->oam;
+
+	/* Get height based on sprite size */
+	height = ppu->ctrl.sprite_size ? 2 * TILE_HEIGHT : TILE_HEIGHT;
+
+	/* Evaluate sprites */
+	for (n = 0; n < NUM_SPRITES; n++) {
+		/* Copy sprite Y coordinate to secondary OAM */
+		ppu->sec_oam[address] = sprites[n].y;
+
+		/* Skip if sprite is not in range */
+		y = sprites[n].y;
+		if ((ppu->v < y) || (ppu->v >= y + height))
+			continue;
+
+		/* Copy sprite remaining bytes to secondary OAM */
+		address++;
+		ppu->sec_oam[address++] = sprites[n].values[1];
+		ppu->sec_oam[address++] = sprites[n].values[2];
+		ppu->sec_oam[address++] = sprites[n].values[3];
+
+		/* Stop evaluation if maximum number of sprites is reached */
+		if (++num_sprites_found == NUM_SPRITES_PER_LINE)
+			break;
+	}
+
+	/* Handle sprite overflow */
+	m = 0;
+	while (n++ < NUM_SPRITES) {
+		/* Evaluate OAM[address] as a Y coordinate */
+		y = sprites[n].values[m];
+
+		/* Check if sprite is in range */
+		if ((ppu->v >= y) && (ppu->v < y + height)) {
+			/* Set sprite overflow flag */
+			ppu->status.sprite_overflow = 1;
+
+			/* Skip next 3 bytes */
+			m += 3;
+		}
+
+		/* Increment m every time (hardware bug) and handle overflow */
+		if (++m >= 4)
+			m -= 4;
+	}
+}
+
+void ppu_fetch_sprite(struct ppu *ppu)
+{
+	union ppu_sprite *sprite;
+	uint16_t address;
+	bool transparent;
+	int height;
+	int index;
+	uint8_t low;
+	uint8_t high;
+
+	/* Return already if sprite rendering is not enabled */
+	if (!ppu->mask.sprite_visibility)
+		return;
+
+	/* Select sprite */
+	index = ppu->sprite_counter;
+	sprite = &((union ppu_sprite *)ppu->sec_oam)[index];
+
+	/* Copy attributes and X coordinate */
+	ppu->render_data.spr_attr_latches[index] = sprite->attributes.value;
+	ppu->render_data.x_counters[index] = sprite->x;
+
+	/* Increment sprite counter and handle overflow */
+	if (++ppu->sprite_counter == NUM_SPRITES_PER_LINE)
+		ppu->sprite_counter = 0;
+
+	/* Dummy fetches are replaced by transparent data */
+	transparent = (sprite->y == 0xFF);
+	if (transparent) {
+		ppu->render_data.shift_spr_low[index] = 0;
+		ppu->render_data.shift_spr_high[index] = 0;
+		return;
+	}
+
+	/* Get height based on sprite size */
+	height = ppu->ctrl.sprite_size ? 2 * TILE_HEIGHT : TILE_HEIGHT;
+
+	/* Select pattern table based on sprite size */
+	if (!ppu->ctrl.sprite_size) {
+		/* 8x8 pattern table is based on PPUCTRL */
+		address = (ppu->ctrl.sprite_pattern_table_addr_8x8 == 0) ?
+			PATTERN_TABLE_0_START : PATTERN_TABLE_1_START;
+	} else {
+		/* 8x16 pattern table is based on bit 0 of tile number */
+		address = !(sprite->tile_number & BIT(0)) ?
+			PATTERN_TABLE_0_START : PATTERN_TABLE_1_START;
+	}
+
+	/* Add tile offset to address */
+	address += sprite->tile_number * TILE_SIZE;
+
+	/* Add line offset to address based on vertical flip */
+	address += !sprite->attributes.v_flip ?
+		ppu->v - sprite->y : height - (ppu->v - sprite->y) - 1;
+
+	/* Fetch tile data */
+	low = memory_readb(ppu->bus_id, address);
+	high = memory_readb(ppu->bus_id, address + 8);
+
+	/* Reverse data on horizontal flip */
+	if (sprite->attributes.h_flip) {
+		low = bitops_reverse(low, 8);
+		high = bitops_reverse(high, 8);
+	}
+
+	/* Set tile data into shift registers */
+	ppu->render_data.shift_spr_low[index] = low;
+	ppu->render_data.shift_spr_high[index] = high;
 }
 
 void ppu_set_events(struct ppu *ppu)
@@ -616,8 +872,11 @@ void ppu_set_events(struct ppu *ppu)
 		ppu->visible_scanline[h + 7] |= EVENT_LOOPY_INC_HORI_V;
 		ppu->visible_scanline[h + 8] |= EVENT_RELOAD_BG;
 	}
-	for (h = 2; h <= 257; h++)
-		ppu->visible_scanline[h] |= EVENT_SHIFT_BG;
+	for (h = 1; h <= 256; h++) {
+		ppu->visible_scanline[h] |= EVENT_OUTPUT;
+		ppu->visible_scanline[h + 1] |= EVENT_SHIFT_BG;
+		ppu->visible_scanline[h + 1] |= EVENT_SHIFT_SPR;
+	}
 	ppu->visible_scanline[256] |= EVENT_LOOPY_INC_VERT_V;
 	ppu->visible_scanline[257] |= EVENT_LOOPY_SET_HORI_V;
 	for (h = 321; h <= 335; h += 8) {
@@ -632,6 +891,10 @@ void ppu_set_events(struct ppu *ppu)
 		ppu->visible_scanline[h] |= EVENT_SHIFT_BG;
 	ppu->visible_scanline[337] |= EVENT_FETCH_NT;
 	ppu->visible_scanline[339] |= EVENT_FETCH_NT;
+	ppu->visible_scanline[1] |= EVENT_SEC_OAM_CLEAR;
+	ppu->visible_scanline[65] |= EVENT_SPRITE_EVAL;
+	for (h = 257; h <= 320; h += 8)
+		ppu->visible_scanline[h] |= EVENT_FETCH_SPRITE;
 
 	/* Build VBLANK scanline */
 	ppu->vblank_scanline[1] |= EVENT_VBLANK_SET;
@@ -645,8 +908,10 @@ void ppu_set_events(struct ppu *ppu)
 		ppu->pre_render_scanline[h + 7] |= EVENT_LOOPY_INC_HORI_V;
 		ppu->pre_render_scanline[h + 8] |= EVENT_RELOAD_BG;
 	}
-	for (h = 2; h <= 257; h++)
+	for (h = 2; h <= 257; h++) {
 		ppu->pre_render_scanline[h] |= EVENT_SHIFT_BG;
+		ppu->pre_render_scanline[h] |= EVENT_SHIFT_SPR;
+	}
 	ppu->pre_render_scanline[1] |= EVENT_VBLANK_CLEAR;
 	ppu->pre_render_scanline[256] |= EVENT_LOOPY_INC_VERT_V;
 	ppu->pre_render_scanline[257] |= EVENT_LOOPY_SET_HORI_V;
@@ -664,6 +929,8 @@ void ppu_set_events(struct ppu *ppu)
 		ppu->pre_render_scanline[h] |= EVENT_SHIFT_BG;
 	ppu->pre_render_scanline[337] |= EVENT_FETCH_NT;
 	ppu->pre_render_scanline[339] |= EVENT_FETCH_AT;
+	for (h = 257; h <= 320; h += 8)
+		ppu->pre_render_scanline[h] |= EVENT_FETCH_SPRITE;
 
 	/* Build frame events */
 	for (v = 0; v <= 239; v++)
@@ -772,6 +1039,7 @@ bool ppu_init(struct controller_instance *instance)
 	ppu->odd_frame = false;
 	ppu->h = 0;
 	ppu->v = 261;
+	ppu->sprite_counter = 0;
 
 	/* Prepare frame events */
 	ppu_set_events(ppu);
