@@ -19,8 +19,8 @@ typedef FILE *file_handle_t;
 file_handle_t file_open(enum path_type type, char *path, char *mode);
 void file_close(file_handle_t);
 uint32_t file_get_size(file_handle_t f);
-bool file_read(file_handle_t f, void *dst, int size);
-bool file_write(file_handle_t f, void *src, int size);
+bool file_read(file_handle_t f, void *dst, int offset, int size);
+bool file_write(file_handle_t f, void *src, int offset, int size);
 void *file_map(enum path_type type, char *path, int offset, int size);
 void file_unmap(void *data, int size);
 

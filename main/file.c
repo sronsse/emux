@@ -17,7 +17,7 @@ static file_handle_t open_file(char *path, char *mode);
 static void *map_file(char *path, int offset, int size);
 static void get_full_path(char *dst, int len, enum path_type type, char *path);
 
-static file_handle_t open_file(char *path, char *mode)
+file_handle_t open_file(char *path, char *mode)
 {
 	file_handle_t file;
 
@@ -33,7 +33,7 @@ static file_handle_t open_file(char *path, char *mode)
 	return file;
 }
 
-static void *map_file(char *path, int offset, int size)
+void *map_file(char *path, int offset, int size)
 {
 #ifdef _WIN32
 	SYSTEM_INFO system_info;
@@ -167,16 +167,18 @@ uint32_t file_get_size(file_handle_t f)
 	return size;
 }
 
-bool file_read(file_handle_t f, void *dst, int size)
+bool file_read(file_handle_t f, void *dst, int offset, int size)
 {
 	int n;
+	fseek(f, offset, SEEK_SET);
 	n = fread(dst, 1, size, f);
 	return (n == size);
 }
 
-bool file_write(file_handle_t f, void *src, int size)
+bool file_write(file_handle_t f, void *src, int offset, int size)
 {
 	int n;
+	fseek(f, offset, SEEK_SET);
 	n = fwrite(src, 1, size, f);
 	return (n == size);
 }

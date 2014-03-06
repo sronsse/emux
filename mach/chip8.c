@@ -82,7 +82,7 @@ bool chip8_init(struct machine *machine)
 	memcpy(chip8_data->ram, char_mem, ARRAY_SIZE(char_mem));
 
 	/* Copy ROM contents to RAM (starting at ROM address) */
-	if (!file_read(f, &chip8_data->ram[ROM_ADDRESS], size)) {
+	if (!file_read(f, &chip8_data->ram[ROM_ADDRESS], 0, size)) {
 		free(chip8_data);
 		file_close(f);
 		LOG_E("Could not read ROM from \"%s\"!\n", rom_path);
