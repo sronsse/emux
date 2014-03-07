@@ -25,6 +25,21 @@ DEFINE_BITOPS_SET(b, uint8_t)
 DEFINE_BITOPS_GET(w, uint16_t)
 DEFINE_BITOPS_SET(w, uint16_t)
 
+int bitops_reverse(int i, int length)
+{
+	uint8_t index;
+	int r = 0;
+	int b;
+
+	/* Reverse bits */
+	for (index = 0; index < length; index++) {
+		b = (i >> (length - index - 1)) & 0x01;
+		r |= b << index;
+	}
+
+	return r;
+}
+
 int bitops_ffs(int i)
 {
 	return ffs(i);
