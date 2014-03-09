@@ -188,6 +188,8 @@ struct ppu {
 	int h;
 	int v;
 	int sprite_counter;
+	bool spr_0_evaluated;
+	bool spr_0_fetched;
 	int *events[NUM_SCANLINES];
 	int visible_scanline[NUM_DOTS];
 	int vblank_scanline[NUM_DOTS];
@@ -450,6 +452,10 @@ void ppu_output(struct ppu *ppu)
 			/* Skip if pixel is transparent */
 			if (color == 0)
 				continue;
+
+			/* Set sprite 0 hit flag if needed */
+			if ((i == 0) && (bg_color != 0) && ppu->spr_0_fetched)
+				ppu->status.sprite_0_hit = 1;
 
 			/* Save sprite information and break */
 			sprite_color = color;
@@ -738,6 +744,9 @@ void ppu_sprite_eval(struct ppu *ppu)
 	/* Get height based on sprite size */
 	height = ppu->ctrl.sprite_size ? 2 * TILE_HEIGHT : TILE_HEIGHT;
 
+	/* Reset sprite 0 evaluated flag */
+	ppu->spr_0_evaluated = false;
+
 	/* Evaluate sprites */
 	for (n = 0; n < NUM_SPRITES; n++) {
 		/* Copy sprite Y coordinate to secondary OAM */
@@ -753,6 +762,10 @@ void ppu_sprite_eval(struct ppu *ppu)
 		ppu->sec_oam[address++] = sprites[n].values[1];
 		ppu->sec_oam[address++] = sprites[n].values[2];
 		ppu->sec_oam[address++] = sprites[n].values[3];
+
+		/* Flag sprite 0 as evaluated if needed */
+		if (n == 0)
+			ppu->spr_0_evaluated = true;
 
 		/* Stop evaluation if maximum number of sprites is reached */
 		if (++num_sprites_found == NUM_SPRITES_PER_LINE)
@@ -805,6 +818,10 @@ void ppu_fetch_sprite(struct ppu *ppu)
 	/* Increment sprite counter and handle overflow */
 	if (++ppu->sprite_counter == NUM_SPRITES_PER_LINE)
 		ppu->sprite_counter = 0;
+
+	/* Set sprite 0 fetched flag if needed */
+	if (index == 0)
+		ppu->spr_0_fetched = ppu->spr_0_evaluated;
 
 	/* Dummy fetches are replaced by transparent data */
 	transparent = (sprite->y == 0xFF);
