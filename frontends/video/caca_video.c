@@ -7,6 +7,9 @@
 #include <util.h>
 #include <video.h>
 
+#define CHAR_WIDTH	8
+#define CHAR_HEIGHT	16
+
 #define BPP 32
 #define R_MASK	0x00FF0000
 #define R_SHIFT	16
@@ -38,7 +41,7 @@ window_t *caca_init(struct video_frontend *fe, int w, int h, int s)
 	int pitch;
 
 	/* Create canvas and display */
-	cv = caca_create_canvas(w * s, h * s);
+	cv = caca_create_canvas(w * s / CHAR_WIDTH, h * s / CHAR_HEIGHT);
 	dp = caca_create_display(cv);
 	if (!dp) {
 		LOG_E("Could not create caca display!\n");
