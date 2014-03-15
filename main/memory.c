@@ -1,15 +1,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <bitops.h>
 #include <log.h>
 #include <memory.h>
 #include <util.h>
 
+#define USE_BUS_MAP
+
 struct bus {
 	int width;
 	struct region *regions;
 	int num_regions;
+#ifdef USE_BUS_MAP
+	struct region **map;
+#endif
 };
 
 struct region {
@@ -26,7 +32,9 @@ static uint16_t ram_readw(region_data_t *data, address_t address);
 static void ram_writeb(region_data_t *data, uint8_t b, address_t address);
 static void ram_writew(region_data_t *data, uint16_t w, address_t address);
 static int memory_region_sort_compare(const void *a, const void *b);
+#ifndef USE_BUS_MAP
 static int memory_region_bsearch_compare(const void *key, const void *elem);
+#endif
 static struct region *memory_region_find(int bus_id, address_t *address);
 
 static struct bus *busses;
@@ -96,6 +104,7 @@ int memory_region_sort_compare(const void *a, const void *b)
 	return 0;
 }
 
+#ifndef USE_BUS_MAP
 int memory_region_bsearch_compare(const void *key, const void *elem)
 {
 	address_t address = *(address_t *)key;
@@ -110,6 +119,7 @@ int memory_region_bsearch_compare(const void *key, const void *elem)
 	/* Region matches */
 	return 0;
 }
+#endif
 
 struct region *memory_region_find(int bus_id, address_t *address)
 {
@@ -118,12 +128,17 @@ struct region *memory_region_find(int bus_id, address_t *address)
 	/* Make sure address fits within bus */
 	*address &= (BIT(busses[bus_id].width) - 1);
 
+#ifdef USE_BUS_MAP
+	/* Get region from bus map */
+	region = busses[bus_id].map[*address];
+#else
 	/* Search region */
 	region = bsearch(address,
 		busses[bus_id].regions,
 		busses[bus_id].num_regions,
 		sizeof(struct region),
 		memory_region_bsearch_compare);
+#endif
 
 	/* Adapt address if a region was found */
 	if (region)
@@ -134,24 +149,39 @@ struct region *memory_region_find(int bus_id, address_t *address)
 
 void memory_bus_add(int width)
 {
-	/* Grow busses array */
+	struct bus *bus;
+#ifdef USE_BUS_MAP
+	int size;
+#endif
+
+	/* Grow busses array and select bus */
 	busses = realloc(busses, ++num_busses * sizeof(struct bus));
+	bus = &busses[num_busses - 1];
 
 	/* Initialize bus */
-	busses[num_busses - 1].width = width;
-	busses[num_busses - 1].regions = NULL;
-	busses[num_busses - 1].num_regions = 0;
+	bus->width = width;
+	bus->regions = NULL;
+	bus->num_regions = 0;
+
+#ifdef USE_BUS_MAP
+	/* Initialize bus map */
+	size = BIT(width) * sizeof(struct region *);
+	bus->map = malloc(size);
+	memset(bus->map, 0, size);
+#endif
 }
 
-void memory_region_add(struct resource *area, struct mops *mops,
-	region_data_t *data)
+void memory_region_add(struct resource *a, struct mops *m, region_data_t *d)
 {
 	struct bus *bus;
 	struct region *region;
 	int i;
+#ifdef USE_BUS_MAP
+	int j;
+#endif
 
 	/* Get bus based on area */
-	bus = &busses[area->data.mem.bus_id];
+	bus = &busses[a->data.mem.bus_id];
 
 	/* Grow memory regions array */
 	bus->regions = realloc(bus->regions, ++bus->num_regions *
@@ -159,18 +189,25 @@ void memory_region_add(struct resource *area, struct mops *mops,
 
 	/* Create memory region */
 	region = &bus->regions[bus->num_regions - 1];
-	region->start = area->data.mem.start & (BIT(bus->width) - 1);
-	region->end = area->data.mem.end & (BIT(bus->width) - 1);
-	region->mops = mops;
-	region->data = data;
-
-	/* Add mirrors */
-	for (i = 0; i < area->num_children; i++)
-		memory_region_add(&area->children[i], mops, data);
+	region->start = a->data.mem.start & (BIT(bus->width) - 1);
+	region->end = a->data.mem.end & (BIT(bus->width) - 1);
+	region->mops = m;
+	region->data = d;
 
 	/* Sort memory regions array */
 	qsort(bus->regions, bus->num_regions, sizeof(struct region),
 		memory_region_sort_compare);
+
+	/* Add mirrors */
+	for (i = 0; i < a->num_children; i++)
+		memory_region_add(&a->children[i], m, d);
+
+#ifdef USE_BUS_MAP
+	/* Update bus map */
+	for (i = 0; i < bus->num_regions; i++)
+		for (j = bus->regions[i].start; j <= bus->regions[i].end; j++)
+			bus->map[j] = &bus->regions[i];
+#endif
 }
 
 void memory_region_remove(struct resource *area)
@@ -178,7 +215,10 @@ void memory_region_remove(struct resource *area)
 	struct bus *bus;
 	address_t start;
 	address_t end;
-	int index;
+#ifdef USE_BUS_MAP
+	int size;
+#endif
+	int i;
 
 	/* Get bus based on area */
 	bus = &busses[area->data.mem.bus_id];
@@ -188,31 +228,52 @@ void memory_region_remove(struct resource *area)
 	end = area->data.mem.end;
 
 	/* Find region to remove */
-	for (index = 0; index < bus->num_regions; index++)
-		if ((bus->regions[index].start == start) &&
-			(bus->regions[index].end == end))
+	for (i = 0; i < bus->num_regions; i++)
+		if ((bus->regions[i].start == start) &&
+			(bus->regions[i].end == end))
 			break;
 
 	/* Return if region was not found */
-	if (index == bus->num_regions)
+	if (i == bus->num_regions)
 		return;
 
+#ifdef USE_BUS_MAP
+	/* Reset bus map */
+	size = (end - start + 1) * sizeof(struct region *);
+	memset(&bus->map[start], 0, size);
+#endif
+
 	/* Shift remaining regions */
-	while (index < bus->num_regions - 1) {
-		bus->regions[index] = bus->regions[index + 1];
-		index++;
+	while (i < bus->num_regions - 1) {
+		bus->regions[i] = bus->regions[i + 1];
+		i++;
 	}
 
 	/* Shrink memory regions array */
 	bus->regions = realloc(bus->regions, --bus->num_regions *
 		sizeof(struct region));
+
+	/* Remove mirrors */
+	for (i = 0; i < area->num_children; i++)
+		memory_region_remove(&area->children[i]);
 }
 
 void memory_bus_remove_all()
 {
 	int i;
-	for (i = 0; i < num_busses; i++)
+
+	/* Parse busses */
+	for (i = 0; i < num_busses; i++) {
+		/* Free regions */
 		free(busses[i].regions);
+
+#ifdef USE_BUS_MAP
+		/* Free map */
+		free(busses[i].map);
+#endif
+	}
+
+	/* Free busses */
 	free(busses);
 	busses = NULL;
 	num_busses = 0;

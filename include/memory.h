@@ -19,8 +19,7 @@ struct mops {
 
 void memory_bus_add(int width);
 void memory_bus_remove_all();
-void memory_region_add(struct resource *area, struct mops *mops,
-	region_data_t *data);
+void memory_region_add(struct resource *a, struct mops *m, region_data_t *d);
 void memory_region_remove(struct resource *area);
 uint8_t memory_readb(int bus_id, address_t address);
 uint16_t memory_readw(int bus_id, address_t address);
