@@ -1009,14 +1009,14 @@ void NOP(struct lr35902 *UNUSED(cpu))
 
 void HALT(struct lr35902 *cpu)
 {
-	cpu->halted = 1;
+	cpu->halted = true;
 	clock_consume(4);
 }
 
 void STOP(struct lr35902 *cpu)
 {
 	memory_readb(cpu->bus_id, cpu->PC++);
-	cpu->halted = 1;
+	cpu->halted = true;
 	clock_consume(4);
 }
 
@@ -1214,13 +1214,16 @@ bool lr35902_handle_interrupts(struct lr35902 *cpu)
 {
 	int irq;
 
-	/* Check if interrupts are enabled */
-	if (!cpu->IME)
-		return false;
-
 	/* Get interrupt request (by priority) and leave if none is active */
 	irq = bitops_ffs(cpu->IF);
 	if (irq-- == 0)
+		return false;
+
+	/* Any interrupt should resume CPU (regardless of IME flag) */
+	cpu->halted = 0;
+
+	/* Check if interrupts are enabled */
+	if (!cpu->IME)
 		return false;
 
 	/* Check if particular interrupt is enabled */
