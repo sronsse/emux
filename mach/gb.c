@@ -11,7 +11,10 @@
 #include <util.h>
 #include <controllers/mapper/gb_mapper.h>
 
-#define GB_CLOCK_RATE	4194304
+#define GB_CLOCK_RATE		4194304
+#define SERIAL_CLOCK_RATE	(GB_CLOCK_RATE / 512)
+#define DIV_CLOCK_RATE		(GB_CLOCK_RATE / 256)
+#define TIMA_CLOCK_RATE		GB_CLOCK_RATE
 
 #define VRAM_SIZE	KB(8)
 #define WRAM_SIZE	KB(8)
@@ -35,6 +38,11 @@
 #define ECHO_END	0xFDFF
 #define OAM_START	0xFE00
 #define OAM_END		0xFE9F
+#define JOYPAD		0xFF00
+#define SERIAL_START	0xFF01
+#define SERIAL_END	0xFF02
+#define TIMER_START	0xFF04
+#define TIMER_END	0xFF07
 #define IFR		0xFF0F
 #define LCDC_START	0xFF40
 #define LCDC_END	0xFF4B
@@ -123,6 +131,48 @@ static struct controller_instance lcdc_instance = {
 	.num_resources = ARRAY_SIZE(lcdc_resources)
 };
 
+/* Joypad controller */
+static struct resource joypad_resources[] = {
+	MEM("mem", BUS_ID, JOYPAD, JOYPAD),
+	IRQ("irq", JOYPAD_IRQ)
+};
+
+static struct controller_instance joypad_instance = {
+	.controller_name = "gb_joypad",
+	.bus_id = BUS_ID,
+	.resources = joypad_resources,
+	.num_resources = ARRAY_SIZE(joypad_resources)
+};
+
+/* Serial controller */
+static struct resource serial_resources[] = {
+	MEM("mem", BUS_ID, SERIAL_START, SERIAL_END),
+	CLK("clk", SERIAL_CLOCK_RATE),
+	IRQ("irq", SERIAL_IRQ)
+};
+
+static struct controller_instance serial_instance = {
+	.controller_name = "gb_serial",
+	.bus_id = BUS_ID,
+	.resources = serial_resources,
+	.num_resources = ARRAY_SIZE(serial_resources)
+};
+
+/* Timer controller */
+static struct resource timer_resources[] = {
+	MEM("mem", BUS_ID, TIMER_START, TIMER_END),
+	CLK("div_clk", DIV_CLOCK_RATE),
+	CLK("tima_clk", TIMA_CLOCK_RATE),
+	IRQ("irq", TIMER_IRQ)
+};
+
+static struct controller_instance timer_instance = {
+	.controller_name = "gb_timer",
+	.bus_id = BUS_ID,
+	.resources = timer_resources,
+	.num_resources = ARRAY_SIZE(timer_resources)
+};
+
 bool gb_init(struct machine *machine)
 {
 	struct gb_data *gb_data;
@@ -166,6 +216,9 @@ bool gb_init(struct machine *machine)
 	/* Add controllers and CPU */
 	if (!controller_add(&gb_mapper_instance) ||
 		!controller_add(&lcdc_instance) ||
+		!controller_add(&joypad_instance) ||
+		!controller_add(&serial_instance) ||
+		!controller_add(&timer_instance) ||
 		!cpu_add(&cpu_instance)) {
 		free(gb_data);
 		return false;

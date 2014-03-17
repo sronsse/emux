@@ -16,7 +16,10 @@ config MACH_GB
 	bool "gb (Nintendo Game Boy)"
 	select MACH
 	select CPU_LR35902
+	select CONTROLLER_INPUT_GB
 	select CONTROLLER_MAPPER_GB
+	select CONTROLLER_SERIAL_GB
+	select CONTROLLER_TIMER_GB
 	select CONTROLLER_VIDEO_LCDC
 	default y
 	help

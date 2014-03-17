@@ -98,8 +98,11 @@ $(eval $(call DEFINE_TARGET,chip8,ch8|bin|rom,\
 
 # GB target definition
 $(eval $(call DEFINE_TARGET,gb,gb|bin|rom,\
+   ../controllers/input/gb_joypad.o \
    ../controllers/mapper/gb_mapper.o \
    ../controllers/mapper/rom.o \
+   ../controllers/serial/gb_serial.o \
+   ../controllers/timer/gb_timer.o \
    ../controllers/video/lcdc.o \
    ../cpu/lr35902.o \
    ../mach/gb.o))
