@@ -286,7 +286,7 @@ uint8_t memory_readb(int bus_id, address_t address)
 	if (region && region->mops->readb)
 		return region->mops->readb(region->data, address);
 
-	LOG_W("No region found at (%u, %04x)!\n", bus_id, address);
+	LOG_W("No region found at (readb %u, %04x)!\n", bus_id, address);
 	return 0;
 }
 
@@ -297,7 +297,7 @@ uint16_t memory_readw(int bus_id, address_t address)
 	if (region && region->mops->readw)
 		return region->mops->readw(region->data, address);
 
-	LOG_W("No region found at (%u, %04x)!\n", bus_id, address);
+	LOG_W("No region found at (readw %u, %04x)!\n", bus_id, address);
 	return 0;
 }
 
@@ -310,7 +310,7 @@ void memory_writeb(int bus_id, uint8_t b, address_t address)
 		return;
 	}
 
-	LOG_W("No region found at (%u, %04x)!\n", bus_id, address);
+	LOG_W("No region found at (writeb %u, %04x)!\n", bus_id, address);
 }
 
 void memory_writew(int bus_id, uint16_t w, address_t address)
@@ -322,6 +322,6 @@ void memory_writew(int bus_id, uint16_t w, address_t address)
 		return;
 	}
 
-	LOG_W("No region found at (%u, %04x)!\n", bus_id, address);
+	LOG_W("No region found at (writew %u, %04x)!\n", bus_id, address);
 }
 
