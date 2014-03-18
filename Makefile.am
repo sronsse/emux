@@ -103,6 +103,9 @@ endif
 if CONFIG_CONTROLLER_DMA_NES
 emux_SOURCES += controllers/dma/nes_sprite.c
 endif
+if CONFIG_CONTROLLER_INPUT_GB
+emux_SOURCES += controllers/input/gb_joypad.c
+endif
 if CONFIG_CONTROLLER_INPUT_NES
 emux_SOURCES += controllers/input/nes_controller.c
 endif

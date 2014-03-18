@@ -1,5 +1,11 @@
 menu "Input"
 
+config CONTROLLER_INPUT_GB
+	bool "GB joypad"
+	default y
+	help
+		Enable GB joypad
+
 config CONTROLLER_INPUT_NES
 	bool "NES standard controller"
 	default y
