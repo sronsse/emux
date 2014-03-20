@@ -43,6 +43,7 @@ EXTRA_DIST = Kconfig \
 	controllers/dma/Kconfig \
 	controllers/input/Kconfig \
 	controllers/mapper/Kconfig \
+	controllers/timer/Kconfig \
 	controllers/video/Kconfig \
 	cpu/Kconfig \
 	frontends/Kconfig \
@@ -122,6 +123,9 @@ emux_SOURCES += controllers/mapper/nrom.c
 endif
 if CONFIG_CONTROLLER_MAPPER_ROM
 emux_SOURCES += controllers/mapper/rom.c
+endif
+if CONFIG_CONTROLLER_TIMER_GB
+emux_SOURCES += controllers/timer/gb_timer.c
 endif
 if CONFIG_CONTROLLER_VIDEO_LCDC
 emux_SOURCES += controllers/video/lcdc.c

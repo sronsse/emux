@@ -1,0 +1,10 @@
+menu "Timers"
+
+config CONTROLLER_TIMER_GB
+	bool "GB"
+	default y
+	help
+		Enable GB timer
+
+endmenu
+

@@ -3,6 +3,7 @@ menu "Controller selection"
 source "$EMUX_SRC_DIR/controllers/dma/Kconfig"
 source "$EMUX_SRC_DIR/controllers/input/Kconfig"
 source "$EMUX_SRC_DIR/controllers/mapper/Kconfig"
+source "$EMUX_SRC_DIR/controllers/timer/Kconfig"
 source "$EMUX_SRC_DIR/controllers/video/Kconfig"
 
 endmenu
