@@ -1,0 +1,10 @@
+menu "Serial"
+
+config CONTROLLER_SERIAL_GB
+	bool "GB"
+	default y
+	help
+		Enable GB serial support
+
+endmenu
+
