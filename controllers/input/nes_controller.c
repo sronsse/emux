@@ -42,8 +42,8 @@ struct nes_ctrl {
 static bool nes_ctrl_init(struct controller_instance *instance);
 static void nes_ctrl_deinit(struct controller_instance *instance);
 static void nes_ctrl_event(int id, struct input_state *s, input_data_t *d);
-static uint8_t nes_ctrl_readb(region_data_t *data, address_t address);
-static void nes_ctrl_writeb(region_data_t *data, uint8_t b, address_t address);
+static uint8_t nes_ctrl_readb(struct nes_ctrl *nes_ctrl, address_t a);
+static void nes_ctrl_writeb(struct nes_ctrl *nes_ctrl, uint8_t b, address_t a);
 static void nes_ctrl_reload(struct nes_ctrl *nes_ctrl);
 
 static struct input_event default_input_events[] = {
@@ -66,13 +66,12 @@ static struct input_event default_input_events[] = {
 };
 
 static struct mops nes_ctrl_mops = {
-	.readb = nes_ctrl_readb,
-	.writeb = nes_ctrl_writeb
+	.readb = (readb_t)nes_ctrl_readb,
+	.writeb = (writeb_t)nes_ctrl_writeb
 };
 
-uint8_t nes_ctrl_readb(region_data_t *data, address_t address)
+uint8_t nes_ctrl_readb(struct nes_ctrl *nes_ctrl, address_t address)
 {
-	struct nes_ctrl *nes_ctrl = data;
 	union output_reg output_reg;
 
 	/* Initialize output (faking open bus contents) */
@@ -89,10 +88,8 @@ uint8_t nes_ctrl_readb(region_data_t *data, address_t address)
 	return output_reg.value;
 }
 
-void nes_ctrl_writeb(region_data_t *data, uint8_t b, address_t address)
+void nes_ctrl_writeb(struct nes_ctrl *nes_ctrl, uint8_t b, address_t address)
 {
-	struct nes_ctrl *nes_ctrl = data;
-
 	/* Store data in input register */
 	if (address == INPUT) {
 		nes_ctrl->input_reg.value = b;

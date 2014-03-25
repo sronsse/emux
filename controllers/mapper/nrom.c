@@ -15,50 +15,46 @@ struct nrom {
 
 static bool nrom_init(struct controller_instance *instance);
 static void nrom_deinit(struct controller_instance *instance);
-static uint8_t vram_readb(region_data_t *data, address_t address);
-static uint16_t vram_readw(region_data_t *data, address_t address);
-static void vram_writeb(region_data_t *data, uint8_t b, address_t address);
-static void vram_writew(region_data_t *data, uint16_t w, address_t address);
+static uint8_t vram_readb(struct nrom *nrom, address_t address);
+static uint16_t vram_readw(struct nrom *nrom, address_t address);
+static void vram_writeb(struct nrom *nrom, uint8_t b, address_t address);
+static void vram_writew(struct nrom *nrom, uint16_t w, address_t address);
 static void mirror_address(struct nrom *nrom, address_t *address);
-static uint8_t prg_rom_readb(region_data_t *data, address_t address);
-static uint16_t prg_rom_readw(region_data_t *data, address_t address);
+static uint8_t prg_rom_readb(struct nrom *nrom, address_t address);
+static uint16_t prg_rom_readw(struct nrom *nrom, address_t address);
 
 static struct mops vram_mops = {
-	.readb = vram_readb,
-	.readw = vram_readw,
-	.writeb = vram_writeb,
-	.writew = vram_writew
+	.readb = (readb_t)vram_readb,
+	.readw = (readw_t)vram_readw,
+	.writeb = (writeb_t)vram_writeb,
+	.writew = (writew_t)vram_writew
 };
 
 static struct mops prg_rom_mops = {
-	.readb = prg_rom_readb,
-	.readw = prg_rom_readw
+	.readb = (readb_t)prg_rom_readb,
+	.readw = (readw_t)prg_rom_readw
 };
 
-uint8_t vram_readb(region_data_t *data, address_t address)
+uint8_t vram_readb(struct nrom *nrom, address_t address)
 {
-	struct nrom *nrom = data;
 	mirror_address(nrom, &address);
 	return ram_mops.readb(nrom->vram, address);
 }
 
-uint16_t vram_readw(region_data_t *data, address_t address)
+uint16_t vram_readw(struct nrom *nrom, address_t address)
 {
-	struct nrom *nrom = data;
 	mirror_address(nrom, &address);
 	return ram_mops.readw(nrom->vram, address);
 }
 
-void vram_writeb(region_data_t *data, uint8_t b, address_t address)
+void vram_writeb(struct nrom *nrom, uint8_t b, address_t address)
 {
-	struct nrom *nrom = data;
 	mirror_address(nrom, &address);
 	ram_mops.writeb(nrom->vram, b, address);
 }
 
-void vram_writew(region_data_t *data, uint16_t w, address_t address)
+void vram_writew(struct nrom *nrom, uint16_t w, address_t address)
 {
-	struct nrom *nrom = data;
 	mirror_address(nrom, &address);
 	ram_mops.writew(nrom->vram, w, address);
 }
@@ -84,19 +80,16 @@ void mirror_address(struct nrom *nrom, address_t *address)
 	}
 }
 
-uint8_t prg_rom_readb(region_data_t *data, address_t address)
+uint8_t prg_rom_readb(struct nrom *nrom, address_t address)
 {
-	struct nrom *nrom = data;
-
 	/* Handle NROM-128 mirroring */
 	address %= nrom->prg_rom_size;
 
 	return *(nrom->prg_rom + address);
 }
 
-uint16_t prg_rom_readw(region_data_t *data, address_t address)
+uint16_t prg_rom_readw(struct nrom *nrom, address_t address)
 {
-	struct nrom *nrom = data;
 	uint8_t *mem;
 
 	/* Handle NROM-128 mirroring */

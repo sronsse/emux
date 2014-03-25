@@ -25,12 +25,12 @@ struct region {
 	region_data_t *data;
 };
 
-static uint8_t rom_readb(region_data_t *data, address_t address);
-static uint16_t rom_readw(region_data_t *data, address_t address);
-static uint8_t ram_readb(region_data_t *data, address_t address);
-static uint16_t ram_readw(region_data_t *data, address_t address);
-static void ram_writeb(region_data_t *data, uint8_t b, address_t address);
-static void ram_writew(region_data_t *data, uint16_t w, address_t address);
+static uint8_t rom_readb(uint8_t *rom, address_t address);
+static uint16_t rom_readw(uint8_t *rom, address_t address);
+static uint8_t ram_readb(uint8_t *ram, address_t address);
+static uint16_t ram_readw(uint8_t *ram, address_t address);
+static void ram_writeb(uint8_t *ram, uint8_t b, address_t address);
+static void ram_writew(uint8_t *ram, uint16_t w, address_t address);
 static int memory_region_sort_compare(const void *a, const void *b);
 #ifndef USE_BUS_MAP
 static int memory_region_bsearch_compare(const void *key, const void *elem);
@@ -41,50 +41,47 @@ static struct bus *busses;
 static int num_busses;
 
 struct mops rom_mops = {
-	.readb = rom_readb,
-	.readw = rom_readw
+	.readb = (readb_t)rom_readb,
+	.readw = (readw_t)rom_readw
 };
 
 struct mops ram_mops = {
-	.readb = ram_readb,
-	.readw = ram_readw,
-	.writeb = ram_writeb,
-	.writew = ram_writew
+	.readb = (readb_t)ram_readb,
+	.readw = (readw_t)ram_readw,
+	.writeb = (writeb_t)ram_writeb,
+	.writew = (writew_t)ram_writew
 };
 
-uint8_t rom_readb(region_data_t *data, address_t address)
+uint8_t rom_readb(uint8_t *rom, address_t address)
 {
-	uint8_t *mem = (uint8_t *)data + address;
-	return *mem;
+	return rom[address];
 }
 
-uint16_t rom_readw(region_data_t *data, address_t address)
+uint16_t rom_readw(uint8_t *rom, address_t address)
 {
-	uint8_t *mem = (uint8_t *)data + address;
+	uint8_t *mem = rom + address;
 	return (*(mem + 1) << 8) | *mem;
 }
 
-uint8_t ram_readb(region_data_t *data, address_t address)
+uint8_t ram_readb(uint8_t *ram, address_t address)
 {
-	uint8_t *mem = (uint8_t *)data + address;
-	return *mem;
+	return ram[address];
 }
 
-uint16_t ram_readw(region_data_t *data, address_t address)
+uint16_t ram_readw(uint8_t *ram, address_t address)
 {
-	uint8_t *mem = (uint8_t *)data + address;
+	uint8_t *mem = ram + address;
 	return (*(mem + 1) << 8) | *mem;
 }
 
-void ram_writeb(region_data_t *data, uint8_t b, address_t address)
+void ram_writeb(uint8_t *ram, uint8_t b, address_t address)
 {
-	uint8_t *mem = (uint8_t *)data + address;
-	*mem = b;
+	ram[address] = b;
 }
 
-void ram_writew(region_data_t *data, uint16_t w, address_t address)
+void ram_writew(uint8_t *ram, uint16_t w, address_t address)
 {
-	uint8_t *mem = (uint8_t *)data + address;
+	uint8_t *mem = ram + address;
 	*mem++ = w;
 	*mem = w >> 8;
 }

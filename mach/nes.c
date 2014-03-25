@@ -67,8 +67,8 @@ struct nes_data {
 
 static bool nes_init();
 static void nes_deinit();
-static uint8_t palette_readb(region_data_t *data, address_t address);
-static void palette_writeb(region_data_t *data, uint8_t b, address_t address);
+static uint8_t palette_readb(uint8_t *ram, address_t address);
+static void palette_writeb(uint8_t *ram, uint8_t b, address_t address);
 
 /* WRAM area */
 static struct resource wram_mirror =
@@ -85,8 +85,8 @@ static struct resource palette_area =
 	MEMX("mem", PPU_BUS_ID, PALETTE_START, PALETTE_END, &palette_mirror, 1);
 
 static struct mops palette_mops = {
-	.readb = palette_readb,
-	.writeb = palette_writeb
+	.readb = (readb_t)palette_readb,
+	.writeb = (writeb_t)palette_writeb
 };
 
 /* RP2A03 CPU */
@@ -161,10 +161,8 @@ static struct controller_instance ppu_instance = {
 	.num_resources = ARRAY_SIZE(ppu_resources)
 };
 
-uint8_t palette_readb(region_data_t *data, address_t address)
+uint8_t palette_readb(uint8_t *ram, address_t address)
 {
-	uint8_t *ram = data;
-
 	/* Addresses 0x3F10, 0x3F14, 0x3F18, 0x3F1C are mirrors of
 	0x3F00, 0x3F04, 0x3F08, 0x3F0C */
 	switch (address) {
@@ -182,10 +180,8 @@ uint8_t palette_readb(region_data_t *data, address_t address)
 	return ram[address];
 }
 
-void palette_writeb(region_data_t *data, uint8_t b, address_t address)
+void palette_writeb(uint8_t *ram, uint8_t b, address_t address)
 {
-	uint8_t *ram = data;
-
 	/* Addresses 0x3F10, 0x3F14, 0x3F18, 0x3F1C are mirrors of
 	0x3F00, 0x3F04, 0x3F08, 0x3F0C */
 	switch (address) {

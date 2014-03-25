@@ -210,8 +210,8 @@ static void ppu_deinit(struct controller_instance *instance);
 static void ppu_tick(struct ppu *ppu);
 static void ppu_update_counters(struct ppu *ppu);
 static void ppu_set_events(struct ppu *ppu);
-static uint8_t ppu_readb(region_data_t *data, address_t address);
-static void ppu_writeb(region_data_t *data, uint8_t b, address_t address);
+static uint8_t ppu_readb(struct ppu *ppu, address_t address);
+static void ppu_writeb(struct ppu *ppu, uint8_t b, address_t address);
 static void ppu_output(struct ppu *ppu);
 static void ppu_shift_bg(struct ppu *ppu);
 static void ppu_shift_spr(struct ppu *ppu);
@@ -231,8 +231,8 @@ static void ppu_sprite_eval(struct ppu *ppu);
 static void ppu_fetch_sprite(struct ppu *ppu);
 
 static struct mops ppu_mops = {
-	.readb = ppu_readb,
-	.writeb = ppu_writeb
+	.readb = (readb_t)ppu_readb,
+	.writeb = (writeb_t)ppu_writeb
 };
 
 static ppu_event_t ppu_events[] = {
@@ -298,9 +298,8 @@ static struct color ppu_palette[NUM_LUMA_VALUES][NUM_CHROMA_VALUES] = {
 	}
 };
 
-uint8_t ppu_readb(region_data_t *data, address_t address)
+uint8_t ppu_readb(struct ppu *ppu, address_t address)
 {
-	struct ppu *ppu = data;
 	uint8_t b;
 
 	switch (address) {
@@ -327,9 +326,8 @@ uint8_t ppu_readb(region_data_t *data, address_t address)
 	}
 }
 
-void ppu_writeb(region_data_t *data, uint8_t b, address_t address)
+void ppu_writeb(struct ppu *ppu, uint8_t b, address_t address)
 {
-	struct ppu *ppu = data;
 	uint16_t t;
 
 	switch (address) {

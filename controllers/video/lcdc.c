@@ -126,8 +126,8 @@ static void lcdc_deinit(struct controller_instance *instance);
 static void lcdc_tick(struct lcdc *lcdc);
 static void lcdc_update_counters(struct lcdc *lcdc);
 static void lcdc_set_events(struct lcdc *lcdc);
-static uint8_t lcdc_readb(region_data_t *data, address_t address);
-static void lcdc_writeb(region_data_t *data, uint8_t b, address_t address);
+static uint8_t lcdc_readb(struct lcdc *lcdc, address_t address);
+static void lcdc_writeb(struct lcdc *lcdc, uint8_t b, address_t address);
 static void lcdc_draw_line(struct lcdc *lcdc, bool background);
 static void lcdc_set_coincidence(struct lcdc *lcdc);
 static void lcdc_mode_0(struct lcdc *lcdc);
@@ -136,8 +136,8 @@ static void lcdc_mode_2(struct lcdc *lcdc);
 static void lcdc_mode_3(struct lcdc *lcdc);
 
 static struct mops lcdc_mops = {
-	.readb = lcdc_readb,
-	.writeb = lcdc_writeb
+	.readb = (readb_t)lcdc_readb,
+	.writeb = (writeb_t)lcdc_writeb
 };
 
 static lcdc_event_t lcdc_events[] = {
@@ -148,10 +148,8 @@ static lcdc_event_t lcdc_events[] = {
 	lcdc_mode_3
 };
 
-uint8_t lcdc_readb(region_data_t *data, address_t address)
+uint8_t lcdc_readb(struct lcdc *lcdc, address_t address)
 {
-	struct lcdc *lcdc = data;
-
 	switch (address) {
 	case DMA:
 		/* DMA register is write-only */
@@ -161,9 +159,8 @@ uint8_t lcdc_readb(region_data_t *data, address_t address)
 	}
 }
 
-void lcdc_writeb(region_data_t *data, uint8_t b, address_t address)
+void lcdc_writeb(struct lcdc *lcdc, uint8_t b, address_t address)
 {
-	struct lcdc *lcdc = data;
 	uint16_t source_addr;
 	int i;
 

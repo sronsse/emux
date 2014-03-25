@@ -26,20 +26,18 @@ static bool gb_mapper_init(struct controller_instance *instance);
 static void gb_mapper_deinit(struct controller_instance *instance);
 static bool map_bootrom(struct gb_mapper *gb_mapper);
 static bool map_rom0(struct gb_mapper *gb_mapper);
-static void lock_writeb(region_data_t *data, uint8_t b, address_t address);
+static void lock_writeb(struct gb_mapper *gb_mapper, uint8_t b, address_t addr);
 
 static char *mbcs[] = {
 	"rom"	/* ROM ONLY */
 };
 
 static struct mops lock_mops = {
-	.writeb = lock_writeb
+	.writeb = (writeb_t)lock_writeb
 };
 
-void lock_writeb(region_data_t *data, uint8_t b, address_t UNUSED(address))
+void lock_writeb(struct gb_mapper *gb_mapper, uint8_t b, address_t UNUSED(addr))
 {
-	struct gb_mapper *gb_mapper = data;
-
 	/* Check if locking is actually requested and needed */
 	if ((b == 0) || gb_mapper->bootrom_locked)
 		return;
