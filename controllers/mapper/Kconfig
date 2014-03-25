@@ -6,6 +6,12 @@ config CONTROLLER_MAPPER_GB
 	help
 		Enable GB mapper
 
+config CONTROLLER_MAPPER_MBC1
+	bool "MBC1"
+	default y
+	help
+		Enable GB MBC1 cartridge type
+
 config CONTROLLER_MAPPER_NES
 	bool "NES"
 	default y

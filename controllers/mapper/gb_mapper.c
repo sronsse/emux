@@ -8,10 +8,6 @@
 #include <util.h>
 #include <controllers/mapper/gb_mapper.h>
 
-#define CART_HEADER_START	0x0100
-#define BOOTROM_SIZE		256
-#define ROM0_SIZE		16384
-
 struct gb_mapper {
 	uint8_t *rom0;
 	uint8_t *bootrom;
@@ -29,12 +25,63 @@ static bool get_mapper_number(char *path, uint8_t *number);
 static void add_mapper(struct controller_instance *instance, uint8_t number);
 
 static char *mbcs[] = {
-	"rom"	/* ROM ONLY */
+	"rom",	/* ROM ONLY */
+	"mbc1",	/* MBC1 */
+	"mbc1",	/* MBC1 + RAM */
+	"mbc1"	/* MBC1 + RAM + BATTERY */
 };
 
 static struct mops lock_mops = {
 	.writeb = (writeb_t)lock_writeb
 };
+
+int gb_mapper_get_rom_size(struct cart_header *cart_header)
+{
+	/* Return number of banks based on ROM size entry of cart header */
+	switch (cart_header->rom_size) {
+	case 0x00:
+		return KB(32);
+	case 0x01:
+		return KB(64);
+	case 0x02:
+		return KB(128);
+	case 0x03:
+		return KB(256);
+	case 0x04:
+		return KB(512);
+	case 0x05:
+		return MB(1);
+	case 0x06:
+		return MB(2);
+	case 0x07:
+		return MB(4);
+	case 0x52:
+		return KB(1152);
+	case 0x53:
+		return KB(1280);
+	case 0x54:
+		return KB(1536);
+	default:
+		return 0;
+	}
+}
+
+int gb_mapper_get_ram_size(struct cart_header *cart_header)
+{
+	/* Return number of banks based on RAM size entry of cart header */
+	switch (cart_header->ram_size) {
+	case 0x00:
+		return 0;
+	case 0x01:
+		return KB(2);
+	case 0x02:
+		return KB(8);
+	case 0x03:
+		return KB(32);
+	default:
+		return 0;
+	}
+}
 
 void lock_writeb(struct gb_mapper *gb_mapper, uint8_t b, address_t UNUSED(addr))
 {
@@ -155,7 +202,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	gb_mapper->rom0 = file_map(PATH_DATA,
 		mach_data->cart_path,
 		0,
-		ROM0_SIZE);
+		ROM_BANK_SIZE);
 	if (!gb_mapper->rom0) {
 		LOG_E("Could not map ROM0!\n");
 		return false;
@@ -200,7 +247,7 @@ void gb_mapper_deinit(struct controller_instance *instance)
 	struct gb_mapper *gb_mapper = instance->priv_data;
 
 	/* Unmap areas */
-	file_unmap(gb_mapper->rom0, ROM0_SIZE);
+	file_unmap(gb_mapper->rom0, ROM_BANK_SIZE);
 	file_unmap(gb_mapper->bootrom, BOOTROM_SIZE);
 
 	/* Free allocated structures */

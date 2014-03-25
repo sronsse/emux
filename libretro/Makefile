@@ -100,6 +100,7 @@ $(eval $(call DEFINE_TARGET,chip8,ch8|bin|rom,\
 $(eval $(call DEFINE_TARGET,gb,gb|bin|rom,\
    ../controllers/input/gb_joypad.o \
    ../controllers/mapper/gb_mapper.o \
+   ../controllers/mapper/mbc1.o \
    ../controllers/mapper/rom.o \
    ../controllers/serial/gb_serial.o \
    ../controllers/timer/gb_timer.o \

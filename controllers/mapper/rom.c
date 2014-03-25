@@ -4,9 +4,6 @@
 #include <memory.h>
 #include <controllers/mapper/gb_mapper.h>
 
-#define BANK_START	0x4000
-#define BANK_SIZE	KB(16)
-
 struct rom_data {
 	uint8_t *bank;
 	struct region region;
@@ -25,13 +22,13 @@ bool rom_init(struct controller_instance *instance)
 	instance->priv_data = malloc(sizeof(struct rom_data));
 	rom_data = instance->priv_data;
 
-	/* Map second ROM bank */
+	/* Map second ROM bank (skip ROM0) */
 	rom_data->bank = file_map(PATH_DATA,
 		mach_data->cart_path,
-		BANK_START,
-		BANK_SIZE);
+		ROM_BANK_SIZE,
+		ROM_BANK_SIZE);
 
-	/* Add second ROM bank */
+	/* Add ROM area */
 	area = resource_get("rom1",
 		RESOURCE_MEM,
 		instance->resources,
@@ -47,7 +44,7 @@ bool rom_init(struct controller_instance *instance)
 void rom_deinit(struct controller_instance *instance)
 {
 	struct rom_data *rom_data = instance->priv_data;
-	file_unmap(rom_data->bank, BANK_SIZE);
+	file_unmap(rom_data->bank, ROM_BANK_SIZE);
 	free(rom_data);
 }
 

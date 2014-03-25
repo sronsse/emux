@@ -7,6 +7,10 @@
 #define MANUFACTURER_SIZE	4
 #define NEW_LICENSEE_SIZE	2
 #define TITLE_SIZE		11
+#define ROM_BANK_SIZE		KB(16)
+#define RAM_BANK_SIZE		KB(8)
+#define CART_HEADER_START	0x0100
+#define BOOTROM_SIZE		256
 
 struct gb_mapper_mach_data {
 	char *bootrom_path;
@@ -30,6 +34,10 @@ struct cart_header {
 	uint8_t header_checksum;
 	uint16_t global_checksum;
 };
+
+
+int gb_mapper_get_rom_size(struct cart_header *cart_header);
+int gb_mapper_get_ram_size(struct cart_header *cart_header);
 
 #endif
 
