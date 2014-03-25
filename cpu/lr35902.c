@@ -58,7 +58,7 @@ static bool lr35902_init(struct cpu_instance *instance);
 static void lr35902_interrupt(struct cpu_instance *instance, int irq);
 static void lr35902_deinit(struct cpu_instance *instance);
 static bool lr35902_handle_interrupts(struct lr35902 *cpu);
-static void lr35902_tick(clock_data_t *data);
+static void lr35902_tick(struct lr35902 *cpu);
 static void lr35902_opcode_CB(struct lr35902 *cpu);
 static inline void LD_r_r(struct lr35902 *cpu, uint8_t *r1, uint8_t *r2);
 static inline void LD_r_n(struct lr35902 *cpu, uint8_t *r);
@@ -1248,9 +1248,8 @@ bool lr35902_handle_interrupts(struct lr35902 *cpu)
 	return true;
 }
 
-void lr35902_tick(clock_data_t *data)
+void lr35902_tick(struct lr35902 *cpu)
 {
-	struct lr35902 *cpu = data;
 	uint8_t opcode;
 
 	/* Check for interrupt requests */
@@ -2817,7 +2816,7 @@ bool lr35902_init(struct cpu_instance *instance)
 		instance->num_resources);
 	cpu->clock.rate = res->data.clk;
 	cpu->clock.data = cpu;
-	cpu->clock.tick = lr35902_tick;
+	cpu->clock.tick = (clock_tick_t)lr35902_tick;
 	clock_add(&cpu->clock);
 
 	/* Add IF memory region */

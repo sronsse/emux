@@ -42,7 +42,7 @@ struct rp2a03 {
 static bool rp2a03_init(struct cpu_instance *instance);
 static void rp2a03_interrupt(struct cpu_instance *instance, int irq);
 static void rp2a03_deinit(struct cpu_instance *instance);
-static void rp2a03_tick(clock_data_t *data);
+static void rp2a03_tick(struct rp2a03 *rp2a03);
 static inline void ADC_A(struct rp2a03 *rp2a03);
 static inline void ADC_AX(struct rp2a03 *rp2a03);
 static inline void ADC_AY(struct rp2a03 *rp2a03);
@@ -1735,9 +1735,8 @@ void TYA(struct rp2a03 *rp2a03)
 	clock_consume(2);
 }
 
-void rp2a03_tick(clock_data_t *data)
+void rp2a03_tick(struct rp2a03 *rp2a03)
 {
-	struct rp2a03 *rp2a03 = data;
 	uint8_t opcode;
 
 	/* Check if CPU has been interrupted */
@@ -2268,7 +2267,7 @@ bool rp2a03_init(struct cpu_instance *instance)
 		instance->num_resources);
 	rp2a03->clock.rate = res->data.clk;
 	rp2a03->clock.data = rp2a03;
-	rp2a03->clock.tick = rp2a03_tick;
+	rp2a03->clock.tick = (clock_tick_t)rp2a03_tick;
 	clock_add(&rp2a03->clock);
 
 	return true;

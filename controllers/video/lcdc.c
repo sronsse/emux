@@ -123,7 +123,7 @@ typedef void (*lcdc_event_t)(struct lcdc *lcdc);
 
 static bool lcdc_init(struct controller_instance *instance);
 static void lcdc_deinit(struct controller_instance *instance);
-static void lcdc_tick(clock_data_t *data);
+static void lcdc_tick(struct lcdc *lcdc);
 static void lcdc_update_counters(struct lcdc *lcdc);
 static void lcdc_set_events(struct lcdc *lcdc);
 static uint8_t lcdc_readb(region_data_t *data, address_t address);
@@ -385,9 +385,8 @@ void lcdc_update_counters(struct lcdc *lcdc)
 	lcdc->ly = lcdc->v;
 }
 
-void lcdc_tick(clock_data_t *data)
+void lcdc_tick(struct lcdc *lcdc)
 {
-	struct lcdc *lcdc = data;
 	int event_mask;
 	int pos;
 	int num_cycles = 0;
@@ -443,7 +442,7 @@ bool lcdc_init(struct controller_instance *instance)
 		instance->num_resources);
 	lcdc->clock.rate = res->data.clk;
 	lcdc->clock.data = lcdc;
-	lcdc->clock.tick = lcdc_tick;
+	lcdc->clock.tick = (clock_tick_t)lcdc_tick;
 	clock_add(&lcdc->clock);
 
 	/* Get VBLANK IRQ number */

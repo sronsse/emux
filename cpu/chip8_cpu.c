@@ -67,8 +67,8 @@ struct chip8 {
 };
 
 static bool chip8_init(struct cpu_instance *instance);
-static void chip8_tick(clock_data_t *data);
-static void chip8_update_counters(clock_data_t *data);
+static void chip8_tick(struct chip8 *chip8);
+static void chip8_update_counters(struct chip8 *chip8);
 static void chip8_draw(clock_data_t *data);
 static void chip8_mix(audio_data_t *data, void *buffer, int len);
 static void chip8_event(int id, struct input_state *state, input_data_t *data);
@@ -531,13 +531,13 @@ bool chip8_init(struct cpu_instance *instance)
 	/* Add CPU clock */
 	chip8->cpu_clock.rate = CPU_CLOCK_RATE;
 	chip8->cpu_clock.data = chip8;
-	chip8->cpu_clock.tick = chip8_tick;
+	chip8->cpu_clock.tick = (clock_tick_t)chip8_tick;
 	clock_add(&chip8->cpu_clock);
 
 	/* Add counters clock */
 	chip8->counters_clock.rate = COUNTERS_CLOCK_RATE;
 	chip8->counters_clock.data = chip8;
-	chip8->counters_clock.tick = chip8_update_counters;
+	chip8->counters_clock.tick = (clock_tick_t)chip8_update_counters;
 	clock_add(&chip8->counters_clock);
 
 	/* Add draw clock */
@@ -548,10 +548,8 @@ bool chip8_init(struct cpu_instance *instance)
 	return true;
 }
 
-void chip8_tick(clock_data_t *data)
+void chip8_tick(struct chip8 *chip8)
 {
-	struct chip8 *chip8 = data;
-
 	/* Fetch opcode */
 	uint8_t o1 = memory_readb(chip8->bus_id, chip8->PC++);
 	uint8_t o2 = memory_readb(chip8->bus_id, chip8->PC++);
@@ -616,10 +614,8 @@ void chip8_tick(clock_data_t *data)
 	clock_consume(1);
 }
 
-void chip8_update_counters(clock_data_t *data)
+void chip8_update_counters(struct chip8 *chip8)
 {
-	struct chip8 *chip8 = data;
-
 	/* Update DT and ST counters */
 	if (chip8->DT > 0)
 		chip8->DT--;

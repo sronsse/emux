@@ -5,13 +5,14 @@
 #include <stdint.h>
 
 typedef void clock_data_t;
+typedef void (*clock_tick_t)(clock_data_t *data);
 
 struct clock {
 	uint64_t rate;
 	clock_data_t *data;
 	uint64_t div;
 	int num_remaining_cycles;
-	void (*tick)(clock_data_t *clock_data);
+	clock_tick_t tick;
 };
 
 void clock_add(struct clock *clock);

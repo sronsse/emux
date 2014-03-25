@@ -207,7 +207,7 @@ typedef void (*ppu_event_t)(struct ppu *ppu);
 
 static bool ppu_init(struct controller_instance *instance);
 static void ppu_deinit(struct controller_instance *instance);
-static void ppu_tick(clock_data_t *data);
+static void ppu_tick(struct ppu *ppu);
 static void ppu_update_counters(struct ppu *ppu);
 static void ppu_set_events(struct ppu *ppu);
 static uint8_t ppu_readb(region_data_t *data, address_t address);
@@ -981,9 +981,8 @@ void ppu_update_counters(struct ppu *ppu)
 		ppu->h++;
 }
 
-void ppu_tick(clock_data_t *data)
+void ppu_tick(struct ppu *ppu)
 {
-	struct ppu *ppu = data;
 	int event_mask;
 	int pos;
 	int num_cycles = 0;
@@ -1045,7 +1044,7 @@ bool ppu_init(struct controller_instance *instance)
 		instance->num_resources);
 	ppu->clock.rate = res->data.clk;
 	ppu->clock.data = ppu;
-	ppu->clock.tick = ppu_tick;
+	ppu->clock.tick = (clock_tick_t)ppu_tick;
 	clock_add(&ppu->clock);
 
 	/* Initialize registers and data */
