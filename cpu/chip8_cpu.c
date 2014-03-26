@@ -532,17 +532,20 @@ bool chip8_init(struct cpu_instance *instance)
 	chip8->cpu_clock.rate = CPU_CLOCK_RATE;
 	chip8->cpu_clock.data = chip8;
 	chip8->cpu_clock.tick = (clock_tick_t)chip8_tick;
+	chip8->cpu_clock.enabled = true;
 	clock_add(&chip8->cpu_clock);
 
 	/* Add counters clock */
 	chip8->counters_clock.rate = COUNTERS_CLOCK_RATE;
 	chip8->counters_clock.data = chip8;
 	chip8->counters_clock.tick = (clock_tick_t)chip8_update_counters;
+	chip8->counters_clock.enabled = true;
 	clock_add(&chip8->counters_clock);
 
 	/* Add draw clock */
 	chip8->draw_clock.rate = DRAW_CLOCK_RATE;
 	chip8->draw_clock.tick = chip8_draw;
+	chip8->draw_clock.enabled = true;
 	clock_add(&chip8->draw_clock);
 
 	return true;

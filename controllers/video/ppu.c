@@ -1043,6 +1043,7 @@ bool ppu_init(struct controller_instance *instance)
 	ppu->clock.rate = res->data.clk;
 	ppu->clock.data = ppu;
 	ppu->clock.tick = (clock_tick_t)ppu_tick;
+	ppu->clock.enabled = true;
 	clock_add(&ppu->clock);
 
 	/* Initialize registers and data */

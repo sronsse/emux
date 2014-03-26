@@ -440,6 +440,7 @@ bool lcdc_init(struct controller_instance *instance)
 	lcdc->clock.rate = res->data.clk;
 	lcdc->clock.data = lcdc;
 	lcdc->clock.tick = (clock_tick_t)lcdc_tick;
+	lcdc->clock.enabled = true;
 	clock_add(&lcdc->clock);
 
 	/* Get VBLANK IRQ number */

@@ -110,9 +110,10 @@ void clock_tick_all(bool handle_delay)
 	/* Increment current cycle by min number of remaining cycles found */
 	current_cycle += num_remaining_cycles;
 
-	/* Decrement clocks remaining cycles */
+	/* Decrement enabled clocks remaining cycles */
 	for (i = 0; i < num_clocks; i++)
-		clocks[i]->num_remaining_cycles -= num_remaining_cycles;
+		if (clocks[i]->enabled)
+			clocks[i]->num_remaining_cycles -= num_remaining_cycles;
 
 	/* Only sleep if delay handling is needed */
 	if (handle_delay) {

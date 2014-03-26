@@ -13,6 +13,7 @@ struct clock {
 	uint64_t div;
 	int num_remaining_cycles;
 	clock_tick_t tick;
+	bool enabled;
 };
 
 void clock_add(struct clock *clock);

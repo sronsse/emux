@@ -2817,6 +2817,7 @@ bool lr35902_init(struct cpu_instance *instance)
 	cpu->clock.rate = res->data.clk;
 	cpu->clock.data = cpu;
 	cpu->clock.tick = (clock_tick_t)lr35902_tick;
+	cpu->clock.enabled = true;
 	clock_add(&cpu->clock);
 
 	/* Add IF memory region */

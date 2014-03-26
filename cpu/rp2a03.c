@@ -2268,6 +2268,7 @@ bool rp2a03_init(struct cpu_instance *instance)
 	rp2a03->clock.rate = res->data.clk;
 	rp2a03->clock.data = rp2a03;
 	rp2a03->clock.tick = (clock_tick_t)rp2a03_tick;
+	rp2a03->clock.enabled = true;
 	clock_add(&rp2a03->clock);
 
 	return true;
