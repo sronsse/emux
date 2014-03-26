@@ -70,7 +70,7 @@ static bool chip8_init(struct cpu_instance *instance);
 static void chip8_tick(struct chip8 *chip8);
 static void chip8_update_counters(struct chip8 *chip8);
 static void chip8_draw(clock_data_t *data);
-static void chip8_mix(audio_data_t *data, void *buffer, int len);
+static void chip8_mix(struct chip8 *chip8, void *buffer, int len);
 static void chip8_event(int id, struct input_state *state, input_data_t *data);
 static void chip8_deinit(struct cpu_instance *instance);
 static inline void CLS(struct chip8 *chip8);
@@ -485,7 +485,7 @@ bool chip8_init(struct cpu_instance *instance)
 	audio_specs.format = AUDIO_FORMAT;
 	audio_specs.channels = NUM_CHANNELS;
 	audio_specs.samples = NUM_SAMPLES;
-	audio_specs.mix = chip8_mix;
+	audio_specs.mix = (audio_mix_t)chip8_mix;
 	audio_specs.data = chip8;
 	if (!audio_init(&audio_specs)) {
 		free(chip8);
@@ -640,9 +640,8 @@ void chip8_draw(clock_data_t *UNUSED(data))
 	clock_consume(1);
 }
 
-void chip8_mix(audio_data_t *data, void *buffer, int len)
+void chip8_mix(struct chip8 *chip8, void *buffer, int len)
 {
-	struct chip8 *chip8 = data;
 	int16_t *b = buffer;
 	float sample;
 	unsigned int i;

@@ -21,6 +21,7 @@
 
 typedef void audio_data_t;
 typedef void audio_priv_data_t;
+typedef void (*audio_mix_t)(audio_data_t *data, void *buffer, int len);
 
 enum audio_format {
 	AUDIO_FORMAT_U8,
@@ -34,7 +35,7 @@ struct audio_specs {
 	enum audio_format format;
 	int channels;
 	int samples;
-	void (*mix)(audio_data_t *data, void *buffer, int len);
+	audio_mix_t mix;
 	audio_data_t *data;
 };
 
