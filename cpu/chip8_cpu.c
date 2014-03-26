@@ -71,7 +71,7 @@ static void chip8_tick(struct chip8 *chip8);
 static void chip8_update_counters(struct chip8 *chip8);
 static void chip8_draw(clock_data_t *data);
 static void chip8_mix(struct chip8 *chip8, void *buffer, int len);
-static void chip8_event(int id, struct input_state *state, input_data_t *data);
+static void chip8_event(int id, struct input_state *state, struct chip8 *chip8);
 static void chip8_deinit(struct cpu_instance *instance);
 static inline void CLS(struct chip8 *chip8);
 static inline void RET(struct chip8 *chip8);
@@ -503,7 +503,7 @@ bool chip8_init(struct cpu_instance *instance)
 	input_config = &chip8->input_config;
 	input_config->events = malloc(NUM_KEYS * sizeof(struct input_event));
 	input_config->num_events = NUM_KEYS;
-	input_config->callback = chip8_event;
+	input_config->callback = (input_cb_t)chip8_event;
 	input_config->data = chip8;
 
 	/* Load and register input config (fall back to defaults if needed) */
@@ -659,9 +659,8 @@ void chip8_mix(struct chip8 *chip8, void *buffer, int len)
 	}
 }
 
-static void chip8_event(int id, struct input_state *state, input_data_t *data)
+static void chip8_event(int id, struct input_state *state, struct chip8 *chip8)
 {
-	struct chip8 *chip8 = data;
 	chip8->keys[id] = state->active;
 }
 

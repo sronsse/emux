@@ -22,13 +22,13 @@
 typedef void input_data_t;
 typedef void input_priv_data_t;
 
+struct input_state {
+	bool active;
+};
+
 enum input_event_type {
 	EVENT_KEYBOARD,
 	EVENT_QUIT
-};
-
-struct input_state {
-	bool active;
 };
 
 struct input_event {
@@ -40,10 +40,12 @@ struct input_event {
 	};
 };
 
+typedef void (*input_cb_t)(int id, struct input_state *state, input_data_t *d);
+
 struct input_config {
 	int num_events;
 	struct input_event *events;
-	void (*callback)(int id, struct input_state *state, input_data_t *data);
+	input_cb_t callback;
 	input_data_t *data;
 };
 

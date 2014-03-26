@@ -41,7 +41,7 @@ struct nes_ctrl {
 
 static bool nes_ctrl_init(struct controller_instance *instance);
 static void nes_ctrl_deinit(struct controller_instance *instance);
-static void nes_ctrl_event(int id, struct input_state *s, input_data_t *d);
+static void nes_ctrl_event(int id, struct input_state *s, struct nes_ctrl *n);
 static uint8_t nes_ctrl_readb(struct nes_ctrl *nes_ctrl, address_t a);
 static void nes_ctrl_writeb(struct nes_ctrl *nes_ctrl, uint8_t b, address_t a);
 static void nes_ctrl_reload(struct nes_ctrl *nes_ctrl);
@@ -151,7 +151,7 @@ bool nes_ctrl_init(struct controller_instance *instance)
 	input_config = &nes_ctrl->input_config;
 	input_config->events = malloc(num_events * sizeof(struct input_event));
 	input_config->num_events = num_events;
-	input_config->callback = nes_ctrl_event;
+	input_config->callback = (input_cb_t)nes_ctrl_event;
 	input_config->data = nes_ctrl;
 
 	/* Load and register input config (fall back to defaults if needed) */
@@ -165,9 +165,8 @@ bool nes_ctrl_init(struct controller_instance *instance)
 	return true;
 }
 
-void nes_ctrl_event(int id, struct input_state *state, input_data_t *data)
+void nes_ctrl_event(int id, struct input_state *s, struct nes_ctrl *nes_ctrl)
 {
-	struct nes_ctrl *nes_ctrl = data;
 	int key;
 	int player;
 
@@ -176,7 +175,7 @@ void nes_ctrl_event(int id, struct input_state *state, input_data_t *data)
 	player = id / NUM_KEYS;
 
 	/* Save key state */
-	nes_ctrl->keys[player][key] = state->active;
+	nes_ctrl->keys[player][key] = s->active;
 
 	/* Reload shift register if needed */
 	if (nes_ctrl->input_reg.strobe)
