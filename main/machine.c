@@ -16,6 +16,8 @@ static void machine_input_event(int id,	struct input_state *state,
 
 static char *machine_name;
 PARAM(machine_name, string, "machine", NULL, "Selects machine to emulate")
+static bool no_sync;
+PARAM(no_sync, bool, "no-sync", NULL, "Disables emulation syncing")
 
 struct list_link *machines;
 static struct machine *machine;
@@ -98,7 +100,7 @@ void machine_run()
 
 	/* Run until user quits */
 	while (machine->running)
-		clock_tick_all(true);
+		clock_tick_all(!no_sync);
 
 	/* Unregister quit events */
 	input_unregister(&input_config);
