@@ -7,6 +7,7 @@ struct list_link {
 };
 
 void list_insert(struct list_link **list, void *data);
+void list_insert_before(struct list_link **list, void *data);
 void *list_get_next(struct list_link **link);
 void list_remove(struct list_link **list, void *data);
 void list_remove_all(struct list_link **list);

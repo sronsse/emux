@@ -2,6 +2,7 @@
 #define _MEMORY_H
 
 #include <stdint.h>
+#include <list.h>
 #include <resource.h>
 
 #define KB(x) (x * 1024)
@@ -22,10 +23,27 @@ struct mops {
 	writew_t writew;
 };
 
-void memory_bus_add(int width);
+struct region {
+	struct resource *area;
+	struct mops *mops;
+	region_data_t *data;
+};
+
+struct bus {
+	int id;
+	int width;
+	struct list_link **readb_map;
+	struct list_link **readw_map;
+	struct list_link **writeb_map;
+	struct list_link **writew_map;
+	struct list_link *regions;
+};
+
+bool memory_bus_add(struct bus *bus);
+void memory_bus_remove(struct bus *bus);
 void memory_bus_remove_all();
-void memory_region_add(struct resource *a, struct mops *m, region_data_t *d);
-void memory_region_remove(struct resource *area);
+bool memory_region_add(struct region *region);
+void memory_region_remove(struct region *region);
 uint8_t memory_readb(int bus_id, address_t address);
 uint16_t memory_readw(int bus_id, address_t address);
 void memory_writeb(int bus_id, uint8_t b, address_t address);

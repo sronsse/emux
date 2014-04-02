@@ -24,6 +24,26 @@ void list_insert(struct list_link **list, void *data)
 	tail->next = link;
 }
 
+void list_insert_before(struct list_link **list, void *data)
+{
+	struct list_link *link;
+
+	/* Use regular method if list is empty */
+	if (!*list) {
+		list_insert(list, data);
+		return;
+	}
+
+	/* Create new link duplicating head */
+	link = malloc(sizeof(struct list_link));
+	link->data = (*list)->data;
+	link->next = (*list)->next;
+
+	/* Change head data and insert link */
+	(*list)->data = data;
+	(*list)->next = link;
+}
+
 void *list_get_next(struct list_link **link)
 {
 	void *data = NULL;
