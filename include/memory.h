@@ -6,6 +6,7 @@
 #include <resource.h>
 
 #define KB(x) (x * 1024)
+#define MB(x) (x * 1024 * 1024)
 
 /* address_t size should match the maximum bus size of all supported machines */
 typedef uint16_t address_t;
