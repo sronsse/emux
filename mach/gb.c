@@ -78,10 +78,19 @@ static void gb_deinit();
 static char *bootrom_path = "DMG_ROM.bin";
 PARAM(bootrom_path, string, "bootrom", "gb", "GameBoy boot ROM path")
 
-/* Memory areas */
+/* VRAM area */
 static struct resource vram_area = MEM("vram", BUS_ID, VRAM_START, VRAM_END);
-static struct resource wram_area = MEM("wram", BUS_ID, WRAM_START, WRAM_END);
+
+/* WRAM area */
+static struct resource wram_mirror = MEM("echo", BUS_ID, ECHO_START, ECHO_END);
+
+static struct resource wram_area =
+	MEMX("wram", BUS_ID, WRAM_START, WRAM_END, &wram_mirror, 1);
+
+/* HRAM area */
 static struct resource hram_area = MEM("hram", BUS_ID, HRAM_START, HRAM_END);
+
+/* OAM area */
 static struct resource oam_area = MEM("oam", BUS_ID, OAM_START, OAM_END);
 
 /* LR35902 CPU */
@@ -105,6 +114,7 @@ static struct resource gb_mapper_resources[] = {
 	MEM("bootrom", BUS_ID, BOOTROM_START, BOOTROM_END),
 	MEM("rom0", BUS_ID, ROM0_START, ROM0_END),
 	MEM("rom1", BUS_ID, ROM1_START, ROM1_END),
+	MEM("extram", BUS_ID, EXTRAM_START, EXTRAM_END),
 	MEM("lock", BUS_ID, BOOT_LOCK, BOOT_LOCK)
 };
 
