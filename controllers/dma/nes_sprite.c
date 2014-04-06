@@ -12,6 +12,7 @@
 
 struct nes_sprite {
 	int bus_id;
+	struct region region;
 };
 
 static bool nes_sprite_init(struct controller_instance *instance);
@@ -56,7 +57,10 @@ bool nes_sprite_init(struct controller_instance *instance)
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	memory_region_add(area, &nes_sprite_mops, instance->priv_data);
+	nes_sprite->region.area = area;
+	nes_sprite->region.mops = &nes_sprite_mops;
+	nes_sprite->region.data = nes_sprite;
+	memory_region_add(&nes_sprite->region);
 
 	/* Save bus ID for later use */
 	nes_sprite->bus_id = instance->bus_id;

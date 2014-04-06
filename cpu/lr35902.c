@@ -52,6 +52,8 @@ struct lr35902 {
 	bool halted;
 	int bus_id;
 	struct clock clock;
+	struct region if_region;
+	struct region ie_region;
 };
 
 static bool lr35902_init(struct cpu_instance *instance);
@@ -2825,14 +2827,20 @@ bool lr35902_init(struct cpu_instance *instance)
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	memory_region_add(res, &ram_mops, &cpu->IF);
+	cpu->if_region.area = res;
+	cpu->if_region.mops = &ram_mops;
+	cpu->if_region.data = &cpu->IF;
+	memory_region_add(&cpu->if_region);
 
 	/* Add IE memory region */
 	res = resource_get("ier",
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	memory_region_add(res, &ram_mops, &cpu->IE);
+	cpu->ie_region.area = res;
+	cpu->ie_region.mops = &ram_mops;
+	cpu->ie_region.data = &cpu->IE;
+	memory_region_add(&cpu->ie_region);
 
 	return true;
 }

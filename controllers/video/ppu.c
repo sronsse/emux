@@ -201,6 +201,7 @@ struct ppu {
 	uint8_t sec_oam[SEC_OAM_SIZE];
 	int bus_id;
 	int irq;
+	struct region region;
 };
 
 typedef void (*ppu_event_t)(struct ppu *ppu);
@@ -1023,7 +1024,10 @@ bool ppu_init(struct controller_instance *instance)
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	memory_region_add(res, &ppu_mops, instance->priv_data);
+	ppu->region.area = res;
+	ppu->region.mops = &ppu_mops;
+	ppu->region.data = ppu;
+	memory_region_add(&ppu->region);
 
 	/* Save bus ID for later use */
 	ppu->bus_id = instance->bus_id;

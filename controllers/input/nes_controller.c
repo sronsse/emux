@@ -35,8 +35,8 @@ struct nes_ctrl {
 	union input_reg input_reg;
 	uint8_t shift_regs[NUM_PLAYERS];
 	struct input_config input_config;
-	int bus_id;
 	bool keys[NUM_PLAYERS][NUM_KEYS];
+	struct region region;
 };
 
 static bool nes_ctrl_init(struct controller_instance *instance);
@@ -134,10 +134,10 @@ bool nes_ctrl_init(struct controller_instance *instance)
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	memory_region_add(area, &nes_ctrl_mops, instance->priv_data);
-
-	/* Save bus ID for later use */
-	nes_ctrl->bus_id = instance->bus_id;
+	nes_ctrl->region.area = area;
+	nes_ctrl->region.mops = &nes_ctrl_mops;
+	nes_ctrl->region.data = nes_ctrl;
+	memory_region_add(&nes_ctrl->region);
 
 	/* Initialize controller data */
 	nes_ctrl->input_reg.strobe = 0;

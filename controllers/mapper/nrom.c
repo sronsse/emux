@@ -5,12 +5,15 @@
 #include <controllers/mapper/nes_mapper.h>
 
 struct nrom {
-	bool vertical_mirroring;
 	uint8_t *vram;
 	uint8_t *prg_rom;
-	int prg_rom_size;
 	uint8_t *chr_rom;
+	int prg_rom_size;
 	int chr_rom_size;
+	bool vertical_mirroring;
+	struct region vram_region;
+	struct region prg_rom_region;
+	struct region chr_rom_region;
 };
 
 static bool nrom_init(struct controller_instance *instance);
@@ -126,7 +129,10 @@ bool nrom_init(struct controller_instance *instance)
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	memory_region_add(area, &vram_mops, nrom);
+	nrom->vram_region.area = area;
+	nrom->vram_region.mops = &vram_mops;
+	nrom->vram_region.data = nrom;
+	memory_region_add(&nrom->vram_region);
 
 	/* Allocate and fill PRG ROM data */
 	nrom->prg_rom_size = PRG_ROM_SIZE(cart_header);
@@ -138,7 +144,10 @@ bool nrom_init(struct controller_instance *instance)
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	memory_region_add(area, &prg_rom_mops, nrom);
+	nrom->prg_rom_region.area = area;
+	nrom->prg_rom_region.mops = &prg_rom_mops;
+	nrom->prg_rom_region.data = nrom;
+	memory_region_add(&nrom->prg_rom_region);
 
 	/* Allocate and fill CHR ROM data */
 	nrom->chr_rom_size = CHR_ROM_SIZE(cart_header);
@@ -150,7 +159,10 @@ bool nrom_init(struct controller_instance *instance)
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	memory_region_add(area, &rom_mops, nrom->chr_rom);
+	nrom->chr_rom_region.area = area;
+	nrom->chr_rom_region.mops = &rom_mops;
+	nrom->chr_rom_region.data = nrom->chr_rom;
+	memory_region_add(&nrom->chr_rom_region);
 
 	/* Unmap cart header */
 	file_unmap(cart_header, sizeof(struct cart_header));

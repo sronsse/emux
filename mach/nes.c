@@ -63,6 +63,10 @@ struct nes_data {
 	uint8_t wram[WRAM_SIZE];
 	uint8_t vram[VRAM_SIZE];
 	uint8_t palette[PALETTE_SIZE];
+	struct bus cpu_bus;
+	struct bus ppu_bus;
+	struct region wram_region;
+	struct region palette_region;
 };
 
 static bool nes_init();
@@ -209,13 +213,27 @@ bool nes_init(struct machine *machine)
 	/* Set mapper path */
 	nes_mapper_mach_data.path = env_get_data_path();
 
-	/* Add memory busses */
-	memory_bus_add(16); /* CPU bus */
-	memory_bus_add(16); /* PPU bus */
+	/* Add CPU bus */
+	nes_data->cpu_bus.id = CPU_BUS_ID;
+	nes_data->cpu_bus.width = 16;
+	memory_bus_add(&nes_data->cpu_bus);
 
-	/* Add memory regions */
-	memory_region_add(&wram_area, &ram_mops, nes_data->wram);
-	memory_region_add(&palette_area, &palette_mops, nes_data->palette);
+	/* Add PPU bus */
+	nes_data->ppu_bus.id = PPU_BUS_ID;
+	nes_data->ppu_bus.width = 16;
+	memory_bus_add(&nes_data->ppu_bus);
+
+	/* Add WRAM region */
+	nes_data->wram_region.area = &wram_area;
+	nes_data->wram_region.mops = &ram_mops;
+	nes_data->wram_region.data = nes_data->wram;
+	memory_region_add(&nes_data->wram_region);
+
+	/* Add palette region */
+	nes_data->palette_region.area = &palette_area;
+	nes_data->palette_region.mops = &palette_mops;
+	nes_data->palette_region.data = nes_data->palette;
+	memory_region_add(&nes_data->palette_region);
 
 	/* NES cart controls VRAM address lines so let the mapper handle it */
 	nes_mapper_mach_data.vram = nes_data->vram;

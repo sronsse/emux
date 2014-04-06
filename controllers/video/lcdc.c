@@ -114,6 +114,7 @@ struct lcdc {
 	int idle_scanline[NUM_CYCLES_PER_LINE];
 	bool line_mask[LCD_WIDTH];
 	int bus_id;
+	struct region region;
 	struct clock clock;
 	int vblank_irq;
 	int lcdc_irq;
@@ -427,7 +428,10 @@ bool lcdc_init(struct controller_instance *instance)
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	memory_region_add(res, &lcdc_mops, lcdc);
+	lcdc->region.area = res;
+	lcdc->region.mops = &lcdc_mops;
+	lcdc->region.data = lcdc;
+	memory_region_add(&lcdc->region);
 
 	/* Save bus ID for later use */
 	lcdc->bus_id = instance->bus_id;

@@ -19,6 +19,8 @@ static void chip8_deinit();
 
 struct chip8_data {
 	uint8_t ram[RAM_SIZE];
+	struct bus bus;
+	struct region ram_region;
 };
 
 static struct cpu_instance chip8_cpu_instance = {
@@ -73,10 +75,15 @@ bool chip8_init(struct machine *machine)
 	size = (size < max_rom_size) ? size : max_rom_size;
 
 	/* Add 16-bit memory bus */
-	memory_bus_add(16);
+	chip8_data->bus.id = CPU_BUS_ID;
+	chip8_data->bus.width = 16;
+	memory_bus_add(&chip8_data->bus);
 
 	/* Add RAM region */
-	memory_region_add(&ram_area, &ram_mops, chip8_data->ram);
+	chip8_data->ram_region.area = &ram_area;
+	chip8_data->ram_region.mops = &ram_mops;
+	chip8_data->ram_region.data = chip8_data->ram;
+	memory_region_add(&chip8_data->ram_region);
 
 	/* Copy character memory to beginning of RAM */
 	memcpy(chip8_data->ram, char_mem, ARRAY_SIZE(char_mem));

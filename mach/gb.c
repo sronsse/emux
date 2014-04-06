@@ -54,8 +54,13 @@
 struct gb_data {
 	uint8_t vram[VRAM_SIZE];
 	uint8_t wram[WRAM_SIZE];
-	uint8_t oam[OAM_SIZE];
 	uint8_t hram[HRAM_SIZE];
+	uint8_t oam[OAM_SIZE];
+	struct bus bus;
+	struct region vram_region;
+	struct region wram_region;
+	struct region hram_region;
+	struct region oam_region;
 };
 
 static bool gb_init();
@@ -68,8 +73,8 @@ PARAM(bootrom_path, string, "bootrom", "gb", "GameBoy boot ROM path")
 /* Memory areas */
 static struct resource vram_area = MEM("vram", BUS_ID, VRAM_START, VRAM_END);
 static struct resource wram_area = MEM("wram", BUS_ID, WRAM_START, WRAM_END);
-static struct resource oam_area = MEM("oam", BUS_ID, OAM_START, OAM_END);
 static struct resource hram_area = MEM("hram", BUS_ID, HRAM_START, HRAM_END);
+static struct resource oam_area = MEM("oam", BUS_ID, OAM_START, OAM_END);
 
 /* LR35902 CPU */
 static struct resource cpu_resources[] = {
@@ -126,13 +131,33 @@ bool gb_init(struct machine *machine)
 	gb_data = malloc(sizeof(struct gb_data));
 
 	/* Add 16-bit memory bus */
-	memory_bus_add(16);
+	gb_data->bus.id = BUS_ID;
+	gb_data->bus.width = 16;
+	memory_bus_add(&gb_data->bus);
 
-	/* Add memory regions */
-	memory_region_add(&vram_area, &ram_mops, gb_data->vram);
-	memory_region_add(&wram_area, &ram_mops, gb_data->wram);
-	memory_region_add(&hram_area, &ram_mops, gb_data->hram);
-	memory_region_add(&oam_area, &ram_mops, gb_data->oam);
+	/* Add VRAM region */
+	gb_data->vram_region.area = &vram_area;
+	gb_data->vram_region.mops = &ram_mops;
+	gb_data->vram_region.data = gb_data->vram;
+	memory_region_add(&gb_data->vram_region);
+
+	/* Add WRAM region */
+	gb_data->wram_region.area = &wram_area;
+	gb_data->wram_region.mops = &ram_mops;
+	gb_data->wram_region.data = gb_data->wram;
+	memory_region_add(&gb_data->wram_region);
+
+	/* Add HRAM region */
+	gb_data->hram_region.area = &hram_area;
+	gb_data->hram_region.mops = &ram_mops;
+	gb_data->hram_region.data = gb_data->hram;
+	memory_region_add(&gb_data->hram_region);
+
+	/* Add OAM region */
+	gb_data->oam_region.area = &oam_area;
+	gb_data->oam_region.mops = &ram_mops;
+	gb_data->oam_region.data = gb_data->oam;
+	memory_region_add(&gb_data->oam_region);
 
 	/* Set GB mapper controller machine data */
 	gb_mapper_mach_data.bootrom_path = bootrom_path;
