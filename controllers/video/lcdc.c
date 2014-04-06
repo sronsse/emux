@@ -225,7 +225,7 @@ void lcdc_draw_line(struct lcdc *lcdc, bool background)
 
 	/* Set tile index base depending on map selection and current line */
 	tile_index_base = map_sel ? TILE_MAP_ADDRESS_2 : TILE_MAP_ADDRESS_1;
-	tile_index_base += ((lcdc->ly + y_off) / TILE_HEIGHT) *
+	tile_index_base += ((uint8_t)(lcdc->ly + y_off) / TILE_HEIGHT) *
 		NUM_TILES_PER_LINE;
 
 	/* Set tile data base depending on data selection and current line */
@@ -238,7 +238,7 @@ void lcdc_draw_line(struct lcdc *lcdc, bool background)
 	for (x = start_x; x < LCD_WIDTH; x++) {
 		/* Set tile index address according to current column */
 		tile_index_addr = tile_index_base;
-		tile_index_addr += (x + x_off) / TILE_WIDTH;
+		tile_index_addr += (uint8_t)(x + x_off) / TILE_WIDTH;
 
 		/* Get tile index from memory */
 		tile_index = memory_readb(lcdc->bus_id, tile_index_addr);
