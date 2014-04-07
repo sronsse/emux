@@ -266,12 +266,15 @@ void lcdc_draw_line(struct lcdc *lcdc, bool background)
 		color.r = R(shade);
 		color.g = G(shade);
 		color.b = B(shade);
-		video_set_pixel(x, lcdc->ly, color);
+		video_set_pixel(x, lcdc->v, color);
 	}
 }
 
 void lcdc_set_coincidence(struct lcdc *lcdc)
 {
+	/* Update LY */
+	lcdc->ly = lcdc->v;
+
 	/* Set coincidence flag according to current line */
 	lcdc->stat.coincidence_flag = (lcdc->ly == lcdc->lyc);
 
@@ -378,9 +381,6 @@ void lcdc_update_counters(struct lcdc *lcdc)
 	/* Increment vertical counter and handle wrapping */
 	if (++lcdc->v == NUM_LINES)
 		lcdc->v = 0;
-
-	/* Update LY */
-	lcdc->ly = lcdc->v;
 }
 
 void lcdc_tick(struct lcdc *lcdc)
