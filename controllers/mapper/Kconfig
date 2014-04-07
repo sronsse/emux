@@ -8,9 +8,17 @@ config CONTROLLER_MAPPER_GB
 
 config CONTROLLER_MAPPER_MBC1
 	bool "MBC1"
+	depends on CONTROLLER_MAPPER_GB
 	default y
 	help
 		Enable GB MBC1 cartridge type
+
+config CONTROLLER_MAPPER_ROM
+	bool "ROM"
+	depends on CONTROLLER_MAPPER_GB
+	default y
+	help
+		Enable GB ROM ONLY cartridge type
 
 config CONTROLLER_MAPPER_NES
 	bool "NES"
@@ -20,15 +28,10 @@ config CONTROLLER_MAPPER_NES
 
 config CONTROLLER_MAPPER_NROM
 	bool "NROM"
+	depends on CONTROLLER_MAPPER_NES
 	default y
 	help
 		Enable NES NROM - No Mapper (or unknown mapper)
-
-config CONTROLLER_MAPPER_ROM
-	bool "ROM"
-	default y
-	help
-		Enable GB ROM ONLY cartridge type
 
 endmenu
 
