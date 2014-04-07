@@ -142,6 +142,7 @@ void add_mapper(struct controller_instance *instance, uint8_t number)
 
 	mbc_instance = malloc(sizeof(struct controller_instance));
 	mbc_instance->controller_name = mbcs[number];
+	mbc_instance->bus_id = instance->bus_id;
 	mbc_instance->num_resources = instance->num_resources;
 	mbc_instance->resources = instance->resources;
 	mbc_instance->mach_data = instance->mach_data;

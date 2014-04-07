@@ -64,6 +64,7 @@ bool nes_mapper_init(struct controller_instance *instance)
 	LOG_I("Mapper %u (%s) detected.\n", number, mappers[number]);
 	mapper_instance = malloc(sizeof(struct controller_instance));
 	mapper_instance->controller_name = mappers[number];
+	mapper_instance->bus_id = instance->bus_id;
 	mapper_instance->num_resources = instance->num_resources;
 	mapper_instance->resources = instance->resources;
 	mapper_instance->mach_data = instance->mach_data;
