@@ -653,20 +653,37 @@ void DEC_cHL(struct lr35902 *cpu)
 
 void DAA(struct lr35902 *cpu)
 {
-	uint8_t old_A = cpu->A;
-	uint8_t correction_factor;
-	if ((cpu->A > 0x99) || cpu->flags.C) {
-		correction_factor = 0x60;
-		cpu->flags.C = 1;
+	int a = cpu->A;
+
+	/* Update A based on N/H/C flags */
+	if (!cpu->flags.N) {
+		if (cpu->flags.H || ((a & 0x0F) > 9))
+			a += 6;
+		if (cpu->flags.C || (a > 0x9F))
+			a += 0x60;
 	} else {
-		correction_factor = 0x00;
-		cpu->flags.C = 0;
+		if (cpu->flags.H)
+			a = (cpu->A - 6) & 0xFF;
+		if (cpu->flags.C)
+			a -= 0x60;
 	}
-	if (((cpu->A & 0x0F) > 0x09) || cpu->flags.H)
-		correction_factor |= 0x06;
-	cpu->A += cpu->flags.N ? -correction_factor : correction_factor;
-	cpu->flags.H = (old_A ^ cpu->A) >> 4;
-	cpu->flags.Z = (cpu->A == 0);
+
+	/* Reset half-carry and zero flags */
+	cpu->flags.H = 0;
+	cpu->flags.Z = 0;
+
+	/* Set carry flag if needed */
+	if (a & 0x100)
+		cpu->flags.C = 1;
+
+	/* Save A register */
+	cpu->A = a & 0xFF;
+
+	/* Set zero flag if needed */
+	if (!cpu->A)
+		cpu->flags.Z = 1;
+
+	/* Consume cycles */
 	clock_consume(4);
 }
 
