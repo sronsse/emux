@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <audio.h>
 #include <clock.h>
 #include <cmdline.h>
 #include <controller.h>
@@ -87,9 +88,6 @@ void machine_run()
 	struct input_config input_config;
 	struct input_event quit_event;
 
-	/* Reset machine first */
-	machine_reset();
-
 	/* Set running flag and register for quit events */
 	machine->running = true;
 	quit_event.type = EVENT_QUIT;
@@ -98,9 +96,18 @@ void machine_run()
 	input_config.callback = machine_input_event;
 	input_register(&input_config);
 
+	/* Reset machine */
+	machine_reset();
+
+	/* Start audio processing */
+	audio_start();
+
 	/* Run until user quits */
 	while (machine->running)
 		clock_tick_all(!no_sync);
+
+	/* Stop audio processing */
+	audio_stop();
 
 	/* Unregister quit events */
 	input_unregister(&input_config);

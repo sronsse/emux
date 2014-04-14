@@ -28,8 +28,6 @@
 
 #define SAMPLING_FREQ		11025
 #define AUDIO_FORMAT		AUDIO_FORMAT_S16
-#define NUM_CHANNELS		1
-#define NUM_SAMPLES		512
 #define BEEP_FREQ		440
 
 #define NUM_KEYS		16
@@ -61,18 +59,20 @@ struct chip8 {
 	struct clock cpu_clock;
 	struct clock counters_clock;
 	struct clock draw_clock;
+	int16_t *audio_buffer;
+	int audio_samples;
 	float audio_time;
 	struct input_config input_config;
 	bool keys[NUM_KEYS];
 };
 
 static bool chip8_init(struct cpu_instance *instance);
+static void chip8_deinit(struct cpu_instance *instance);
 static void chip8_tick(struct chip8 *chip8);
+static void chip8_gen_audio(struct chip8 *chip8);
 static void chip8_update_counters(struct chip8 *chip8);
 static void chip8_draw(clock_data_t *data);
-static void chip8_mix(struct chip8 *chip8, void *buffer, int len);
 static void chip8_event(int id, struct input_state *state, struct chip8 *chip8);
-static void chip8_deinit(struct cpu_instance *instance);
 static inline void CLS(struct chip8 *chip8);
 static inline void RET(struct chip8 *chip8);
 static inline void JP_addr(struct chip8 *chip8);
@@ -470,87 +470,6 @@ void opcode_F(struct chip8 *chip8)
 	}
 }
 
-bool chip8_init(struct cpu_instance *instance)
-{
-	struct chip8 *chip8;
-	struct audio_specs audio_specs;
-	struct input_config *input_config;
-
-	/* Allocate chip8 structure and set private data */
-	chip8 = malloc(sizeof(struct chip8));
-	instance->priv_data = chip8;
-
-	/* Initialize audio frontend */
-	audio_specs.freq = SAMPLING_FREQ;
-	audio_specs.format = AUDIO_FORMAT;
-	audio_specs.channels = NUM_CHANNELS;
-	audio_specs.samples = NUM_SAMPLES;
-	audio_specs.mix = (audio_mix_t)chip8_mix;
-	audio_specs.data = chip8;
-	if (!audio_init(&audio_specs)) {
-		free(chip8);
-		return false;
-	}
-
-	/* Initialize video frontend */
-	if (!video_init(SCREEN_WIDTH, SCREEN_HEIGHT)) {
-		free(chip8);
-		audio_deinit();
-		return false;
-	}
-
-	/* Initialize input configuration */
-	input_config = &chip8->input_config;
-	input_config->events = malloc(NUM_KEYS * sizeof(struct input_event));
-	input_config->num_events = NUM_KEYS;
-	input_config->callback = (input_cb_t)chip8_event;
-	input_config->data = chip8;
-
-	/* Load and register input config (fall back to defaults if needed) */
-	if (!input_load(instance->cpu->name, input_config->events, NUM_KEYS))
-		memcpy(input_config->events,
-			default_input_events,
-			NUM_KEYS * sizeof(struct input_event));
-	input_register(input_config);
-
-	/* Initialize registers and data */
-	memset(chip8->V, 0, NUM_REGISTERS);
-	chip8->I = 0;
-	chip8->PC = START_ADDRESS;
-	chip8->SP = 0;
-	chip8->DT = 0;
-	chip8->ST = 0;
-	memset(chip8->keys, 0, NUM_KEYS * sizeof(bool));
-
-	/* Initialize audio time */
-	chip8->audio_time = 0.0f;
-
-	/* Save bus ID for later use */
-	chip8->bus_id = instance->bus_id;
-
-	/* Add CPU clock */
-	chip8->cpu_clock.rate = CPU_CLOCK_RATE;
-	chip8->cpu_clock.data = chip8;
-	chip8->cpu_clock.tick = (clock_tick_t)chip8_tick;
-	chip8->cpu_clock.enabled = true;
-	clock_add(&chip8->cpu_clock);
-
-	/* Add counters clock */
-	chip8->counters_clock.rate = COUNTERS_CLOCK_RATE;
-	chip8->counters_clock.data = chip8;
-	chip8->counters_clock.tick = (clock_tick_t)chip8_update_counters;
-	chip8->counters_clock.enabled = true;
-	clock_add(&chip8->counters_clock);
-
-	/* Add draw clock */
-	chip8->draw_clock.rate = DRAW_CLOCK_RATE;
-	chip8->draw_clock.tick = chip8_draw;
-	chip8->draw_clock.enabled = true;
-	clock_add(&chip8->draw_clock);
-
-	return true;
-}
-
 void chip8_tick(struct chip8 *chip8)
 {
 	/* Fetch opcode */
@@ -617,19 +536,42 @@ void chip8_tick(struct chip8 *chip8)
 	clock_consume(1);
 }
 
+void chip8_gen_audio(struct chip8 *chip8)
+{
+	int buffer_size = chip8->audio_samples * sizeof(int16_t);
+	float sample;
+	int i;
+
+	/* Zero-out buffer */
+	memset(chip8->audio_buffer, 0, buffer_size);
+
+	/* Beep if ST is non-zero */
+	if (chip8->ST > 0)
+		for (i = 0; i < chip8->audio_samples; i++) {
+			/* Compute sine wave sample of desired frequency */
+			sample = sinf(2 * M_PI * BEEP_FREQ * chip8->audio_time);
+			chip8->audio_buffer[i] = SHRT_MAX * sample;
+
+			/* Increment time */
+			chip8->audio_time += 1.0f / SAMPLING_FREQ;
+			if (BEEP_FREQ * chip8->audio_time > 1.0f / BEEP_FREQ)
+				chip8->audio_time -= 1.0f / BEEP_FREQ;
+		}
+
+	/* Enqueue audio buffer */
+	audio_enqueue((uint8_t *)chip8->audio_buffer, buffer_size);
+}
+
 void chip8_update_counters(struct chip8 *chip8)
 {
+	/* Generate audio sample based on sound counter */
+	chip8_gen_audio(chip8);
+
 	/* Update DT and ST counters */
 	if (chip8->DT > 0)
 		chip8->DT--;
 	if (chip8->ST > 0)
 		chip8->ST--;
-
-	/* Beep if ST is non-zero */
-	if (chip8->ST > 0)
-		audio_start();
-	else
-		audio_stop();
 
 	/* Report cycle consumption */
 	clock_consume(1);
@@ -643,28 +585,91 @@ void chip8_draw(clock_data_t *UNUSED(data))
 	clock_consume(1);
 }
 
-void chip8_mix(struct chip8 *chip8, void *buffer, int len)
-{
-	int16_t *b = buffer;
-	float sample;
-	unsigned int i;
-
-	/* Fill audio buffer */
-	for (i = 0; i < len / sizeof(int16_t); i++) {
-		/* Compute sine wave sample of desired frequency */
-		sample = sinf(2 * M_PI * BEEP_FREQ * chip8->audio_time);
-		b[i] = SHRT_MAX * sample;
-
-		/* Increment time */
-		chip8->audio_time += 1.0f / SAMPLING_FREQ;
-		if (BEEP_FREQ * chip8->audio_time > 1.0f / BEEP_FREQ)
-			chip8->audio_time -= 1.0f / BEEP_FREQ;
-	}
-}
-
 static void chip8_event(int id, struct input_state *state, struct chip8 *chip8)
 {
 	chip8->keys[id] = state->active;
+}
+
+bool chip8_init(struct cpu_instance *instance)
+{
+	struct chip8 *chip8;
+	struct audio_specs audio_specs;
+	struct input_config *input_config;
+
+	/* Allocate chip8 structure and set private data */
+	chip8 = malloc(sizeof(struct chip8));
+	instance->priv_data = chip8;
+
+	/* Initialize audio frontend */
+	audio_specs.freq = SAMPLING_FREQ;
+	audio_specs.format = AUDIO_FORMAT;
+	audio_specs.channels = 1;
+	if (!audio_init(&audio_specs)) {
+		free(chip8);
+		return false;
+	}
+
+	/* Initialize video frontend */
+	if (!video_init(SCREEN_WIDTH, SCREEN_HEIGHT)) {
+		free(chip8);
+		audio_deinit();
+		return false;
+	}
+
+	/* Initialize input configuration */
+	input_config = &chip8->input_config;
+	input_config->events = malloc(NUM_KEYS * sizeof(struct input_event));
+	input_config->num_events = NUM_KEYS;
+	input_config->callback = (input_cb_t)chip8_event;
+	input_config->data = chip8;
+
+	/* Load and register input config (fall back to defaults if needed) */
+	if (!input_load(instance->cpu->name, input_config->events, NUM_KEYS))
+		memcpy(input_config->events,
+			default_input_events,
+			NUM_KEYS * sizeof(struct input_event));
+	input_register(input_config);
+
+	/* Initialize registers */
+	memset(chip8->V, 0, NUM_REGISTERS);
+	chip8->I = 0;
+	chip8->PC = START_ADDRESS;
+	chip8->SP = 0;
+	chip8->DT = 0;
+	chip8->ST = 0;
+
+	/* Initialize input data */
+	memset(chip8->keys, 0, NUM_KEYS * sizeof(bool));
+
+	/* Initialize audio data */
+	chip8->audio_samples = SAMPLING_FREQ / COUNTERS_CLOCK_RATE;
+	chip8->audio_buffer = malloc(chip8->audio_samples * sizeof(int16_t));
+	chip8->audio_time = 0.0f;
+
+	/* Save bus ID for later use */
+	chip8->bus_id = instance->bus_id;
+
+	/* Add CPU clock */
+	chip8->cpu_clock.rate = CPU_CLOCK_RATE;
+	chip8->cpu_clock.data = chip8;
+	chip8->cpu_clock.tick = (clock_tick_t)chip8_tick;
+	chip8->cpu_clock.enabled = true;
+	clock_add(&chip8->cpu_clock);
+
+	/* Add counters clock */
+	chip8->counters_clock.rate = COUNTERS_CLOCK_RATE;
+	chip8->counters_clock.data = chip8;
+	chip8->counters_clock.tick = (clock_tick_t)chip8_update_counters;
+	chip8->counters_clock.enabled = true;
+	clock_add(&chip8->counters_clock);
+
+	/* Add draw clock */
+	chip8->draw_clock.rate = DRAW_CLOCK_RATE;
+	chip8->draw_clock.tick = chip8_draw;
+	chip8->draw_clock.enabled = true;
+	clock_add(&chip8->draw_clock);
+
+	return true;
 }
 
 void chip8_deinit(struct cpu_instance *instance)
@@ -672,6 +677,7 @@ void chip8_deinit(struct cpu_instance *instance)
 	struct chip8 *chip8 = instance->priv_data;
 	input_unregister(&chip8->input_config);
 	free(chip8->input_config.events);
+	free(chip8->audio_buffer);
 	video_deinit();
 	audio_deinit();
 	free(chip8);

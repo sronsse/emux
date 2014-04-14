@@ -48,6 +48,12 @@ bool audio_init(struct audio_specs *specs)
 	return false;
 }
 
+void audio_enqueue(uint8_t *buffer, int length)
+{
+	if (frontend && frontend->enqueue)
+		frontend->enqueue(frontend, buffer, length);
+}
+
 void audio_start()
 {
 	if (frontend && frontend->start)
