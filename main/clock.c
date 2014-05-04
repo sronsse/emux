@@ -8,8 +8,6 @@
 
 #define NS(s) ((s) * 1000000000)
 
-static uint64_t gcd(uint64_t a, uint64_t b);
-static uint64_t lcm(uint64_t a, uint64_t b);
 static uint64_t lcmm(int clock_index);
 
 static struct clock **clocks;
