@@ -26,7 +26,7 @@
 #define CHAR_SIZE		5
 #define NUM_PIXELS_PER_BYTE	8
 
-#define SAMPLING_FREQ		11025
+#define SAMPLING_FREQ		44100
 #define AUDIO_FORMAT		AUDIO_FORMAT_S16
 #define BEEP_FREQ		440
 
@@ -559,7 +559,7 @@ void chip8_gen_audio(struct chip8 *chip8)
 		}
 
 	/* Enqueue audio buffer */
-	audio_enqueue((uint8_t *)chip8->audio_buffer, buffer_size);
+	audio_enqueue((uint8_t *)chip8->audio_buffer, chip8->audio_samples);
 }
 
 void chip8_update_counters(struct chip8 *chip8)

@@ -38,14 +38,14 @@ struct audio_frontend {
 	char *name;
 	audio_priv_data_t *priv_data;
 	bool (*init)(struct audio_frontend *fe, struct audio_specs *specs);
-	void (*enqueue)(struct audio_frontend *fe, uint8_t *buffer, int length);
+	void (*enqueue)(struct audio_frontend *fe, void *buffer, int count);
 	void (*start)(struct audio_frontend *fe);
 	void (*stop)(struct audio_frontend *fe);
 	void (*deinit)(struct audio_frontend *fe);
 };
 
 bool audio_init();
-void audio_enqueue(uint8_t *buffer, int length);
+void audio_enqueue(void *buffer, int count);
 void audio_start();
 void audio_stop();
 void audio_deinit();
