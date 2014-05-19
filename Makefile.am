@@ -40,6 +40,7 @@ emux_SOURCES = include/audio.h \
 	main/video.c
 EXTRA_DIST = Kconfig \
 	controllers/Kconfig \
+	controllers/audio/Kconfig \
 	controllers/dma/Kconfig \
 	controllers/input/Kconfig \
 	controllers/mapper/Kconfig \
@@ -102,6 +103,9 @@ emux_SOURCES += cpu/rp2a03.c
 endif
 
 # Controllers
+if CONFIG_CONTROLLER_AUDIO_PAPU
+emux_SOURCES += controllers/audio/papu.c
+endif
 if CONFIG_CONTROLLER_DMA_NES
 emux_SOURCES += controllers/dma/nes_sprite.c
 endif

@@ -1,0 +1,10 @@
+menu "Audio"
+
+config CONTROLLER_AUDIO_PAPU
+	bool "GB PAPU"
+	default y
+	help
+		Enable Game Boy PAPU sound chip
+
+endmenu
+
