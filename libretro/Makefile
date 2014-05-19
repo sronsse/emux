@@ -99,6 +99,7 @@ $(eval $(call DEFINE_TARGET,chip8,ch8|bin|rom,\
 
 # GB target definition
 $(eval $(call DEFINE_TARGET,gb,gb|bin|rom,\
+   ../controllers/audio/papu.o \
    ../controllers/input/gb_joypad.o \
    ../controllers/mapper/gb_mapper.o \
    ../controllers/mapper/mbc1.o \
