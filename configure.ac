@@ -20,11 +20,26 @@ PKG_PROG_PKG_CONFIG
 # Export source directory to the environment
 export EMUX_SRC_DIR=$srcdir
 
-# Execute menuconfig
-kconfig-mconf $EMUX_SRC_DIR/Kconfig <& AS_ORIGINAL_STDIN_FD
+# Copy desired configuration if requested
+if test "$CONF" != ""; then
+	if ! test -f $EMUX_SRC_DIR/mach/configs/$CONF; then
+		AC_MSG_ERROR([could not find $EMUX_SRC_DIR/mach/configs/$CONF!])
+	fi
+	cp $EMUX_SRC_DIR/mach/configs/$CONF $PWD/.config
+fi
 
-# Set all CONFIG_xxx variables from .config file if found, otherwise exit
-test -f $PWD/.config && source $PWD/.config || exit
+# Copy default configuration if no .config file is found
+if ! test -f $PWD/.config; then
+	cp $EMUX_SRC_DIR/mach/configs/all_defconfig $PWD/.config
+fi
+
+# Launch configuration menu if requested
+if test "$MENU" != ""; then
+	kconfig-$MENU $EMUX_SRC_DIR/Kconfig <& AS_ORIGINAL_STDIN_FD
+fi
+
+# Set all CONFIG_xxx variables from .config file
+source $PWD/.config
 
 # Make sure at least one machine is selected
 if test "$CONFIG_MACH" != "y"; then

@@ -58,7 +58,11 @@ EXTRA_DIST = Kconfig \
 	libretro/libretro.c \
 	libretro/link.T \
 	libretro/Makefile \
-	mach/Kconfig
+	mach/Kconfig \
+	mach/configs/all_defconfig \
+	mach/configs/chip8_defconfig \
+	mach/configs/gb_defconfig \
+	mach/configs/nes_defconfig
 
 # Machines
 if CONFIG_MACH_CHIP8
@@ -146,10 +150,13 @@ emux_SOURCES += controllers/video/ppu.c
 endif
 
 libretro:
-	make -C libretro/
+	make -C $(srcdir)/libretro/
 
 .PHONY: libretro
 
 clean-local:
-	rm -f .config && make -C libretro/ clean
+	make -C $(srcdir)/libretro/ clean
+
+distclean-local:
+	rm -f $(PWD)/.config $(PWD)/.config.old
 
