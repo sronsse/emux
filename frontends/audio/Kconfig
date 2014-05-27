@@ -1,12 +1,7 @@
 menu "Audio frontend selection"
 
-config AUDIO
-	bool
-	default n
-
 config AUDIO_SDL
 	bool "sdl"
-	select AUDIO
 	default y
 	help
 		Enable SDL (Simple DirectMedia Layer) audio frontend

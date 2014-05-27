@@ -1,26 +1,19 @@
 menu "Video frontend selection"
 
-config VIDEO
-	bool
-	default n
-
 config VIDEO_CACA
 	bool "caca"
-	select VIDEO
-	default y
+	default n
 	help
 		Enable libcaca video frontend
 
 config VIDEO_OPENGL
 	bool "opengl"
-	select VIDEO
-	default y
+	default n
 	help
 		Enable OpenGL video frontend (through SDL)
 
 config VIDEO_SDL
 	bool "sdl"
-	select VIDEO
 	default y
 	help
 		Enable SDL (Simple DirectMedia Layer) software video frontend

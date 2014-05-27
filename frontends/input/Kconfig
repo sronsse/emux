@@ -1,26 +1,20 @@
 menu "Input frontend configuration"
 
-config INPUT
-	bool
-	default n
-
 config INPUT_CACA
 	bool "caca"
-	select INPUT
-	default y
+	default n
 	help
 		Enable libcaca input frontend
 
 config INPUT_SDL
 	bool "sdl"
-	select INPUT
 	default y
 	help
 		Enable SDL (Simple DirectMedia Layer) input frontend
 
 config INPUT_XML
 	bool "XML input configuration"
-	default y
+	default n
 	help
 		Add support for XML input configuration
 
