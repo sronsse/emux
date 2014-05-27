@@ -63,7 +63,8 @@ override CFLAGS += -std=gnu99
 endif
 
 # Object files used in all implementations
-COMMON_OBJS := ../frontends/input/retro_input.o \
+COMMON_OBJS := ../frontends/audio/retro_audio.o \
+   ../frontends/input/retro_input.o \
    ../frontends/video/retro_video.o \
    ../main/audio.o \
    ../main/bitops.o \

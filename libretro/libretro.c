@@ -3,27 +3,28 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <audio.h>
 #include <cmdline.h>
 #include <config.h>
 #include <libretro.h>
 #include <log.h>
 #include <machine.h>
 
-/* Retro video frontend functions */
+/* Retro frontends functions */
+void retro_audio_fill_timing(struct retro_system_timing *timing);
 void retro_video_fill_timing(struct retro_system_timing *timing);
 void retro_video_fill_geometry(struct retro_game_geometry *geometry);
 bool retro_video_updated();
 
 retro_environment_t retro_environment_cb;
-static retro_audio_sample_t audio_cb;
-static retro_audio_sample_batch_t audio_batch_cb;
 
 void retro_init(void)
 {
 	/* Set machine to be run */
 	cmdline_set_param("machine", NULL, MACHINE);
 
-	/* Set retro as the video frontend */
+	/* Set retro frontends */
+	cmdline_set_param("audio", NULL, "retro");
 	cmdline_set_param("video", NULL, "retro");
 }
 
@@ -53,9 +54,8 @@ void retro_get_system_info(struct retro_system_info *info)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-	info->timing.sample_rate = 30000.0;
-
-	/* Let video frontend fill timing and geometry */
+	/* Let frontends fill timing and geometry */
+	retro_audio_fill_timing(&info->timing);
 	retro_video_fill_timing(&info->timing);
 	retro_video_fill_geometry(&info->geometry);
 }
@@ -70,16 +70,6 @@ void retro_set_environment(retro_environment_t cb)
 	/* Override log callback if supported by frontend */
 	if (cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log_callback))
 		log_cb = (log_print_t)log_callback.log;
-}
-
-void retro_set_audio_sample(retro_audio_sample_t cb)
-{
-	audio_cb = cb;
-}
-
-void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb)
-{
-	audio_batch_cb = cb;
 }
 
 void retro_reset(void)
@@ -103,6 +93,9 @@ bool retro_load_game(const struct retro_game_info *info)
 		LOG_E("Failed to initialize machine!\n");
 		return false;
 	}
+
+	/* Start audio processing */
+	audio_start();
 
 	return true;
 }
