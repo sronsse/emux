@@ -111,6 +111,19 @@ RUNNING EMUX
   emux --machine=MACH where MACH is the machine name. Example:
     emux --machine=gb
 
+LIBRETRO
+
+  RetroArch is an open-source project that makes use of a powerful development
+  interface called Libretro. Libretro is an interface that allows you to make
+  cross-platform applications that can use rich features such as OpenGL,
+  cross-platform camera support, location support, and more in the future.
+
+  Emux can also be built as separate libretro cores to be loaded by libretro
+  frontends such as RetroArch. All supported libretro implementations are
+  generated under the libretro/ directory. The following command should be used
+  to build these cores:
+    make libretro
+
 HELP
   If you need help with Emux, or would like to report bugs (as long as these are
   detailed), feel free to contact me directly at sronsse@gmail.com. Emux is
