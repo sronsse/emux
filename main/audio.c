@@ -5,9 +5,13 @@
 #include <list.h>
 #include <log.h>
 
+#define DEFAULT_SAMPLING_RATE 44100
+
 /* Command-line parameter */
 static char *audio_fe_name;
 PARAM(audio_fe_name, string, "audio", NULL, "Selects audio frontend")
+static int sampling_rate = DEFAULT_SAMPLING_RATE;
+PARAM(sampling_rate, int, "sampling-rate", NULL, "Sets audio sampling rate")
 
 struct list_link *audio_frontends;
 static struct audio_frontend *frontend;
@@ -28,6 +32,20 @@ bool audio_init(struct audio_specs *specs)
 		return true;
 	}
 
+	/* Validate audio sampling rate */
+	switch (sampling_rate) {
+	case 11025:
+	case 22050:
+	case 44100:
+	case 48000:
+		break;
+	default:
+		LOG_W("%u Hz sampling rate not supported.\n", sampling_rate);
+		LOG_W("Please select 11025, 22050, 44100, or 48000 Hz.\n");
+		sampling_rate = DEFAULT_SAMPLING_RATE;
+		break;
+	}
+
 	/* Find audio frontend */
 	while ((fe = list_get_next(&link))) {
 		/* Skip if name does not match */
@@ -35,6 +53,7 @@ bool audio_init(struct audio_specs *specs)
 			continue;
 
 		/* Initialize frontend */
+		specs->sampling_rate = sampling_rate;
 		if (fe->init && !fe->init(fe, specs))
 			return false;
 

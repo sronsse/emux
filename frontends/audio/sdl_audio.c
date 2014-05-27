@@ -6,8 +6,6 @@
 #include <log.h>
 #include <util.h>
 
-#define SAMPLING_FREQ 44100
-
 typedef void (*sdl_callback)(void *userdata, Uint8 *stream, int len);
 
 struct resample_data {
@@ -150,9 +148,9 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 	fe->priv_data = audio_data;
 
 	/* Compute buffer lengths based on input and output frequencies */
-	v = lcm(specs->freq, SAMPLING_FREQ);
+	v = lcm(specs->freq, specs->sampling_rate);
 	audio_data->resample_data.input_len = v / specs->freq;
-	audio_data->resample_data.output_len = v / SAMPLING_FREQ;
+	audio_data->resample_data.output_len = v / specs->sampling_rate;
 
 	/* Initialize remaining resampling data */
 	audio_data->resample_data.count = 0;
@@ -160,7 +158,7 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 	audio_data->resample_data.right = 0;
 
 	/* Set number of samples based on desired output frequency */
-	switch (SAMPLING_FREQ) {
+	switch (specs->sampling_rate) {
 	case 11025:
 		samples = 512;
 		break;
@@ -168,15 +166,10 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 		samples = 1024;
 		break;
 	case 44100:
-		samples = 2048;
-		break;
 	case 48000:
+	default:
 		samples = 2048;
 		break;
-	default:
-		LOG_E("Audio frequency %u not supported!\n", specs->freq);
-		free(audio_data);
-		return false;
 	}
 
 	/* Set desired format */
@@ -201,7 +194,7 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 	}
 
 	/* Set audio specs */
-	desired.freq = SAMPLING_FREQ;
+	desired.freq = specs->sampling_rate;
 	desired.format = fmt;
 	desired.channels = specs->channels;
 	desired.samples = samples;

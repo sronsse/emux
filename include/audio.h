@@ -32,6 +32,7 @@ struct audio_specs {
 	int freq;
 	enum audio_format format;
 	int channels;
+	int sampling_rate;
 };
 
 struct audio_frontend {

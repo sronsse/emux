@@ -98,6 +98,7 @@ RUNNING EMUX
   --log-level=int       Specifies log level (0 to 3)
   --machine=string      Selects machine to emulate
   --no-sync             Disables emulation syncing
+  --sampling-rate=int   Sets audio sampling rate
   --scale=int           Applies a screen scale ratio
   --system-dir=string   Path to system directory
   --video=string        Selects video frontend
