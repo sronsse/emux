@@ -26,6 +26,7 @@
 /* LCDC constants */
 #define LCD_WIDTH		160
 #define LCD_HEIGHT		144
+#define LCD_REFRESH_RATE	59.72750057
 #define NUM_LINES		154
 #define NUM_CYCLES_PER_LINE	456
 #define DMA_DEST_ADDRESS	0xFE00
@@ -413,10 +414,14 @@ void lcdc_tick(struct lcdc *lcdc)
 bool lcdc_init(struct controller_instance *instance)
 {
 	struct lcdc *lcdc;
+	struct video_specs video_specs;
 	struct resource *res;
 
 	/* Initialize video frontend */
-	if (!video_init(LCD_WIDTH, LCD_HEIGHT))
+	video_specs.width = LCD_WIDTH;
+	video_specs.height = LCD_HEIGHT;
+	video_specs.fps = LCD_REFRESH_RATE;
+	if (!video_init(&video_specs))
 		return false;
 
 	/* Allocate LCDC structure */

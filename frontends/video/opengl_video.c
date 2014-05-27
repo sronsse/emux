@@ -34,7 +34,7 @@ struct vertex {
 	GLfloat uv[NUM_TEX_COORDS];
 };
 
-static window_t *gl_init(struct video_frontend *fe, int w, int h, int s);
+static window_t *gl_init(struct video_frontend *fe, struct video_specs *vs);
 static void gl_deinit(struct video_frontend *fe);
 static void gl_update(struct video_frontend *fe);
 static struct color gl_get_p(struct video_frontend *fe, int x, int y);
@@ -162,11 +162,14 @@ void init_pixels(struct video_frontend *fe)
 		gl->pixels);
 }
 
-window_t *gl_init(struct video_frontend *fe, int w, int h, int s)
+window_t *gl_init(struct video_frontend *fe, struct video_specs *vs)
 {
 	SDL_Surface *screen;
 	Uint32 flags = SDL_OPENGL;
 	struct gl *gl;
+	int w = vs->width;
+	int h = vs->height;
+	int s = vs->scale;
 
 	/* Initialize video sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {

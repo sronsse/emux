@@ -27,18 +27,21 @@ struct caca_data {
 	caca_dither_t *dither;
 };
 
-static window_t *caca_init(struct video_frontend *fe, int w, int h, int s);
+static window_t *caca_init(struct video_frontend *fe, struct video_specs *vs);
 static void caca_update(struct video_frontend *fe);
 static struct color caca_get_p(struct video_frontend *fe, int x, int y);
 static void caca_set_p(struct video_frontend *fe, int x, int y, struct color c);
 static void caca_deinit(struct video_frontend *fe);
 
-window_t *caca_init(struct video_frontend *fe, int w, int h, int s)
+window_t *caca_init(struct video_frontend *fe, struct video_specs *vs)
 {
 	caca_canvas_t *cv;
 	caca_display_t *dp;
 	struct caca_data *data;
 	int pitch;
+	int w = vs->width;
+	int h = vs->height;
+	int s = vs->scale;
 
 	/* Create canvas and display */
 	cv = caca_create_canvas(w * s / CHAR_WIDTH, h * s / CHAR_HEIGHT);

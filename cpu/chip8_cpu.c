@@ -594,6 +594,7 @@ bool chip8_init(struct cpu_instance *instance)
 {
 	struct chip8 *chip8;
 	struct audio_specs audio_specs;
+	struct video_specs video_specs;
 	struct input_config *input_config;
 
 	/* Allocate chip8 structure and set private data */
@@ -610,7 +611,10 @@ bool chip8_init(struct cpu_instance *instance)
 	}
 
 	/* Initialize video frontend */
-	if (!video_init(SCREEN_WIDTH, SCREEN_HEIGHT)) {
+	video_specs.width = SCREEN_WIDTH;
+	video_specs.height = SCREEN_HEIGHT;
+	video_specs.fps = DRAW_CLOCK_RATE;
+	if (!video_init(&video_specs)) {
 		free(chip8);
 		audio_deinit();
 		return false;

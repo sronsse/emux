@@ -10,7 +10,7 @@ struct sdl_data {
 	int scale;
 };
 
-static window_t *sdl_init(struct video_frontend *fe, int w, int h, int s);
+static window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs);
 static void sdl_update(struct video_frontend *fe);
 static void sdl_lock(struct video_frontend *fe);
 static void sdl_unlock(struct video_frontend *fe);
@@ -18,11 +18,13 @@ static struct color sdl_get_p(struct video_frontend *fe, int x, int y);
 static void sdl_set_p(struct video_frontend *fe, int x, int y, struct color c);
 static void sdl_deinit(struct video_frontend *fe);
 
-window_t *sdl_init(struct video_frontend *fe, int w, int h, int s)
+window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 {
 	struct sdl_data *data;
 	SDL_Surface *screen;
 	Uint32 flags = SDL_SWSURFACE;
+	int w = vs->width * vs->scale;
+	int h = vs->height * vs->scale;
 
 	/* Initialize video sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
@@ -35,7 +37,7 @@ window_t *sdl_init(struct video_frontend *fe, int w, int h, int s)
 	SDL_WM_SetCaption("emux", NULL);
 
 	/* Create main video surface */
-	screen = SDL_SetVideoMode(w * s, h * s,	0, flags);
+	screen = SDL_SetVideoMode(w, h, 0, flags);
 	if (!screen) {
 		LOG_E("Error creating video surface: %s\n", SDL_GetError());
 		SDL_VideoQuit();
@@ -45,7 +47,7 @@ window_t *sdl_init(struct video_frontend *fe, int w, int h, int s)
 	/* Create and fill private data */
 	data = malloc(sizeof(struct sdl_data));
 	data->screen = screen;
-	data->scale = s;
+	data->scale = vs->scale;
 	fe->priv_data = data;
 
 	return screen;

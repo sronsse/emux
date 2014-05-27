@@ -24,6 +24,7 @@
 /* PPU constant parameters */
 #define SCREEN_WIDTH		256
 #define SCREEN_HEIGHT		240
+#define SCREEN_REFRESH_RATE	60.0988
 #define NUM_DOTS		341
 #define NUM_SCANLINES		262
 #define OAM_SIZE		256
@@ -1009,10 +1010,14 @@ void ppu_tick(struct ppu *ppu)
 bool ppu_init(struct controller_instance *instance)
 {
 	struct ppu *ppu;
+	struct video_specs video_specs;
 	struct resource *res;
 
 	/* Initialize video frontend */
-	if (!video_init(SCREEN_WIDTH, SCREEN_HEIGHT))
+	video_specs.width = SCREEN_WIDTH;
+	video_specs.height = SCREEN_HEIGHT;
+	video_specs.fps = SCREEN_REFRESH_RATE;
+	if (!video_init(&video_specs))
 		return false;
 
 	/* Allocate PPU structure */

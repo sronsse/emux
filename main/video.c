@@ -15,7 +15,7 @@ PARAM(scale, int, "scale", NULL, "Applies a screen scale ratio")
 struct list_link *video_frontends;
 static struct video_frontend *frontend;
 
-bool video_init(int width, int height)
+bool video_init(struct video_specs *vs)
 {
 	struct list_link *link = video_frontends;
 	struct video_frontend *fe;
@@ -46,7 +46,8 @@ bool video_init(int width, int height)
 
 		/* Initialize frontend */
 		if (fe->init) {
-			window = fe->init(fe, width, height, scale);
+			vs->scale = scale;
+			window = fe->init(fe, vs);
 			if (!window)
 				return false;
 		}

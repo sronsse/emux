@@ -19,6 +19,7 @@ struct retro_data {
 	uint32_t *pixels;
 	int width;
 	int height;
+	double fps;
 	retro_video_refresh_t video_cb;
 	bool video_updated;
 };
@@ -27,7 +28,7 @@ void retro_video_fill_timing(struct retro_system_timing *timing);
 void retro_video_fill_geometry(struct retro_game_geometry *geometry);
 bool retro_video_updated();
 
-static window_t *ret_init(struct video_frontend *fe, int w, int h, int s);
+static window_t *ret_init(struct video_frontend *fe, struct video_specs *vs);
 static void ret_update(struct video_frontend *fe);
 static struct color ret_get_p(struct video_frontend *fe, int x, int y);
 static void ret_set_p(struct video_frontend *fe, int x, int y, struct color c);
@@ -44,8 +45,8 @@ void retro_set_video_refresh(retro_video_refresh_t cb)
 
 void retro_video_fill_timing(struct retro_system_timing *timing)
 {
-	/* Fill default FPS */
-	timing->fps = 60.0;
+	/* Fill FPS */
+	timing->fps = retro_data.fps;
 }
 
 void retro_video_fill_geometry(struct retro_game_geometry *geometry)
@@ -72,8 +73,7 @@ bool retro_video_updated()
 	return ret;
 }
 
-window_t *ret_init(struct video_frontend *UNUSED(fe), int w, int h,
-	int UNUSED(s))
+window_t *ret_init(struct video_frontend *UNUSED(fe), struct video_specs *vs)
 {
 	/* Set pixel format */
 	enum retro_pixel_format fmt = RETRO_PIXEL_FORMAT_XRGB8888;
@@ -83,12 +83,13 @@ window_t *ret_init(struct video_frontend *UNUSED(fe), int w, int h,
 	}
 
 	/* Initialize pixels */
-	retro_data.pixels = malloc(w * h * sizeof(uint32_t));
-	memset(retro_data.pixels, 0, w * h * sizeof(uint32_t));
+	retro_data.pixels = malloc(vs->width * vs->height * sizeof(uint32_t));
+	memset(retro_data.pixels, 0, vs->width * vs->height * sizeof(uint32_t));
 
-	/* Save dimensions */
-	retro_data.width = w;
-	retro_data.height = h;
+	/* Save dimensions and FPS */
+	retro_data.width = vs->width;
+	retro_data.height = vs->height;
+	retro_data.fps = vs->fps;
 
 	/* Return success (no window is returned) */
 	return (window_t *)1;

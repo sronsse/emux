@@ -22,6 +22,13 @@
 typedef void window_t;
 typedef void video_priv_data_t;
 
+struct video_specs {
+	int width;
+	int height;
+	float fps;
+	int scale;
+};
+
 struct color {
 	uint8_t r;
 	uint8_t g;
@@ -32,7 +39,7 @@ struct video_frontend {
 	char *name;
 	char *input;
 	video_priv_data_t *priv_data;
-	window_t *(*init)(struct video_frontend *fe, int w, int h, int s);
+	window_t *(*init)(struct video_frontend *fe, struct video_specs *vs);
 	void (*update)(struct video_frontend *fe);
 	void (*lock)(struct video_frontend *fe);
 	void (*unlock)(struct video_frontend *fe);
@@ -41,7 +48,7 @@ struct video_frontend {
 	void (*deinit)(struct video_frontend *fe);
 };
 
-bool video_init(int width, int height);
+bool video_init(struct video_specs *vs);
 void video_update();
 void video_lock();
 void video_unlock();
