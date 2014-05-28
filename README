@@ -17,52 +17,61 @@ WHAT IS EMUX?
 
 SOFTWARE DEPENDENCIES
 
-  Before being able to build Emux, kconfig-frontends needs to be installed on
-  your host machine. Linux developers should be very familiar with menuconfig,
-  a convenient menu-driven user interface allowing the configuration of the
-  Linux kernel. kconfig-frontends brings the ability to use these same tools for
-  any project other than the Linux kernel, by packaging these tools apart from
-  the kernel so that they can ship independently. However, the project aims at
-  tracking changes made to kconfig in the kernel development tree, to ensure
-  they benefit to anyone using kconfig-frontends. The current package maintainer
-  is Yann E. Morin, and the project is hosted at:
-  http://ymorin.is-a-geek.org/projects/kconfig-frontends
-
-  Once kconfig-frontends is built and installed, make sure kconfig-mconf is
-  available on your system, as Emux uses this particular frontend.
-
   Emux can use different audio and video/input frontends. At the time of
   writing, SDL and libcaca are supported for video/input and only SDL for audio.
   During the configuration step, you may select the frontends to be included
   in the build. The configure script will complain if these libraries are not
-  found.
+  found. Note: no particular dependency is required in order to build libretro
+  implementations.
 
-  Emux now uses libroxml - a tiny XML parsing library - in order to read input
-  configuration files. This library is typically not part of standard
-  distributions and needs to be downloaded, built, and installed on your host
-  machine. The libroxml project is developed by Tristan Lelong and can be found
-  at the following location:
+  Emux can now use libroxml - a tiny XML parsing library - in order to read
+  input configuration files. This optional library is typically not part of
+  standard distributions and needs to be downloaded, built, and installed on
+  your host machine. The libroxml project is developed by Tristan Lelong and can
+  be found at the following location:
   http://www.libroxml.net/
+
+  If advanced configuration of Emux is needed, kconfig-frontends needs to be
+  installed on your host machine. Linux developers should be very familiar with
+  menuconfig, a convenient menu-driven user interface allowing the configuration
+  of the Linux kernel. kconfig-frontends brings the ability to use these same
+  tools for any project other than the Linux kernel, by packaging these tools
+  apart from the kernel so that they can ship independently. However, the
+  project aims at tracking changes made to kconfig in the kernel development
+  tree, to ensure they benefit to anyone using kconfig-frontends. The current
+  package maintainer is Yann E. Morin, and the project is hosted at:
+  http://ymorin.is-a-geek.org/projects/kconfig-frontends
 
   Here are the software dependencies for a full-featured build of Emux:
   - autoconf
   - automake
-  - kconfig-frontends (with mconf support)
-  - libcaca-dev
-  - libroxml
-  - libsdl1.2-dev
+  - kconfig-frontends (optional)
+  - libcaca-dev (optional)
+  - libroxml (optional)
+  - libsdl1.2-dev (optional)
   - pkg-config
 
 CONFIGURING EMUX
 
-  Once all the software dependencies are taken care of, navigate to the emux
-  sources folder from a terminal and execute the following command to configure
+  Once all software dependencies are taken care of, navigate to the Emux sources
+  folder from a terminal and execute the following command to configure
   Emux:
     ./configure
+
+  This step will build a default Emux configuration (all_defconfig). If advanced
+  configuration is needed (in order to add/remove support for various
+  components), you may use the following command provided that kconfig-frontends
+  is properly installed on your host machine:
+    ./configure MENU=<conf> (ie. use ./configure MENU=mconf for kconfig-mconf).
 
   This should bring up a menuconfig interface where you can specify frontends,
   machines, CPUs, and controllers to build. If you need help with one particular
   item, press 'h' to show a basic description of your selection.
+
+  All supported machines also come with a default configuration (all stored
+  under mach/configs). You can select a particular configuration by specifying
+  it on the configure command line:
+    ./configure CONF=<defconfig> (ie. ./configure CONF=nes_defconfig)
 
   Note: standard rules apply if you need to cross-compile Emux.
 
