@@ -12,8 +12,7 @@
 #include <memory.h>
 #include <util.h>
 
-static void machine_input_event(int id,	struct input_state *state,
-	input_data_t *data);
+static void machine_event(int id, enum input_type type, input_data_t *data);
 
 static char *machine_name;
 PARAM(machine_name, string, "machine", NULL, "Selects machine to emulate")
@@ -23,7 +22,7 @@ PARAM(no_sync, bool, "no-sync", NULL, "Disables emulation syncing")
 struct list_link *machines;
 static struct machine *machine;
 
-void machine_input_event(int UNUSED(id), struct input_state *UNUSED(state),
+void machine_event(int UNUSED(id), enum input_type UNUSED(type),
 	input_data_t *UNUSED(data))
 {
 	/* Request machine to stop running */
@@ -86,15 +85,19 @@ void machine_reset()
 void machine_run()
 {
 	struct input_config input_config;
-	struct input_event quit_event;
+	struct input_desc quit_desc;
 
-	/* Set running flag and register for quit events */
-	machine->running = true;
-	quit_event.type = EVENT_QUIT;
-	input_config.events = &quit_event;
-	input_config.num_events = 1;
-	input_config.callback = machine_input_event;
-	input_register(&input_config);
+	/* Build quit event description */
+	quit_desc.name = NULL;
+	quit_desc.device = DEVICE_NONE;
+	quit_desc.code = GENERIC_QUIT;
+
+	/* Register for quit events */
+	input_config.descs = &quit_desc;
+	input_config.num_descs = 1;
+	input_config.callback = machine_event;
+	input_config.data = NULL;
+	input_register(&input_config, false);
 
 	/* Reset machine */
 	machine_reset();
@@ -102,7 +105,8 @@ void machine_run()
 	/* Start audio processing */
 	audio_start();
 
-	/* Run until user quits */
+	/* Set running flag and run until user quits */
+	machine->running = true;
 	while (machine->running)
 		clock_tick_all(!no_sync);
 

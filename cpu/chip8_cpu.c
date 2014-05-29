@@ -72,7 +72,7 @@ static void chip8_tick(struct chip8 *chip8);
 static void chip8_gen_audio(struct chip8 *chip8);
 static void chip8_update_counters(struct chip8 *chip8);
 static void chip8_draw(clock_data_t *data);
-static void chip8_event(int id, struct input_state *state, struct chip8 *chip8);
+static void chip8_event(int id, enum input_type type, struct chip8 *chip8);
 static inline void CLS(struct chip8 *chip8);
 static inline void RET(struct chip8 *chip8);
 static inline void JP_addr(struct chip8 *chip8);
@@ -112,23 +112,23 @@ static void opcode_8(struct chip8 *chip8);
 static void opcode_E(struct chip8 *chip8);
 static void opcode_F(struct chip8 *chip8);
 
-static struct input_event default_input_events[] = {
-	{ EVENT_KEYBOARD, { { 'a' } } },
-	{ EVENT_KEYBOARD, { { 'b' } } },
-	{ EVENT_KEYBOARD, { { 'c' } } },
-	{ EVENT_KEYBOARD, { { 'd' } } },
-	{ EVENT_KEYBOARD, { { 'e' } } },
-	{ EVENT_KEYBOARD, { { 'f' } } },
-	{ EVENT_KEYBOARD, { { 'g' } } },
-	{ EVENT_KEYBOARD, { { 'h' } } },
-	{ EVENT_KEYBOARD, { { 'i' } } },
-	{ EVENT_KEYBOARD, { { 'j' } } },
-	{ EVENT_KEYBOARD, { { 'k' } } },
-	{ EVENT_KEYBOARD, { { 'l' } } },
-	{ EVENT_KEYBOARD, { { 'm' } } },
-	{ EVENT_KEYBOARD, { { 'n' } } },
-	{ EVENT_KEYBOARD, { { 'o' } } },
-	{ EVENT_KEYBOARD, { { 'p' } } }
+static struct input_desc input_descs[] = {
+	{ "Key 0", DEVICE_KEYBOARD, KEY_a },
+	{ "Key 1", DEVICE_KEYBOARD, KEY_b },
+	{ "Key 2", DEVICE_KEYBOARD, KEY_c },
+	{ "Key 3", DEVICE_KEYBOARD, KEY_d },
+	{ "Key 4", DEVICE_KEYBOARD, KEY_e },
+	{ "Key 5", DEVICE_KEYBOARD, KEY_f },
+	{ "Key 6", DEVICE_KEYBOARD, KEY_g },
+	{ "Key 7", DEVICE_KEYBOARD, KEY_h },
+	{ "Key 8", DEVICE_KEYBOARD, KEY_i },
+	{ "Key 9", DEVICE_KEYBOARD, KEY_j },
+	{ "Key A", DEVICE_KEYBOARD, KEY_k },
+	{ "Key B", DEVICE_KEYBOARD, KEY_l },
+	{ "Key C", DEVICE_KEYBOARD, KEY_m },
+	{ "Key D", DEVICE_KEYBOARD, KEY_n },
+	{ "Key E", DEVICE_KEYBOARD, KEY_o },
+	{ "Key F", DEVICE_KEYBOARD, KEY_p }
 };
 
 void CLS(struct chip8 *UNUSED(chip8))
@@ -585,9 +585,9 @@ void chip8_draw(clock_data_t *UNUSED(data))
 	clock_consume(1);
 }
 
-static void chip8_event(int id, struct input_state *state, struct chip8 *chip8)
+static void chip8_event(int id, enum input_type type, struct chip8 *chip8)
 {
-	chip8->keys[id] = state->active;
+	chip8->keys[id] = (type == EVENT_BUTTON_DOWN);
 }
 
 bool chip8_init(struct cpu_instance *instance)
@@ -622,17 +622,12 @@ bool chip8_init(struct cpu_instance *instance)
 
 	/* Initialize input configuration */
 	input_config = &chip8->input_config;
-	input_config->events = malloc(NUM_KEYS * sizeof(struct input_event));
-	input_config->num_events = NUM_KEYS;
-	input_config->callback = (input_cb_t)chip8_event;
+	input_config->name = instance->cpu_name;
+	input_config->descs = input_descs;
+	input_config->num_descs = ARRAY_SIZE(input_descs);
 	input_config->data = chip8;
-
-	/* Load and register input config (fall back to defaults if needed) */
-	if (!input_load(instance->cpu->name, input_config->events, NUM_KEYS))
-		memcpy(input_config->events,
-			default_input_events,
-			NUM_KEYS * sizeof(struct input_event));
-	input_register(input_config);
+	input_config->callback = (input_cb_t)chip8_event;
+	input_register(input_config, true);
 
 	/* Initialize registers */
 	memset(chip8->V, 0, NUM_REGISTERS);
@@ -680,7 +675,6 @@ void chip8_deinit(struct cpu_instance *instance)
 {
 	struct chip8 *chip8 = instance->priv_data;
 	input_unregister(&chip8->input_config);
-	free(chip8->input_config.events);
 	free(chip8->audio_buffer);
 	video_deinit();
 	audio_deinit();

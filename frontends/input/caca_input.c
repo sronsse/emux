@@ -6,7 +6,36 @@
 
 static bool caca_init(struct input_frontend *fe, window_t *window);
 static void caca_update(struct input_frontend *fe);
-static void caca_deinit(struct input_frontend *fe);
+static void key_event(caca_event_t *e);
+static void quit_event();
+
+void key_event(caca_event_t *e)
+{
+	struct input_event event;
+	bool down;
+
+	/* Fill event information (caca codes match input system codes) */
+	down = (e->type == CACA_EVENT_KEY_PRESS);
+	event.device = DEVICE_KEYBOARD;
+	event.type = down ? EVENT_BUTTON_DOWN : EVENT_BUTTON_UP;
+	event.code = caca_get_event_key_ch(e);
+
+	/* Report event */
+	input_report(&event);
+}
+
+void quit_event()
+{
+	struct input_event event;
+
+	/* Fill event information */
+	event.device = DEVICE_NONE;
+	event.type = EVENT_QUIT;
+	event.code = GENERIC_QUIT;
+
+	/* Report event */
+	input_report(&event);
+}
 
 bool caca_init(struct input_frontend *fe, window_t *window)
 {
@@ -20,23 +49,16 @@ void caca_update(struct input_frontend *fe)
 {
 	caca_display_t *dp = fe->priv_data;
 	caca_event_t e;
-	struct input_event event;
-	struct input_state state;
 
 	/* Poll all events out of queue */
 	while (caca_get_event(dp, CACA_EVENT_ANY, &e, 0)) {
-		/* Fill input event structure according to detected event */
 		switch (e.type) {
 		case CACA_EVENT_KEY_PRESS:
 		case CACA_EVENT_KEY_RELEASE:
-			event.type = EVENT_KEYBOARD;
-			event.keyboard.key = caca_get_event_key_ch(&e);
-			state.active = (e.type == CACA_EVENT_KEY_PRESS);
-			input_report(&event, &state);
+			key_event(&e);
 			break;
 		case CACA_EVENT_QUIT:
-			event.type = EVENT_QUIT;
-			input_report(&event, NULL);
+			quit_event();
 			break;
 		default:
 			break;
@@ -44,13 +66,8 @@ void caca_update(struct input_frontend *fe)
 	}
 }
 
-void caca_deinit(struct input_frontend *UNUSED(fe))
-{
-}
-
 INPUT_START(caca)
 	.init = caca_init,
-	.update = caca_update,
-	.deinit = caca_deinit
+	.update = caca_update
 INPUT_END
 
