@@ -7,6 +7,7 @@
 static bool caca_init(struct input_frontend *fe, window_t *window);
 static void caca_update(struct input_frontend *fe);
 static void key_event(caca_event_t *e);
+static void mouse_event(caca_event_t *e);
 static void quit_event();
 
 void key_event(caca_event_t *e)
@@ -19,6 +20,21 @@ void key_event(caca_event_t *e)
 	event.device = DEVICE_KEYBOARD;
 	event.type = down ? EVENT_BUTTON_DOWN : EVENT_BUTTON_UP;
 	event.code = caca_get_event_key_ch(e);
+
+	/* Report event */
+	input_report(&event);
+}
+
+void mouse_event(caca_event_t *e)
+{
+	struct input_event event;
+	bool down;
+
+	/* Fill event information (caca codes match input system codes) */
+	down = (e->type == CACA_EVENT_MOUSE_PRESS);
+	event.device = DEVICE_MOUSE;
+	event.type = down ? EVENT_BUTTON_DOWN : EVENT_BUTTON_UP;
+	event.code = caca_get_event_mouse_button(e);
 
 	/* Report event */
 	input_report(&event);
@@ -56,6 +72,10 @@ void caca_update(struct input_frontend *fe)
 		case CACA_EVENT_KEY_PRESS:
 		case CACA_EVENT_KEY_RELEASE:
 			key_event(&e);
+			break;
+		case CACA_EVENT_MOUSE_PRESS:
+		case CACA_EVENT_MOUSE_RELEASE:
+			mouse_event(&e);
 			break;
 		case CACA_EVENT_QUIT:
 			quit_event();

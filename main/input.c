@@ -25,6 +25,7 @@
 #endif
 
 static void get_key_code_name(int code, char *output);
+static void get_mouse_code_name(int code, char *output);
 static void print_desc(struct input_desc *desc);
 
 #ifdef CONFIG_INPUT_XML
@@ -380,6 +381,34 @@ void get_key_code_name(int code, char *output)
 	strcpy(output, name);
 }
 
+void get_mouse_code_name(int code, char *output)
+{
+	char *name;
+
+	switch (code) {
+	case MOUSE_BUTTON_LEFT:
+		name = "left button";
+		break;
+	case MOUSE_BUTTON_MIDDLE:
+		name = "middle button";
+		break;
+	case MOUSE_BUTTON_RIGHT:
+		name = "right button";
+		break;
+	case MOUSE_BUTTON_WHEELUP:
+		name = "wheel up";
+		break;
+	case MOUSE_BUTTON_WHEELDOWN:
+		name = "wheel up";
+		break;
+	default:
+		name = "unknown";
+		break;
+	}
+
+	strcpy(output, name);
+}
+
 void print_desc(struct input_desc *desc)
 {
 	char code_name[MAX_CODE_NAME_LENGTH];
@@ -388,6 +417,10 @@ void print_desc(struct input_desc *desc)
 	case DEVICE_KEYBOARD:
 		get_key_code_name(desc->code, code_name);
 		LOG_I("%s: key %s\n", desc->name, code_name);
+		break;
+	case DEVICE_MOUSE:
+		get_mouse_code_name(desc->code, code_name);
+		LOG_I("%s: mouse %s\n", desc->name, code_name);
 		break;
 	case DEVICE_NONE:
 	default:

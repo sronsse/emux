@@ -255,12 +255,20 @@
 #define KEY_EURO		321
 #define KEY_UNDO		322
 
+/* Mouse codes */
+#define MOUSE_BUTTON_LEFT	1
+#define MOUSE_BUTTON_MIDDLE	2
+#define MOUSE_BUTTON_RIGHT	3
+#define MOUSE_BUTTON_WHEELUP	4
+#define MOUSE_BUTTON_WHEELDOWN	5
+
 typedef void input_data_t;
 typedef void input_priv_data_t;
 
 enum input_device {
 	DEVICE_NONE,
-	DEVICE_KEYBOARD
+	DEVICE_KEYBOARD,
+	DEVICE_MOUSE
 };
 
 enum input_type {
