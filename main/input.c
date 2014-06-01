@@ -27,6 +27,7 @@
 static void get_key_code_name(int code, char *output);
 static void get_mouse_code_name(int code, char *output);
 static void get_joy_button_code_name(int code, char *output);
+static void get_joy_hat_code_name(int code, char *output);
 static void print_desc(struct input_desc *desc);
 
 #ifdef CONFIG_INPUT_XML
@@ -422,6 +423,35 @@ void get_joy_button_code_name(int code, char *output)
 	sprintf(output, "%u - %u", device, button);
 }
 
+void get_joy_hat_code_name(int code, char *output)
+{
+	int device;
+	int dir;
+
+	/* Get device and hat direction from code */
+	device = (code >> JOY_BUTTON_DEV_SHIFT) & JOY_BUTTON_DEV_MASK;
+	dir = (code >> JOY_BUTTON_BTN_SHIFT) & JOY_BUTTON_BTN_MASK;
+
+	/* Fill output based on hat direction */
+	switch (dir) {
+	case JOY_HAT_UP:
+		sprintf(output, "%u - up", device);
+		break;
+	case JOY_HAT_RIGHT:
+		sprintf(output, "%u - right", device);
+		break;
+	case JOY_HAT_DOWN:
+		sprintf(output, "%u - down", device);
+		break;
+	case JOY_HAT_LEFT:
+		sprintf(output, "%u - left", device);
+		break;
+	default:
+		sprintf(output, "%u - unknown", device);
+		break;
+	}
+}
+
 void print_desc(struct input_desc *desc)
 {
 	char code_name[MAX_CODE_NAME_LENGTH];
@@ -438,6 +468,10 @@ void print_desc(struct input_desc *desc)
 	case DEVICE_JOY_BUTTON:
 		get_joy_button_code_name(desc->code, code_name);
 		LOG_I("%s: joy button %s\n", desc->name, code_name);
+		break;
+	case DEVICE_JOY_HAT:
+		get_joy_hat_code_name(desc->code, code_name);
+		LOG_I("%s: joy hat %s\n", desc->name, code_name);
 		break;
 	case DEVICE_NONE:
 	default:

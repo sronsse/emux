@@ -5,12 +5,18 @@
 #include <log.h>
 #include <util.h>
 
+struct joy_data {
+	SDL_Joystick *joystick;
+	Uint8 hat;
+};
+
 static bool sdl_init(struct input_frontend *fe, window_t *window);
 static void sdl_update(struct input_frontend *fe);
 static void sdl_deinit(struct input_frontend *fe);
 static void key_event(SDL_KeyboardEvent *e);
 static void mouse_event(SDL_MouseButtonEvent *e);
 static void joy_button_event(SDL_JoyButtonEvent *e);
+static void joy_hat_event(struct list_link *joysticks, SDL_JoyHatEvent *e);
 static void quit_event();
 
 void key_event(SDL_KeyboardEvent *e)
@@ -59,6 +65,59 @@ void joy_button_event(SDL_JoyButtonEvent *e)
 	input_report(&event);
 }
 
+void joy_hat_event(struct list_link *joysticks, SDL_JoyHatEvent *e)
+{
+	struct input_event event;
+	struct joy_data *joy_data = NULL;
+	bool down;
+	int i;
+
+	/* Fill event information */
+	event.device = DEVICE_JOY_HAT;
+
+	/* Skip to detected joystick */
+	for (i = 0; i <= e->which; i++)
+		joy_data = list_get_next(&joysticks);
+
+	/* Set device */
+	event.code = (e->which & JOY_HAT_DEV_MASK) << JOY_HAT_DEV_SHIFT;
+
+	/* Report hat up if needed */
+	if ((joy_data->hat & SDL_HAT_UP) != (e->value & SDL_HAT_UP)) {
+		down = (e->value & SDL_HAT_UP);
+		event.type = down ? EVENT_BUTTON_DOWN : EVENT_BUTTON_UP;
+		event.code |= JOY_HAT_UP;
+		input_report(&event);
+	}
+
+	/* Report hat right if needed */
+	if ((joy_data->hat & SDL_HAT_RIGHT) != (e->value & SDL_HAT_RIGHT)) {
+		down = (e->value & SDL_HAT_RIGHT);
+		event.type = down ? EVENT_BUTTON_DOWN : EVENT_BUTTON_UP;
+		event.code |= JOY_HAT_RIGHT;
+		input_report(&event);
+	}
+
+	/* Report hat down if needed */
+	if ((joy_data->hat & SDL_HAT_DOWN) != (e->value & SDL_HAT_DOWN)) {
+		down = (e->value & SDL_HAT_DOWN);
+		event.type = down ? EVENT_BUTTON_DOWN : EVENT_BUTTON_UP;
+		event.code |= JOY_HAT_DOWN;
+		input_report(&event);
+	}
+
+	/* Report hat left if needed */
+	if ((joy_data->hat & SDL_HAT_LEFT) != (e->value & SDL_HAT_LEFT)) {
+		down = (e->value & SDL_HAT_LEFT);
+		event.type = down ? EVENT_BUTTON_DOWN : EVENT_BUTTON_UP;
+		event.code |= JOY_HAT_LEFT;
+		input_report(&event);
+	}
+
+	/* Save hat value */
+	joy_data->hat = e->value;
+}
+
 void quit_event()
 {
 	struct input_event event;
@@ -75,7 +134,7 @@ void quit_event()
 bool sdl_init(struct input_frontend *fe, window_t *UNUSED(window))
 {
 	struct list_link *joysticks = NULL;
-	SDL_Joystick *joystick;
+	struct joy_data *joy_data;
 	int num;
 	int i;
 
@@ -91,8 +150,10 @@ bool sdl_init(struct input_frontend *fe, window_t *UNUSED(window))
 	/* Open joystick handles */
 	num = SDL_NumJoysticks();
 	for (i = 0; i < num; i++) {
-		joystick = SDL_JoystickOpen(i);
-		list_insert(&joysticks, joystick);
+		joy_data = malloc(sizeof(struct joy_data));
+		joy_data->joystick = SDL_JoystickOpen(i);
+		joy_data->hat = SDL_HAT_CENTERED;
+		list_insert(&joysticks, joy_data);
 		LOG_D("%s enabled.\n", SDL_JoystickName(i));
 	}
 
@@ -101,8 +162,9 @@ bool sdl_init(struct input_frontend *fe, window_t *UNUSED(window))
 	return true;
 }
 
-void sdl_update(struct input_frontend *UNUSED(fe))
+void sdl_update(struct input_frontend *fe)
 {
+	struct list_link *joysticks = fe->priv_data;
 	SDL_Event e;
 
 	/* Poll all events out of queue */
@@ -120,6 +182,9 @@ void sdl_update(struct input_frontend *UNUSED(fe))
 		case SDL_JOYBUTTONUP:
 			joy_button_event(&e.jbutton);
 			break;
+		case SDL_JOYHATMOTION:
+			joy_hat_event(joysticks, &e.jhat);
+			break;
 		case SDL_QUIT:
 			quit_event();
 			break;
@@ -133,11 +198,13 @@ void sdl_deinit(struct input_frontend *fe)
 {
 	struct list_link *joysticks = fe->priv_data;
 	struct list_link *link = joysticks;
-	SDL_Joystick *joystick;
+	struct joy_data *joy_data;
 
 	/* Close all joystick handles */
-	while ((joystick = list_get_next(&link)))
-		SDL_JoystickClose(joystick);
+	while ((joy_data = list_get_next(&link))) {
+		SDL_JoystickClose(joy_data->joystick);
+		free(joy_data);
+	}
 	list_remove_all(&joysticks);
 	fe->priv_data = NULL;
 
