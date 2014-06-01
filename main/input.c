@@ -26,6 +26,7 @@
 
 static void get_key_code_name(int code, char *output);
 static void get_mouse_code_name(int code, char *output);
+static void get_joy_button_code_name(int code, char *output);
 static void print_desc(struct input_desc *desc);
 
 #ifdef CONFIG_INPUT_XML
@@ -409,6 +410,18 @@ void get_mouse_code_name(int code, char *output)
 	strcpy(output, name);
 }
 
+void get_joy_button_code_name(int code, char *output)
+{
+	int device;
+	int button;
+
+	/* Get device and button from code */
+	device = (code >> JOY_BUTTON_DEV_SHIFT) & JOY_BUTTON_DEV_MASK;
+	button = (code >> JOY_BUTTON_BTN_SHIFT) & JOY_BUTTON_BTN_MASK;
+
+	sprintf(output, "%u - %u", device, button);
+}
+
 void print_desc(struct input_desc *desc)
 {
 	char code_name[MAX_CODE_NAME_LENGTH];
@@ -421,6 +434,10 @@ void print_desc(struct input_desc *desc)
 	case DEVICE_MOUSE:
 		get_mouse_code_name(desc->code, code_name);
 		LOG_I("%s: mouse %s\n", desc->name, code_name);
+		break;
+	case DEVICE_JOY_BUTTON:
+		get_joy_button_code_name(desc->code, code_name);
+		LOG_I("%s: joy button %s\n", desc->name, code_name);
 		break;
 	case DEVICE_NONE:
 	default:

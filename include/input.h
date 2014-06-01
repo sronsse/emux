@@ -262,12 +262,19 @@
 #define MOUSE_BUTTON_WHEELUP	4
 #define MOUSE_BUTTON_WHEELDOWN	5
 
+/* Joystick codes */
+#define JOY_BUTTON_BTN_MASK	0xFFFF
+#define JOY_BUTTON_BTN_SHIFT	0
+#define JOY_BUTTON_DEV_MASK	0xFFFF
+#define JOY_BUTTON_DEV_SHIFT	16
+
 typedef void input_data_t;
 typedef void input_priv_data_t;
 
 enum input_device {
 	DEVICE_NONE,
 	DEVICE_KEYBOARD,
+	DEVICE_JOY_BUTTON,
 	DEVICE_MOUSE
 };
 
