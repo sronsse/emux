@@ -178,8 +178,8 @@ void lcdc_writeb(struct lcdc *lcdc, uint8_t b, address_t address)
 		/* Handle DMA (data byte represents upper 8 bits of source) */
 		source_addr = b << 8;
 		for (i = 0; i < DMA_TRANSFER_SIZE; i++) {
-			b = memory_readb(lcdc->bus_id, source_addr);
-			memory_writeb(lcdc->bus_id, b, DMA_DEST_ADDRESS);
+			b = memory_readb(lcdc->bus_id, source_addr + i);
+			memory_writeb(lcdc->bus_id, b, DMA_DEST_ADDRESS + i);
 		}
 		break;
 	default:
