@@ -29,7 +29,7 @@
 #define LCD_REFRESH_RATE	59.72750057
 #define NUM_LINES		154
 #define NUM_CYCLES_PER_LINE	456
-#define DMA_DEST_ADDRESS	0xFE00
+#define OAM_ADDRESS		0xFE00
 #define DMA_TRANSFER_SIZE	160
 #define TILE_MAP_ADDRESS_1	0x9800
 #define TILE_MAP_ADDRESS_2	0x9C00
@@ -40,6 +40,11 @@
 #define TILE_DATA_ADDRESS_1	0x9000
 #define TILE_DATA_ADDRESS_2	0x8000
 #define WINDOW_OFFSET_X		7
+#define NUM_SPRITES		40
+#define MAX_SPRITES_PER_LINE	10
+#define SPRITE_TILE_MASK	0xFE
+#define SPRITE_OFFSET_X		8
+#define SPRITE_OFFSET_Y		16
 
 /* LCDC events (sorted by priority) */
 #define EVENT_SET_COINCIDENCE	BIT(0)
@@ -74,19 +79,22 @@ struct stat {
 	uint8_t reserved:1;
 };
 
-struct sprite_flags {
-	uint8_t reserved:4;
-	uint8_t palette_number:1;
-	uint8_t x_flip:1;
-	uint8_t y_flip:1;
-	uint8_t priority:1;
+union sprite_flags {
+	uint8_t value;
+	struct {
+		uint8_t reserved:4;
+		uint8_t palette_number:1;
+		uint8_t x_flip:1;
+		uint8_t y_flip:1;
+		uint8_t priority:1;
+	};
 };
 
 struct sprite {
 	uint8_t y_pos;
 	uint8_t x_pos;
 	uint8_t pattern_number;
-	struct sprite_flags flags;
+	union sprite_flags flags;
 };
 
 struct lcdc {
@@ -131,6 +139,8 @@ static void lcdc_set_events(struct lcdc *lcdc);
 static uint8_t lcdc_readb(struct lcdc *lcdc, address_t address);
 static void lcdc_writeb(struct lcdc *lcdc, uint8_t b, address_t address);
 static void lcdc_draw_line(struct lcdc *lcdc, bool background);
+static void lcdc_draw_sprite_line(struct lcdc *lcdc, struct sprite *sprite);
+static int compare_sprites(const void *s1, const void *s2);
 static void lcdc_set_coincidence(struct lcdc *lcdc);
 static void lcdc_mode_0(struct lcdc *lcdc);
 static void lcdc_mode_1(struct lcdc *lcdc);
@@ -179,7 +189,7 @@ void lcdc_writeb(struct lcdc *lcdc, uint8_t b, address_t address)
 		source_addr = b << 8;
 		for (i = 0; i < DMA_TRANSFER_SIZE; i++) {
 			b = memory_readb(lcdc->bus_id, source_addr + i);
-			memory_writeb(lcdc->bus_id, b, DMA_DEST_ADDRESS + i);
+			memory_writeb(lcdc->bus_id, b, OAM_ADDRESS + i);
 		}
 		break;
 	default:
@@ -262,6 +272,10 @@ void lcdc_draw_line(struct lcdc *lcdc, bool background)
 		bits[1] = bitops_getb(&tile_data[1], sh, 1);
 		palette_index = bits[0] | (bits[1] << 1);
 
+		/* Update background line mask if needed */
+		if (background)
+			lcdc->line_mask[x] = (palette_index != 0);
+
 		/* Compute color based on palette index and draw pixel */
 		shade = bitops_getb(&lcdc->bgp, palette_index * 2, 2);
 		color.r = R(shade);
@@ -269,6 +283,116 @@ void lcdc_draw_line(struct lcdc *lcdc, bool background)
 		color.b = B(shade);
 		video_set_pixel(x, lcdc->v, color);
 	}
+}
+
+void lcdc_draw_sprite_line(struct lcdc *lcdc, struct sprite *sprite)
+{
+	uint8_t tile_index;
+	uint8_t tile_a_index;
+	uint8_t tile_b_index;
+	uint16_t tile_data_addr;
+	uint8_t tile_data[2];
+	uint8_t bits[2];
+	uint8_t palette_index;
+	uint8_t obp;
+	int16_t screen_x;
+	uint8_t x;
+	uint8_t y;
+	uint8_t sh;
+	uint8_t shade;
+	bool flip;
+	struct color color;
+
+	/* Set tile index */
+	tile_index = sprite->pattern_number;
+
+	/* Compute final tile index in case of large sprites */
+	if (lcdc->ctrl.obj_size) {
+		/* Update tile index based on Y flip flag */
+		flip = false;
+		if (sprite->flags.y_flip)
+			flip = true;
+
+		/* Update flip flag based on position */
+		if (lcdc->ly >= sprite->y_pos - SPRITE_OFFSET_Y + TILE_HEIGHT)
+			flip = !flip;
+
+		/* Set final tile index */
+		tile_a_index = tile_index & SPRITE_TILE_MASK;
+		tile_b_index = tile_a_index + 1;
+		tile_index = flip ? tile_b_index : tile_a_index;
+	}
+
+	/* Set Y coordinate and flip it if needed */
+	y = (lcdc->ly - sprite->y_pos) % TILE_HEIGHT;
+	if (sprite->flags.y_flip)
+		y = TILE_HEIGHT - y - 1;
+
+	/* Set tile data address based on tile index and Y coordinate */
+	tile_data_addr = TILE_DATA_ADDRESS_2 + tile_index * TILE_SIZE;
+	tile_data_addr += (y % TILE_HEIGHT) * (TILE_SIZE / TILE_WIDTH);
+
+	/* Get tile data from memory */
+	tile_data[0] = memory_readb(lcdc->bus_id, tile_data_addr);
+	tile_data[1] = memory_readb(lcdc->bus_id, tile_data_addr + 1);
+
+	/* Set palette based on sprite palette number */
+	obp = sprite->flags.palette_number ? lcdc->obp1 : lcdc->obp0;
+
+	/* Draw sprite line */
+	for (x = 0; x < TILE_WIDTH; x++) {
+		/* Set X coordinate based on sprite position and X flip flag */
+		screen_x = sprite->x_pos - SPRITE_OFFSET_X;
+		screen_x += sprite->flags.x_flip ? TILE_WIDTH - x - 1 : x;
+
+		/* Skip pixel if sprite is out of bounds */
+		if ((screen_x < 0) || (screen_x >= LCD_WIDTH))
+			continue;
+
+		/* Skip pixel if it does not have priority over background */
+		if (sprite->flags.priority && lcdc->line_mask[screen_x])
+			continue;
+
+		/* Set data shift based on current column */
+		sh = TILE_WIDTH - (x % TILE_WIDTH) - 1;
+
+		/* Get appropriate data bits and compute palette index */
+		bits[0] = bitops_getb(&tile_data[0], sh, 1);
+		bits[1] = bitops_getb(&tile_data[1], sh, 1);
+		palette_index = bits[0] | (bits[1] << 1);
+
+		/* Skip pixel if transparent */
+		if (palette_index == 0)
+			continue;
+
+		/* Compute color based on palette index and draw pixel */
+		shade = bitops_getb(&obp, palette_index * 2, 2);
+		color.r = R(shade);
+		color.g = G(shade);
+		color.b = B(shade);
+		video_set_pixel(screen_x, lcdc->v, color);
+	}
+}
+
+int compare_sprites(const void *s1, const void *s2)
+{
+	struct sprite *sprite1 = (struct sprite *)s1;
+	struct sprite *sprite2 = (struct sprite *)s2;
+
+	/* Compare X positions first */
+	if (sprite1->x_pos < sprite2->x_pos)
+		return 1;
+	if (sprite1->x_pos > sprite2->x_pos)
+		return -1;
+
+	/* In case X positions are equal, sort by address */
+	if ((uintptr_t)sprite1 < (uintptr_t)sprite2)
+		return 1;
+	if ((uintptr_t)sprite1 > (uintptr_t)sprite2)
+		return -1;
+
+	/* Sprites are equal */
+	return 0;
 }
 
 void lcdc_set_coincidence(struct lcdc *lcdc)
@@ -286,16 +410,64 @@ void lcdc_set_coincidence(struct lcdc *lcdc)
 
 void lcdc_mode_0(struct lcdc *lcdc)
 {
+	struct sprite sprites[NUM_SPRITES];
+	struct sprite *sprite;
+	int num_sprites = 0;
+	int bus_id = lcdc->bus_id;
+	uint16_t addr;
+	uint8_t height;
+	int16_t y;
+	int i;
+
 	/* Update mode */
 	lcdc->stat.mode_flag = 0;
 
-	/* Draw background if needed */
+	/* Reset background line mask and draw background if needed */
+	memset(lcdc->line_mask, 0, LCD_WIDTH * sizeof(bool));
 	if (lcdc->ctrl.bg_display_enable)
 		lcdc_draw_line(lcdc, true);
 
 	/* Draw window if needed */
 	if (lcdc->ctrl.window_display_enable && (lcdc->wy <= lcdc->ly))
 		lcdc_draw_line(lcdc, false);
+
+	/* Draw sprites if needed */
+	if (lcdc->ctrl.obj_display_enable) {
+		/* Set first sprite address (OAM base address)*/
+		addr = OAM_ADDRESS;
+
+		/* Fill sprites */
+		for (i = 0; i < NUM_SPRITES; i++) {
+			/* Set sprite pointer and address */
+			sprite = &sprites[num_sprites];
+			sprite->y_pos = memory_readb(bus_id, addr++);
+			sprite->x_pos = memory_readb(bus_id, addr++);
+			sprite->pattern_number = memory_readb(bus_id, addr++);
+			sprite->flags.value = memory_readb(bus_id, addr++);
+
+			/* Compute sprite height based on object size */
+			height = (lcdc->ctrl.obj_size + 1) * TILE_HEIGHT;
+
+			/* Increment sprite number only if within bounds */
+			y = sprite->y_pos - SPRITE_OFFSET_Y;
+			if ((y <= lcdc->ly) && (y + height > lcdc->ly))
+				num_sprites++;
+		}
+
+		/* Re-order sprites by priority */
+		qsort(sprites,
+			num_sprites,
+			sizeof(struct sprite),
+			compare_sprites);
+
+		/* Limit number of of sprites to draw per line */
+		if (num_sprites > MAX_SPRITES_PER_LINE)
+			num_sprites = MAX_SPRITES_PER_LINE;
+
+		/* Draw sprites */
+		for (i = 0; i < num_sprites; i++)
+			lcdc_draw_sprite_line(lcdc, &sprites[i]);
+	}
 
 	/* Fire interrupt if needed */
 	if (lcdc->stat.mode_0_hblank_interrupt)
