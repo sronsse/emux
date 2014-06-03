@@ -22,6 +22,11 @@ PARAM(no_sync, bool, "no-sync", NULL, "Disables emulation syncing")
 struct list_link *machines;
 static struct machine *machine;
 
+static struct input_desc input_descs[] = {
+	{ NULL, DEVICE_NONE, GENERIC_QUIT },
+	{ NULL, DEVICE_KEYBOARD, KEY_ESCAPE }
+};
+
 void machine_event(int UNUSED(id), enum input_type UNUSED(type),
 	input_data_t *UNUSED(data))
 {
@@ -85,16 +90,10 @@ void machine_reset()
 void machine_run()
 {
 	struct input_config input_config;
-	struct input_desc quit_desc;
-
-	/* Build quit event description */
-	quit_desc.name = NULL;
-	quit_desc.device = DEVICE_NONE;
-	quit_desc.code = GENERIC_QUIT;
 
 	/* Register for quit events */
-	input_config.descs = &quit_desc;
-	input_config.num_descs = 1;
+	input_config.descs = input_descs;
+	input_config.num_descs = ARRAY_SIZE(input_descs);
 	input_config.callback = machine_event;
 	input_config.data = NULL;
 	input_register(&input_config, false);
