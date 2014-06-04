@@ -276,6 +276,17 @@
 #define JOY_HAT_DEV_MASK	0xFFFF
 #define JOY_HAT_DEV_SHIFT	16
 
+/* Libretro-specific codes/macros */
+#define PORT_SHIFT	24
+#define PORT_MASK	0xFF
+#define INDEX_SHIFT	16
+#define INDEX_MASK	0xFF
+#define ID_SHIFT	0
+#define ID_MASK		0xFFFF
+#define PORT(port)	((port & PORT_MASK) << PORT_SHIFT)
+#define INDEX(index)	((index & INDEX_MASK) << INDEX_SHIFT)
+#define ID(id)		((id & & ID_MASK) << ID_SHIFT)
+
 typedef void input_data_t;
 typedef void input_priv_data_t;
 
@@ -319,6 +330,8 @@ struct input_frontend {
 	char *name;
 	input_priv_data_t *priv_data;
 	bool (*init)(struct input_frontend *fe, window_t *window);
+	void (*load)(struct input_frontend *fe, struct input_config *cfg);
+	void (*unload)(struct input_frontend *fe, struct input_config *cfg);
 	void (*update)(struct input_frontend *fe);
 	void (*deinit)(struct input_frontend *fe);
 };

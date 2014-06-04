@@ -646,14 +646,24 @@ void input_register(struct input_config *config, bool restore)
 	for (i = 0; i < config->num_descs; i++)
 		print_desc(&config->descs[i]);
 
+	/* Notify frontend of new configuration */
+	if (frontend->load)
+		frontend->load(frontend, config);
+
 	/* Append configuration */
 	list_insert(&configs, config);
 }
 
 void input_unregister(struct input_config *config)
 {
-	if (frontend)
+	if (frontend) {
+		/* Unregister config from frontend */
+		if (frontend->unload)
+			frontend->unload(frontend, config);
+
+		/* Remove config */
 		list_remove(&configs, config);
+	}
 }
 
 void input_deinit()
