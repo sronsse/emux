@@ -2,6 +2,9 @@
 #include <controller.h>
 #include <cpu.h>
 #include <input.h>
+#ifdef LIBRETRO
+#include <libretro.h>
+#endif
 #include <memory.h>
 #include <util.h>
 
@@ -38,6 +41,7 @@ static void joypad_event(int id, enum input_type type, struct joypad *joypad);
 static void update_reg(struct joypad *joypad);
 
 static struct input_desc input_descs[] = {
+#ifndef LIBRETRO
 	{ "A", DEVICE_KEYBOARD, KEY_q },
 	{ "B", DEVICE_KEYBOARD, KEY_w },
 	{ "Select", DEVICE_KEYBOARD, KEY_o },
@@ -46,6 +50,16 @@ static struct input_desc input_descs[] = {
 	{ "Left", DEVICE_KEYBOARD, KEY_LEFT },
 	{ "Up", DEVICE_KEYBOARD, KEY_UP },
 	{ "Down", DEVICE_KEYBOARD, KEY_DOWN }
+#else
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_A },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_B },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_SELECT },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_START },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_RIGHT },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_LEFT },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_UP },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_DOWN }
+#endif
 };
 
 static struct mops joypad_mops = {

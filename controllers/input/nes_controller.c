@@ -6,6 +6,9 @@
 #include <clock.h>
 #include <controller.h>
 #include <input.h>
+#ifdef LIBRETRO
+#include <libretro.h>
+#endif
 #include <memory.h>
 #include <resource.h>
 #include <util.h>
@@ -47,6 +50,7 @@ static void nes_ctrl_writeb(struct nes_ctrl *nes_ctrl, uint8_t b, address_t a);
 static void nes_ctrl_reload(struct nes_ctrl *nes_ctrl);
 
 static struct input_desc input_descs[] = {
+#ifndef LIBRETRO
 	{ "Player 1 A", DEVICE_KEYBOARD, KEY_q },
 	{ "Player 1 B", DEVICE_KEYBOARD, KEY_w },
 	{ "Player 1 Select", DEVICE_KEYBOARD, KEY_o },
@@ -63,6 +67,24 @@ static struct input_desc input_descs[] = {
 	{ "Player 2 Down", DEVICE_KEYBOARD, KEY_k },
 	{ "Player 2 Left", DEVICE_KEYBOARD, KEY_j },
 	{ "Player 2 Right", DEVICE_KEYBOARD, KEY_l }
+#else
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_A },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_B },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_SELECT },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_START },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_UP },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_DOWN },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_LEFT },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(0) | RETRO_DEVICE_ID_JOYPAD_RIGHT },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(1) | RETRO_DEVICE_ID_JOYPAD_A },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(1) | RETRO_DEVICE_ID_JOYPAD_B },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(1) | RETRO_DEVICE_ID_JOYPAD_SELECT },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(1) | RETRO_DEVICE_ID_JOYPAD_START },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(1) | RETRO_DEVICE_ID_JOYPAD_UP },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(1) | RETRO_DEVICE_ID_JOYPAD_DOWN },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(1) | RETRO_DEVICE_ID_JOYPAD_LEFT },
+	{ NULL, RETRO_DEVICE_JOYPAD, PORT(1) | RETRO_DEVICE_ID_JOYPAD_RIGHT }
+#endif
 };
 
 static struct mops nes_ctrl_mops = {

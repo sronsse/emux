@@ -8,6 +8,9 @@
 #include <clock.h>
 #include <cpu.h>
 #include <input.h>
+#ifdef LIBRETRO
+#include <libretro.h>
+#endif
 #include <log.h>
 #include <memory.h>
 #include <util.h>
@@ -113,6 +116,7 @@ static void opcode_E(struct chip8 *chip8);
 static void opcode_F(struct chip8 *chip8);
 
 static struct input_desc input_descs[] = {
+#ifndef LIBRETRO
 	{ "Key 0", DEVICE_KEYBOARD, KEY_a },
 	{ "Key 1", DEVICE_KEYBOARD, KEY_b },
 	{ "Key 2", DEVICE_KEYBOARD, KEY_c },
@@ -129,6 +133,24 @@ static struct input_desc input_descs[] = {
 	{ "Key D", DEVICE_KEYBOARD, KEY_n },
 	{ "Key E", DEVICE_KEYBOARD, KEY_o },
 	{ "Key F", DEVICE_KEYBOARD, KEY_p }
+#else
+	{ "Key 0", RETRO_DEVICE_KEYBOARD, KEY_a },
+	{ "Key 1", RETRO_DEVICE_KEYBOARD, KEY_b },
+	{ "Key 2", RETRO_DEVICE_KEYBOARD, KEY_c },
+	{ "Key 3", RETRO_DEVICE_KEYBOARD, KEY_d },
+	{ "Key 4", RETRO_DEVICE_KEYBOARD, KEY_e },
+	{ "Key 5", RETRO_DEVICE_KEYBOARD, KEY_f },
+	{ "Key 6", RETRO_DEVICE_KEYBOARD, KEY_g },
+	{ "Key 7", RETRO_DEVICE_KEYBOARD, KEY_h },
+	{ "Key 8", RETRO_DEVICE_KEYBOARD, KEY_i },
+	{ "Key 9", RETRO_DEVICE_KEYBOARD, KEY_j },
+	{ "Key A", RETRO_DEVICE_KEYBOARD, KEY_k },
+	{ "Key B", RETRO_DEVICE_KEYBOARD, KEY_l },
+	{ "Key C", RETRO_DEVICE_KEYBOARD, KEY_m },
+	{ "Key D", RETRO_DEVICE_KEYBOARD, KEY_n },
+	{ "Key E", RETRO_DEVICE_KEYBOARD, KEY_o },
+	{ "Key F", RETRO_DEVICE_KEYBOARD, KEY_p }
+#endif
 };
 
 void CLS(struct chip8 *UNUSED(chip8))
