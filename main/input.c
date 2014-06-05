@@ -456,6 +456,11 @@ void print_desc(struct input_desc *desc)
 {
 	char code_name[MAX_CODE_NAME_LENGTH];
 
+	/* Leave already if no name is associated to descriptor */
+	if (!desc->name)
+		return;
+
+	/* Print descriptor name and code */
 	switch (desc->device) {
 	case DEVICE_KEYBOARD:
 		get_key_code_name(desc->code, code_name);
