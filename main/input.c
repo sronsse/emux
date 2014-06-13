@@ -11,6 +11,7 @@
 #undef CONFIG_INPUT_XML
 #endif
 #ifdef CONFIG_INPUT_XML
+#include <file.h>
 #include <roxml.h>
 #endif
 
@@ -18,8 +19,8 @@
 
 #ifdef CONFIG_INPUT_XML
 /* Configuration file and node definitions */
-#define MAX_DOC_PATH_LENGTH	1024
 #define DOC_FILENAME		"config.xml"
+#define MAX_CODE_VAL_LENGTH	64
 #endif
 
 static void get_key_code_name(int code, char *output);
@@ -29,7 +30,8 @@ static void get_joy_hat_code_name(int code, char *output);
 static void print_desc(struct input_desc *desc);
 
 #ifdef CONFIG_INPUT_XML
-static bool input_load(struct input_config *config, struct input_desc *descs);
+static bool input_load(struct input_config *config);
+static void input_save(struct input_config *config);
 #endif
 
 struct list_link *input_frontends;
@@ -513,88 +515,193 @@ bool input_init(char *name, window_t *window)
 }
 
 #ifdef CONFIG_INPUT_XML
-bool input_load(struct input_config *config, struct input_desc *descs)
+bool input_load(struct input_config *config)
 {
-	char doc_path[MAX_DOC_PATH_LENGTH + 1];
-	node_t *config_doc;
+	file_handle_t file;
+	char *doc = NULL;
+	char *str;
+	node_t *root = NULL;
 	node_t *node;
 	node_t *child;
-	int i;
-	char *str;
-	char *end;
 	int size;
+	int i;
 	bool rc = false;
 
 	LOG_D("Opening input configuration file.\n");
 
-	/* Set config doc path */
-	snprintf(doc_path,
-		MAX_DOC_PATH_LENGTH,
-		"%s/%s",
-		env_get_config_path(),
-		DOC_FILENAME);
-
-	/* Load input config file and fall back to original path if needed */
-	config_doc = roxml_load_doc(doc_path);
-	if (!config_doc)
-		config_doc = roxml_load_doc(DOC_FILENAME);
-
-	/* Return if file could not be opened */
-	if (!config_doc) {
-		LOG_W("Could not open input configuration file!\n");
-		return false;
+	/* Load input config file */
+	file = file_open(PATH_CONFIG, DOC_FILENAME, "r");
+	if (!file) {
+		LOG_D("Could not open input configuration file!\n");
+		goto err;
 	}
 
-	/* Find document initial node */
-	node = roxml_get_chld(config_doc, "config", 0);
-	if (!node)
+	/* Read file into local buffer and close it */
+	size = file_get_size(file);
+	doc = malloc(size);
+	file_read(file, doc, 0, size);
+	file_close(file);
+
+	/* Load doc from buffer */
+	root = roxml_load_buf(doc);
+	if (!root) {
+		LOG_D("Could not load input config from buffer!\n");
 		goto err;
+	}
+
+	/* Get config node */
+	node = roxml_get_chld(root, "config", 0);
+	if (!node) {
+		LOG_D("Could not find \"config\" node!\n");
+		goto err;
+	}
 
 	/* Find appropriate section */
 	node = roxml_get_chld(node, config->name, 0);
-	if (!node)
+	if (!node) {
+		LOG_D("Could not find \"%s\" section!\n", config->name);
 		goto err;
+	}
 
 	/* Get number of entries and check for validity */
-	if (roxml_get_chld_nb(node) != config->num_descs)
+	if (roxml_get_chld_nb(node) != config->num_descs) {
+		LOG_D("Invalid \"%s\" section!\n", config->name);
 		goto err;
+	}
 
 	/* Parse children and create matching descriptions */
 	for (i = 0; i < config->num_descs; i++) {
 		child = roxml_get_chld(node, NULL, i);
-		if (!child)
+		if (!child) {
+			LOG_D("Could not access child %u!\n", i);
 			goto err;
+		}
 
 		/* Check for device */
 		str = roxml_get_name(child, NULL, 0);
 		if (!strcmp(str, "none"))
-			descs[i].device = DEVICE_NONE;
+			config->descs[i].device = DEVICE_NONE;
 		else if (!strcmp(str, "keyboard"))
-			descs[i].device = DEVICE_KEYBOARD;
+			config->descs[i].device = DEVICE_KEYBOARD;
 		else if (!strcmp(str, "joy_button"))
-			descs[i].device = DEVICE_JOY_BUTTON;
+			config->descs[i].device = DEVICE_JOY_BUTTON;
 		else if (!strcmp(str, "joy_hat"))
-			descs[i].device = DEVICE_JOY_HAT;
+			config->descs[i].device = DEVICE_JOY_HAT;
 		else if (!strcmp(str, "mouse"))
-			descs[i].device = DEVICE_MOUSE;
+			config->descs[i].device = DEVICE_MOUSE;
 		else
 			goto err;
 
 		/* Get code and override descriptor */
 		str = roxml_get_content(child, NULL, 0, &size);
-		descs[i].code = strtol(str, &end, 10);
-		if (*end)
-			goto err;
+		config->descs[i].code = strtol(str, NULL, 10);
 	}
 
 	/* Configuration was loaded properly */
 	rc = true;
 err:
-	roxml_close(config_doc);
+	free(doc);
+	roxml_close(root);
 	roxml_release(RELEASE_ALL);
+
+	/* Warn if config file was not processed */
 	if (!rc)
 		LOG_W("Error parsing input configuration file!\n");
 	return rc;
+}
+
+void input_save(struct input_config *config)
+{
+	file_handle_t file;
+	char *doc = NULL;
+	char *str;
+	char code[MAX_CODE_VAL_LENGTH];
+	node_t *root = NULL;
+	node_t *node;
+	int size;
+	int i;
+	bool rc = false;
+
+	LOG_D("Saving input configuration file.\n");
+
+	/* Load input config file */
+	file = file_open(PATH_CONFIG, DOC_FILENAME, "r");
+	if (file) {
+		/* Read file into local buffer and close it */
+		size = file_get_size(file);
+		doc = malloc(size);
+		file_read(file, doc, 0, size);
+		file_close(file);
+	}
+
+	/* Load doc from buffer */
+	root = roxml_load_buf(doc);
+
+	/* Get config node if doc was successfully opened */
+	if (root) {
+		LOG_D("Opening \"config\" node.\n");
+		root = roxml_get_chld(root, "config", 0);
+	}
+
+	/* Create root node or load it */
+	if (!root) {
+		LOG_D("Creating \"config\" node.\n");
+		root = roxml_add_node(NULL, 0, ROXML_ELM_NODE, "config", NULL);
+	}
+
+	/* Delete section if existing */
+	node = roxml_get_chld(root, config->name, 0);
+	if (node) {
+		LOG_D("Deleting \"%s\" section.\n", config->name);
+		roxml_del_node(node);
+	}
+
+	/* Create section */
+	node = roxml_add_node(root, 0, ROXML_ELM_NODE, config->name, NULL);
+
+	/* Create children and matching descriptions */
+	for (i = 0; i < config->num_descs; i++) {
+		/* Create comment */
+		str = config->descs[i].name;
+		roxml_add_node(node, 0, ROXML_CMT_NODE, NULL, str);
+
+		/* Get device */
+		switch (config->descs[i].device) {
+		case DEVICE_NONE:
+			str = "none";
+			break;
+		case DEVICE_KEYBOARD:
+			str = "keyboard";
+			break;
+		case DEVICE_JOY_BUTTON:
+			str = "joy_button";
+			break;
+		case DEVICE_JOY_HAT:
+			str = "joy_hat";
+			break;
+		case DEVICE_MOUSE:
+			str = "mouse";
+			break;
+		default:
+			goto err;
+		}
+
+		/* Get code */
+		sprintf(code, "%u\n", config->descs[i].code);
+
+		/* Create child */
+		roxml_add_node(node, 0, ROXML_ELM_NODE, str, code);
+	}
+
+	/* Save configuration and flag success */
+	LOG_D("Saving input configuration file to %s.\n", DOC_FILENAME);
+	rc = (roxml_commit_changes(root, DOC_FILENAME, NULL, 1) > 0);
+err:
+	free(doc);
+	roxml_close(root);
+	roxml_release(RELEASE_ALL);
+	if (!rc)
+		LOG_W("Error saving input configuration file!\n");
 }
 #endif
 
@@ -642,12 +749,18 @@ void input_register(struct input_config *config, bool restore)
 		return;
 
 #ifdef CONFIG_INPUT_XML
-	/* Try restoring configuration if requested */
+	/* Restore configuration if requested */
 	if (restore) {
+		/* Copy original config descriptors */
 		size = config->num_descs * sizeof(struct input_desc);
 		descs = malloc(size);
-		if (input_load(config, descs))
+		memcpy(descs, config->descs, size);
+
+		/* Load config and restore/save it in case of failure */
+		if (!input_load(config)) {
 			memcpy(config->descs, descs, size);
+			input_save(config);
+		}
 	}
 #else
 	(void)restore;
