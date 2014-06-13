@@ -20,8 +20,6 @@
 /* Configuration file and node definitions */
 #define MAX_DOC_PATH_LENGTH	1024
 #define DOC_FILENAME		"config.xml"
-#define DOC_CONFIG_NODE_NAME	"config"
-#define DOC_KEY_NODE_NAME	"key"
 #endif
 
 static void get_key_code_name(int code, char *output);
@@ -31,7 +29,7 @@ static void get_joy_hat_code_name(int code, char *output);
 static void print_desc(struct input_desc *desc);
 
 #ifdef CONFIG_INPUT_XML
-static bool input_load(struct input_config *config);
+static bool input_load(struct input_config *config, struct input_desc *descs);
 #endif
 
 struct list_link *input_frontends;
@@ -515,7 +513,7 @@ bool input_init(char *name, window_t *window)
 }
 
 #ifdef CONFIG_INPUT_XML
-bool input_load(struct input_config *config)
+bool input_load(struct input_config *config, struct input_desc *descs)
 {
 	char doc_path[MAX_DOC_PATH_LENGTH + 1];
 	node_t *config_doc;
@@ -524,7 +522,6 @@ bool input_load(struct input_config *config)
 	int i;
 	char *str;
 	char *end;
-	int key;
 	int size;
 	bool rc = false;
 
@@ -549,12 +546,12 @@ bool input_load(struct input_config *config)
 	}
 
 	/* Find document initial node */
-	node = roxml_get_chld(config_doc, DOC_CONFIG_NODE_NAME, 0);
+	node = roxml_get_chld(config_doc, "config", 0);
 	if (!node)
 		goto err;
 
 	/* Find appropriate section */
-	node = roxml_get_chld(node, name, 0);
+	node = roxml_get_chld(node, config->name, 0);
 	if (!node)
 		goto err;
 
@@ -568,23 +565,26 @@ bool input_load(struct input_config *config)
 		if (!child)
 			goto err;
 
-		/* Check for event type */
+		/* Check for device */
 		str = roxml_get_name(child, NULL, 0);
-		if (!strcmp(str, DOC_KEY_NODE_NAME)) {
-			str = roxml_get_content(child, NULL, 0, &size);
-
-			/* Get code value */
-			key = strtol(str, &end, 10);
-			if (*end)
-				goto err;
-
-			/* Set event */
-			events[i].type = EVENT_KEYBOARD;
-			events[i].keyboard.key = key;
-		} else {
-			/* We should never reach here */
+		if (!strcmp(str, "none"))
+			descs[i].device = DEVICE_NONE;
+		else if (!strcmp(str, "keyboard"))
+			descs[i].device = DEVICE_KEYBOARD;
+		else if (!strcmp(str, "joy_button"))
+			descs[i].device = DEVICE_JOY_BUTTON;
+		else if (!strcmp(str, "joy_hat"))
+			descs[i].device = DEVICE_JOY_HAT;
+		else if (!strcmp(str, "mouse"))
+			descs[i].device = DEVICE_MOUSE;
+		else
 			goto err;
-		}
+
+		/* Get code and override descriptor */
+		str = roxml_get_content(child, NULL, 0, &size);
+		descs[i].code = strtol(str, &end, 10);
+		if (*end)
+			goto err;
 	}
 
 	/* Configuration was loaded properly */
@@ -633,6 +633,8 @@ void input_report(struct input_event *event)
 
 void input_register(struct input_config *config, bool restore)
 {
+	struct input_desc *descs;
+	int size;
 	int i;
 
 	/* Leave already if frontend is not initialized */
@@ -641,10 +643,16 @@ void input_register(struct input_config *config, bool restore)
 
 #ifdef CONFIG_INPUT_XML
 	/* Try restoring configuration if requested */
-	if (restore)
-		input_load(config);
+	if (restore) {
+		size = config->num_descs * sizeof(struct input_desc);
+		descs = malloc(size);
+		if (input_load(config, descs))
+			memcpy(config->descs, descs, size);
+	}
 #else
 	(void)restore;
+	(void)descs;
+	(void)size;
 #endif
 
 	/* Print configuration */
