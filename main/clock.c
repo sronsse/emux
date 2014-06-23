@@ -60,18 +60,21 @@ void clock_add(struct clock *clock)
 	for (i = 0; i < num_clocks; i++)
 		clocks[i]->div = machine_clock_rate / clocks[i]->rate;
 
-	/* Set initial number of remaining clock cycles */
-	clock->num_remaining_cycles = 0;
-
 	/* Update machine delay between two ticks (in ns) */
 	mach_delay = NS(1) / machine_clock_rate;
 }
 
 void clock_reset()
 {
+	int i;
+
 	/* Initialize current cycle and start time */
 	current_cycle = 0;
 	gettimeofday(&start_time, NULL);
+
+	/* Reset all clock remaining cycles */
+	for (i = 0; i < num_clocks; i++)
+		clocks[i]->num_remaining_cycles = 0;
 }
 
 void clock_tick_all(bool handle_delay)

@@ -40,6 +40,7 @@ struct mbc1 {
 };
 
 static bool mbc1_init(struct controller_instance *instance);
+static void mbc1_reset(struct controller_instance *instance);
 static void mbc1_deinit(struct controller_instance *instance);
 static uint8_t rom1_readb(struct mbc1 *mbc1, address_t address);
 static uint8_t extram_readb(struct mbc1 *mbc1, address_t address);
@@ -257,12 +258,6 @@ bool mbc1_init(struct controller_instance *instance)
 	mbc1->mode_sel_region.data = mbc1;
 	memory_region_add(&mbc1->mode_sel_region);
 
-	/* Initialize private data */
-	mbc1->rom_num_low = 1;
-	mbc1->rom_num_high = 0;
-	mbc1->ram_enabled = false;
-	mbc1->mode_sel = ROM_SELECT_MODE;
-
 	/* Unmap cart header */
 	file_unmap(cart_header, sizeof(struct cart_header));
 
@@ -270,6 +265,17 @@ bool mbc1_init(struct controller_instance *instance)
 	instance->priv_data = mbc1;
 
 	return true;
+}
+
+void mbc1_reset(struct controller_instance *instance)
+{
+	struct mbc1 *mbc1 = instance->priv_data;
+
+	/* Initialize private data */
+	mbc1->rom_num_low = 1;
+	mbc1->rom_num_high = 0;
+	mbc1->ram_enabled = false;
+	mbc1->mode_sel = ROM_SELECT_MODE;
 }
 
 void mbc1_deinit(struct controller_instance *instance)
@@ -289,6 +295,7 @@ void mbc1_deinit(struct controller_instance *instance)
 
 CONTROLLER_START(mbc1)
 	.init = mbc1_init,
+	.reset = mbc1_reset,
 	.deinit = mbc1_deinit
 CONTROLLER_END
 

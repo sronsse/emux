@@ -15,9 +15,11 @@ struct gb_mapper {
 	struct region bootrom_region;
 	struct region rom0_region;
 	struct region lock_region;
+	bool bootrom_locked;
 };
 
 static bool gb_mapper_init(struct controller_instance *instance);
+static void gb_mapper_reset(struct controller_instance *instance);
 static void gb_mapper_deinit(struct controller_instance *instance);
 static void lock_writeb(struct gb_mapper *gb_mapper, uint8_t b, address_t addr);
 static void print_header(struct cart_header *h);
@@ -89,8 +91,9 @@ void lock_writeb(struct gb_mapper *gb_mapper, uint8_t b, address_t UNUSED(addr))
 	if (b == 0)
 		return;
 
-	/* Remove boot ROM region */
+	/* Remove boot ROM region and update locked state */
 	memory_region_remove(&gb_mapper->bootrom_region);
+	gb_mapper->bootrom_locked = true;
 }
 
 void print_header(struct cart_header *h)
@@ -240,7 +243,21 @@ bool gb_mapper_init(struct controller_instance *instance)
 	gb_mapper->lock_region.data = gb_mapper;
 	memory_region_add(&gb_mapper->lock_region);
 
+	/* Set initial locked state */
+	gb_mapper->bootrom_locked = false;
+
 	return true;
+}
+
+void gb_mapper_reset(struct controller_instance *instance)
+{
+	struct gb_mapper *gb_mapper = instance->priv_data;
+
+	/* Re-add bootrom region if bootrom is locked */
+	if (gb_mapper->bootrom_locked) {
+		memory_region_add(&gb_mapper->bootrom_region);
+		gb_mapper->bootrom_locked = false;
+	}
 }
 
 void gb_mapper_deinit(struct controller_instance *instance)
@@ -258,6 +275,7 @@ void gb_mapper_deinit(struct controller_instance *instance)
 
 CONTROLLER_START(gb_mapper)
 	.init = gb_mapper_init,
+	.reset = gb_mapper_reset,
 	.deinit = gb_mapper_deinit
 CONTROLLER_END
 

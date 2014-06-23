@@ -70,6 +70,7 @@ struct chip8 {
 };
 
 static bool chip8_init(struct cpu_instance *instance);
+static void chip8_reset(struct cpu_instance *instance);
 static void chip8_deinit(struct cpu_instance *instance);
 static void chip8_tick(struct chip8 *chip8);
 static void chip8_gen_audio(struct chip8 *chip8);
@@ -651,21 +652,9 @@ bool chip8_init(struct cpu_instance *instance)
 	input_config->callback = (input_cb_t)chip8_event;
 	input_register(input_config, true);
 
-	/* Initialize registers */
-	memset(chip8->V, 0, NUM_REGISTERS);
-	chip8->I = 0;
-	chip8->PC = START_ADDRESS;
-	chip8->SP = 0;
-	chip8->DT = 0;
-	chip8->ST = 0;
-
-	/* Initialize input data */
-	memset(chip8->keys, 0, NUM_KEYS * sizeof(bool));
-
 	/* Initialize audio data */
 	chip8->audio_samples = SAMPLING_FREQ / COUNTERS_CLOCK_RATE;
 	chip8->audio_buffer = malloc(chip8->audio_samples * sizeof(int16_t));
-	chip8->audio_time = 0.0f;
 
 	/* Save bus ID for later use */
 	chip8->bus_id = instance->bus_id;
@@ -674,23 +663,52 @@ bool chip8_init(struct cpu_instance *instance)
 	chip8->cpu_clock.rate = CPU_CLOCK_RATE;
 	chip8->cpu_clock.data = chip8;
 	chip8->cpu_clock.tick = (clock_tick_t)chip8_tick;
-	chip8->cpu_clock.enabled = true;
 	clock_add(&chip8->cpu_clock);
 
 	/* Add counters clock */
 	chip8->counters_clock.rate = COUNTERS_CLOCK_RATE;
 	chip8->counters_clock.data = chip8;
 	chip8->counters_clock.tick = (clock_tick_t)chip8_update_counters;
-	chip8->counters_clock.enabled = true;
 	clock_add(&chip8->counters_clock);
 
 	/* Add draw clock */
 	chip8->draw_clock.rate = DRAW_CLOCK_RATE;
 	chip8->draw_clock.tick = chip8_draw;
-	chip8->draw_clock.enabled = true;
 	clock_add(&chip8->draw_clock);
 
 	return true;
+}
+
+void chip8_reset(struct cpu_instance *instance)
+{
+	struct chip8 *chip8 = instance->priv_data;
+	struct color black = { 0, 0, 0 };
+	int x;
+	int y;
+
+	/* Initialize registers */
+	memset(chip8->V, 0, NUM_REGISTERS);
+	chip8->I = 0;
+	chip8->PC = START_ADDRESS;
+	chip8->SP = 0;
+	chip8->DT = 0;
+	chip8->ST = 0;
+
+	/* Initialize screen */
+	for (y = 0; y < SCREEN_HEIGHT; y++)
+		for (x = 0; x < SCREEN_WIDTH; x++)
+			video_set_pixel(x, y, black);
+
+	/* Initialize input data */
+	memset(chip8->keys, 0, NUM_KEYS * sizeof(bool));
+
+	/* Reset audio time */
+	chip8->audio_time = 0.0f;
+
+	/* Set initial clock states */
+	chip8->cpu_clock.enabled = true;
+	chip8->counters_clock.enabled = true;
+	chip8->draw_clock.enabled = true;
 }
 
 void chip8_deinit(struct cpu_instance *instance)
@@ -705,6 +723,7 @@ void chip8_deinit(struct cpu_instance *instance)
 
 CPU_START(chip8)
 	.init = chip8_init,
+	.reset = chip8_reset,
 	.deinit = chip8_deinit
 CPU_END
 

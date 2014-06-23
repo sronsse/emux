@@ -14,10 +14,12 @@
 #define RAM_END		0x0FFF
 #define ROM_ADDRESS	0x0200
 
-static bool chip8_init();
-static void chip8_deinit();
+static bool chip8_init(struct machine *machine);
+static void chip8_reset(struct machine *machine);
+static void chip8_deinit(struct machine *machine);
 
 struct chip8_data {
+	file_handle_t rom_file;
 	uint8_t ram[RAM_SIZE];
 	struct bus bus;
 	struct region ram_region;
@@ -53,26 +55,19 @@ static uint8_t char_mem[] = {
 bool chip8_init(struct machine *machine)
 {
 	struct chip8_data *chip8_data;
-	file_handle_t f;
 	char *rom_path;
-	unsigned int size;
-	unsigned int max_rom_size;
 
 	/* Create machine data structure */
 	chip8_data = malloc(sizeof(struct chip8_data));
 
 	/* Open ROM file */
 	rom_path = env_get_data_path();
-	f = file_open(PATH_DATA, rom_path, "rb");
-	if (!f) {
+	chip8_data->rom_file = file_open(PATH_DATA, rom_path, "rb");
+	if (!chip8_data->rom_file) {
+		free(chip8_data);
 		LOG_E("Could not open ROM from \"%s\"!\n", rom_path);
 		return false;
 	}
-
-	/* Make sure ROM file is not too large */
-	size = file_get_size(f);
-	max_rom_size = RAM_SIZE - ROM_ADDRESS;
-	size = (size < max_rom_size) ? size : max_rom_size;
 
 	/* Add 16-bit memory bus */
 	chip8_data->bus.id = CPU_BUS_ID;
@@ -85,19 +80,9 @@ bool chip8_init(struct machine *machine)
 	chip8_data->ram_region.data = chip8_data->ram;
 	memory_region_add(&chip8_data->ram_region);
 
-	/* Copy character memory to beginning of RAM */
-	memcpy(chip8_data->ram, char_mem, ARRAY_SIZE(char_mem));
-
-	/* Copy ROM contents to RAM (starting at ROM address) */
-	if (!file_read(f, &chip8_data->ram[ROM_ADDRESS], 0, size)) {
-		free(chip8_data);
-		file_close(f);
-		LOG_E("Could not read ROM from \"%s\"!\n", rom_path);
-		return false;
-	}
-	file_close(f);
-
+	/* Add CPU */
 	if (!cpu_add(&chip8_cpu_instance)) {
+		file_close(chip8_data->rom_file);
 		free(chip8_data);
 		return false;
 	}
@@ -108,13 +93,35 @@ bool chip8_init(struct machine *machine)
 	return true;
 }
 
+void chip8_reset(struct machine *machine)
+{
+	struct chip8_data *data = machine->priv_data;
+	unsigned int size;
+	unsigned int max_rom_size;
+
+	/* Copy character memory to beginning of RAM */
+	memcpy(data->ram, char_mem, ARRAY_SIZE(char_mem));
+
+	/* Make sure ROM file is not too large */
+	size = file_get_size(data->rom_file);
+	max_rom_size = RAM_SIZE - ROM_ADDRESS;
+	size = (size < max_rom_size) ? size : max_rom_size;
+
+	/* Copy ROM contents to RAM (starting at ROM address) */
+	if (!file_read(data->rom_file, &data->ram[ROM_ADDRESS], 0, size))
+		LOG_E("Could not read ROM!\n");
+}
+
 void chip8_deinit(struct machine *machine)
 {
-	free(machine->priv_data);
+	struct chip8_data *data = machine->priv_data;
+	file_close(data->rom_file);
+	free(data);
 }
 
 MACHINE_START(chip8, "CHIP-8")
 	.init = chip8_init,
+	.reset = chip8_reset,
 	.deinit = chip8_deinit
 MACHINE_END
 

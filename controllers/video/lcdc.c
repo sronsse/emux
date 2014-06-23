@@ -132,6 +132,7 @@ struct lcdc {
 typedef void (*lcdc_event_t)(struct lcdc *lcdc);
 
 static bool lcdc_init(struct controller_instance *instance);
+static void lcdc_reset(struct controller_instance *instance);
 static void lcdc_deinit(struct controller_instance *instance);
 static void lcdc_tick(struct lcdc *lcdc);
 static void lcdc_update_counters(struct lcdc *lcdc);
@@ -621,7 +622,6 @@ bool lcdc_init(struct controller_instance *instance)
 	lcdc->clock.rate = res->data.clk;
 	lcdc->clock.data = lcdc;
 	lcdc->clock.tick = (clock_tick_t)lcdc_tick;
-	lcdc->clock.enabled = true;
 	clock_add(&lcdc->clock);
 
 	/* Get VBLANK IRQ number */
@@ -638,6 +638,16 @@ bool lcdc_init(struct controller_instance *instance)
 		instance->num_resources);
 	lcdc->lcdc_irq = res->data.irq;
 
+	/* Prepare frame events */
+	lcdc_set_events(lcdc);
+
+	return true;
+}
+
+void lcdc_reset(struct controller_instance *instance)
+{
+	struct lcdc *lcdc = instance->priv_data;
+
 	/* Initialize registers and data */
 	memset(lcdc->regs, 0, NUM_REGS * sizeof(uint8_t));
 	lcdc->h = 0;
@@ -645,10 +655,8 @@ bool lcdc_init(struct controller_instance *instance)
 	lcdc->ly = 0;
 	lcdc->stat.mode_flag = 2;
 
-	/* Prepare frame events */
-	lcdc_set_events(lcdc);
-
-	return true;
+	/* Enable clock */
+	lcdc->clock.enabled = true;
 }
 
 void lcdc_deinit(struct controller_instance *instance)
@@ -658,6 +666,7 @@ void lcdc_deinit(struct controller_instance *instance)
 
 CONTROLLER_START(lcdc)
 	.init = lcdc_init,
+	.reset = lcdc_reset,
 	.deinit = lcdc_deinit
 CONTROLLER_END
 
