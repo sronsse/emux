@@ -178,6 +178,7 @@ struct papu {
 };
 
 static bool papu_init(struct controller_instance *instance);
+static void papu_reset(struct controller_instance *instance);
 static void papu_deinit(struct controller_instance *instance);
 static uint8_t papu_readb(struct papu *papu, address_t address);
 static void papu_writeb(struct papu *papu, uint8_t b, address_t address);
@@ -479,11 +480,6 @@ bool papu_init(struct controller_instance *instance)
 	papu->main_clock.enabled = true;
 	clock_add(&papu->main_clock);
 
-	/* Initialize registers and channels */
-	memset(papu->regs.raw, 0, NUM_REGS * sizeof(uint8_t));
-	papu->channel1.enabled = false;
-	papu->channel2.enabled = false;
-
 	/* Initialize audio frontend */
 	audio_specs.freq = papu->main_clock.rate;
 	audio_specs.format = AUDIO_FORMAT_U8;
@@ -496,6 +492,16 @@ bool papu_init(struct controller_instance *instance)
 	return true;
 }
 
+void papu_reset(struct controller_instance *instance)
+{
+	struct papu *papu = instance->priv_data;
+
+	/* Initialize registers and channels */
+	memset(papu->regs.raw, 0, NUM_REGS * sizeof(uint8_t));
+	papu->channel1.enabled = false;
+	papu->channel2.enabled = false;
+}
+
 void papu_deinit(struct controller_instance *instance)
 {
 	audio_deinit();
@@ -504,6 +510,7 @@ void papu_deinit(struct controller_instance *instance)
 
 CONTROLLER_START(papu)
 	.init = papu_init,
+	.reset = papu_reset,
 	.deinit = papu_deinit
 CONTROLLER_END
 

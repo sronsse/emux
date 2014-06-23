@@ -43,6 +43,7 @@ struct timer {
 };
 
 static bool timer_init(struct controller_instance *instance);
+static void timer_reset(struct controller_instance *instance);
 static void timer_deinit(struct controller_instance *instance);
 static uint8_t timer_readb(struct timer *timer, address_t address);
 static void timer_writeb(struct timer *timer, uint8_t b, address_t address);
@@ -147,7 +148,6 @@ bool timer_init(struct controller_instance *instance)
 	timer->div_clock.rate = res->data.clk;
 	timer->div_clock.data = timer;
 	timer->div_clock.tick = (clock_tick_t)div_tick;
-	timer->div_clock.enabled = true;
 	clock_add(&timer->div_clock);
 
 	/* Add timer counter clock */
@@ -158,7 +158,6 @@ bool timer_init(struct controller_instance *instance)
 	timer->tima_clock.rate = res->data.clk;
 	timer->tima_clock.data = timer;
 	timer->tima_clock.tick = (clock_tick_t)tima_tick;
-	timer->tima_clock.enabled = false;
 	clock_add(&timer->tima_clock);
 
 	/* Save IRQ number */
@@ -168,13 +167,22 @@ bool timer_init(struct controller_instance *instance)
 		instance->num_resources);
 	timer->irq = res->data.irq;
 
+	return true;
+}
+
+void timer_reset(struct controller_instance *instance)
+{
+	struct timer *timer = instance->priv_data;
+
 	/* Initialize timer registers */
 	timer->div = 0;
 	timer->tima = 0;
 	timer->tma = 0;
 	timer->tac.value = 0;
 
-	return true;
+	/* Set initial clock states */
+	timer->div_clock.enabled = true;
+	timer->tima_clock.enabled = false;
 }
 
 void timer_deinit(struct controller_instance *instance)
@@ -184,6 +192,7 @@ void timer_deinit(struct controller_instance *instance)
 
 CONTROLLER_START(gb_timer)
 	.init = timer_init,
+	.reset = timer_reset,
 	.deinit = timer_deinit
 CONTROLLER_END
 

@@ -70,6 +70,9 @@ bool machine_init()
 		return false;
 	}
 
+	/* Reset machine */
+	machine_reset();
+
 	return true;
 }
 
@@ -97,9 +100,6 @@ void machine_run()
 	input_config.callback = machine_event;
 	input_config.data = NULL;
 	input_register(&input_config, false);
-
-	/* Reset machine */
-	machine_reset();
 
 	/* Start audio processing */
 	audio_start();

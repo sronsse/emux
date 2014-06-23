@@ -40,6 +40,7 @@ struct rp2a03 {
 };
 
 static bool rp2a03_init(struct cpu_instance *instance);
+static void rp2a03_reset(struct cpu_instance *instance);
 static void rp2a03_interrupt(struct cpu_instance *instance, int irq);
 static void rp2a03_deinit(struct cpu_instance *instance);
 static void rp2a03_tick(struct rp2a03 *rp2a03);
@@ -2246,12 +2247,8 @@ bool rp2a03_init(struct cpu_instance *instance)
 	rp2a03 = malloc(sizeof(struct rp2a03));
 	instance->priv_data = rp2a03;
 
-	/* Initialize registers and processor data */
+	/* Save bus ID */
 	rp2a03->bus_id = instance->bus_id;
-	rp2a03->PC = memory_readw(rp2a03->bus_id, RESET_VECTOR);
-	rp2a03->I = 1;
-	rp2a03->unused = 1;
-	rp2a03->interrupted = false;
 
 	/* Save NMI IRQ number */
 	res = resource_get("nmi",
@@ -2268,10 +2265,23 @@ bool rp2a03_init(struct cpu_instance *instance)
 	rp2a03->clock.rate = res->data.clk;
 	rp2a03->clock.data = rp2a03;
 	rp2a03->clock.tick = (clock_tick_t)rp2a03_tick;
-	rp2a03->clock.enabled = true;
 	clock_add(&rp2a03->clock);
 
 	return true;
+}
+
+void rp2a03_reset(struct cpu_instance *instance)
+{
+	struct rp2a03 *rp2a03 = instance->priv_data;
+
+	/* Initialize registers and processor data */
+	rp2a03->PC = memory_readw(rp2a03->bus_id, RESET_VECTOR);
+	rp2a03->I = 1;
+	rp2a03->unused = 1;
+	rp2a03->interrupted = false;
+
+	/* Enable clock */
+	rp2a03->clock.enabled = true;
 }
 
 void rp2a03_interrupt(struct cpu_instance *instance, int irq)
@@ -2294,6 +2304,7 @@ void rp2a03_deinit(struct cpu_instance *instance)
 
 CPU_START(rp2a03)
 	.init = rp2a03_init,
+	.reset = rp2a03_reset,
 	.interrupt = rp2a03_interrupt,
 	.deinit = rp2a03_deinit
 CPU_END

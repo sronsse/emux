@@ -36,6 +36,7 @@ struct serial {
 };
 
 static bool serial_init(struct controller_instance *instance);
+static void serial_reset(struct controller_instance *instance);
 static void serial_deinit(struct controller_instance *instance);
 static uint8_t serial_readb(struct serial *serial, address_t address);
 static void serial_writeb(struct serial *serial, uint8_t b, address_t address);
@@ -117,7 +118,6 @@ bool serial_init(struct controller_instance *instance)
 	serial->clock.rate = res->data.clk;
 	serial->clock.data = serial;
 	serial->clock.tick = (clock_tick_t)serial_tick;
-	serial->clock.enabled = false;
 	clock_add(&serial->clock);
 
 	/* Save IRQ number */
@@ -127,13 +127,21 @@ bool serial_init(struct controller_instance *instance)
 		instance->num_resources);
 	serial->irq = res->data.irq;
 
+	return true;
+}
+
+void serial_reset(struct controller_instance *instance)
+{
+	struct serial *serial = instance->priv_data;
+
 	/* Initialize registers */
 	serial->sb = 0;
 	serial->sc.shift_clock = INTERNAL_CLOCK;
 	serial->sc.clock_speed = 0;
 	serial->sc.transfer_start_flag = 0;
 
-	return true;
+	/* Disable clock by default */
+	serial->clock.enabled = false;
 }
 
 void serial_deinit(struct controller_instance *instance)
@@ -143,6 +151,7 @@ void serial_deinit(struct controller_instance *instance)
 
 CONTROLLER_START(gb_serial)
 	.init = serial_init,
+	.reset = serial_reset,
 	.deinit = serial_deinit
 CONTROLLER_END
 

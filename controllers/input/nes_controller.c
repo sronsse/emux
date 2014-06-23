@@ -43,6 +43,7 @@ struct nes_ctrl {
 };
 
 static bool nes_ctrl_init(struct controller_instance *instance);
+static void nes_ctrl_reset(struct controller_instance *instance);
 static void nes_ctrl_deinit(struct controller_instance *instance);
 static void nes_ctrl_event(int id, enum input_type type, struct nes_ctrl *n);
 static uint8_t nes_ctrl_readb(struct nes_ctrl *nes_ctrl, address_t a);
@@ -143,7 +144,6 @@ bool nes_ctrl_init(struct controller_instance *instance)
 	struct nes_ctrl *nes_ctrl;
 	struct resource *area;
 	struct input_config *input_config;
-	int i;
 
 	/* Allocate nes_ctrl structure */
 	instance->priv_data = malloc(sizeof(struct nes_ctrl));
@@ -159,11 +159,6 @@ bool nes_ctrl_init(struct controller_instance *instance)
 	nes_ctrl->region.data = nes_ctrl;
 	memory_region_add(&nes_ctrl->region);
 
-	/* Initialize controller data */
-	nes_ctrl->input_reg.strobe = 0;
-	for (i = 0; i < NUM_PLAYERS; i++)
-		memset(nes_ctrl->keys[i], 0, NUM_KEYS * sizeof(bool));
-
 	/* Initialize input configuration */
 	input_config = &nes_ctrl->input_config;
 	input_config->name = instance->controller_name;
@@ -174,6 +169,17 @@ bool nes_ctrl_init(struct controller_instance *instance)
 	input_register(input_config, true);
 
 	return true;
+}
+
+void nes_ctrl_reset(struct controller_instance *instance)
+{
+	struct nes_ctrl *nes_ctrl = instance->priv_data;
+	int i;
+
+	/* Initialize controller data */
+	nes_ctrl->input_reg.strobe = 0;
+	for (i = 0; i < NUM_PLAYERS; i++)
+		memset(nes_ctrl->keys[i], 0, NUM_KEYS * sizeof(bool));
 }
 
 void nes_ctrl_event(int id, enum input_type type, struct nes_ctrl *nes_ctrl)
@@ -202,6 +208,7 @@ void nes_ctrl_deinit(struct controller_instance *instance)
 
 CONTROLLER_START(nes_controller)
 	.init = nes_ctrl_init,
+	.reset = nes_ctrl_reset,
 	.deinit = nes_ctrl_deinit
 CONTROLLER_END
 

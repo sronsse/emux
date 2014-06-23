@@ -57,6 +57,7 @@ struct lr35902 {
 };
 
 static bool lr35902_init(struct cpu_instance *instance);
+static void lr35902_reset(struct cpu_instance *instance);
 static void lr35902_interrupt(struct cpu_instance *instance, int irq);
 static void lr35902_deinit(struct cpu_instance *instance);
 static bool lr35902_handle_interrupts(struct lr35902 *cpu);
@@ -2821,12 +2822,8 @@ bool lr35902_init(struct cpu_instance *instance)
 	cpu = malloc(sizeof(struct lr35902));
 	instance->priv_data = cpu;
 
-	/* Initialize processor data */
+	/* Save bus ID */
 	cpu->bus_id = instance->bus_id;
-	cpu->PC = 0;
-	cpu->IME = 0;
-	cpu->IF = 0;
-	cpu->IE = 0;
 
 	/* Add CPU clock */
 	res = resource_get("clk",
@@ -2836,7 +2833,6 @@ bool lr35902_init(struct cpu_instance *instance)
 	cpu->clock.rate = res->data.clk;
 	cpu->clock.data = cpu;
 	cpu->clock.tick = (clock_tick_t)lr35902_tick;
-	cpu->clock.enabled = true;
 	clock_add(&cpu->clock);
 
 	/* Add IF memory region */
@@ -2862,6 +2858,20 @@ bool lr35902_init(struct cpu_instance *instance)
 	return true;
 }
 
+void lr35902_reset(struct cpu_instance *instance)
+{
+	struct lr35902 *cpu = instance->priv_data;
+
+	/* Initialize processor data */
+	cpu->PC = 0;
+	cpu->IME = 0;
+	cpu->IF = 0;
+	cpu->IE = 0;
+
+	/* Enable clock */
+	cpu->clock.enabled = true;
+}
+
 void lr35902_interrupt(struct cpu_instance *instance, int irq)
 {
 	struct lr35902 *cpu = instance->priv_data;
@@ -2878,6 +2888,7 @@ void lr35902_deinit(struct cpu_instance *instance)
 
 CPU_START(lr35902)
 	.init = lr35902_init,
+	.reset = lr35902_reset,
 	.interrupt = lr35902_interrupt,
 	.deinit = lr35902_deinit
 CPU_END

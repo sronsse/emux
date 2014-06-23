@@ -208,6 +208,7 @@ struct ppu {
 typedef void (*ppu_event_t)(struct ppu *ppu);
 
 static bool ppu_init(struct controller_instance *instance);
+static void ppu_reset(struct controller_instance *instance);
 static void ppu_deinit(struct controller_instance *instance);
 static void ppu_tick(struct ppu *ppu);
 static void ppu_update_counters(struct ppu *ppu);
@@ -1052,8 +1053,17 @@ bool ppu_init(struct controller_instance *instance)
 	ppu->clock.rate = res->data.clk;
 	ppu->clock.data = ppu;
 	ppu->clock.tick = (clock_tick_t)ppu_tick;
-	ppu->clock.enabled = true;
 	clock_add(&ppu->clock);
+
+	/* Prepare frame events */
+	ppu_set_events(ppu);
+
+	return true;
+}
+
+void ppu_reset(struct controller_instance *instance)
+{
+	struct ppu *ppu = instance->priv_data;
 
 	/* Initialize registers and data */
 	ppu->ctrl.value = 0;
@@ -1065,10 +1075,8 @@ bool ppu_init(struct controller_instance *instance)
 	ppu->v = 261;
 	ppu->sprite_counter = 0;
 
-	/* Prepare frame events */
-	ppu_set_events(ppu);
-
-	return true;
+	/* Enable clock */
+	ppu->clock.enabled = true;
 }
 
 void ppu_deinit(struct controller_instance *instance)
@@ -1079,6 +1087,7 @@ void ppu_deinit(struct controller_instance *instance)
 
 CONTROLLER_START(ppu)
 	.init = ppu_init,
+	.reset = ppu_reset,
 	.deinit = ppu_deinit
 CONTROLLER_END
 

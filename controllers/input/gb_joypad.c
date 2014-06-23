@@ -34,6 +34,7 @@ struct joypad {
 };
 
 static bool joypad_init(struct controller_instance *instance);
+static void joypad_reset(struct controller_instance *instance);
 static void joypad_deinit(struct controller_instance *instance);
 static uint8_t joypad_readb(struct joypad *joypad, address_t address);
 static void joypad_writeb(struct joypad *joypad, uint8_t b, address_t address);
@@ -116,7 +117,6 @@ bool joypad_init(struct controller_instance *instance)
 	struct joypad *joypad;
 	struct input_config *input_config;
 	struct resource *res;
-	int i;
 
 	/* Allocate joypad structure */
 	instance->priv_data = malloc(sizeof(struct joypad));
@@ -148,14 +148,20 @@ bool joypad_init(struct controller_instance *instance)
 		instance->num_resources);
 	joypad->irq = res->data.irq;
 
+	return true;
+}
+
+void joypad_reset(struct controller_instance *instance)
+{
+	struct joypad *joypad = instance->priv_data;
+	int i;
+
 	/* Initialize joypad register */
 	joypad->reg.value = 0xFF;
 
 	/* Initialize key states */
 	for (i = 0; i < NUM_KEYS; i++)
 		joypad->keys[i] = false;
-
-	return true;
 }
 
 void joypad_deinit(struct controller_instance *instance)
@@ -165,6 +171,7 @@ void joypad_deinit(struct controller_instance *instance)
 
 CONTROLLER_START(gb_joypad)
 	.init = joypad_init,
+	.reset = joypad_reset,
 	.deinit = joypad_deinit
 CONTROLLER_END
 
