@@ -11,11 +11,16 @@
 #include <machine.h>
 #include <video.h>
 
+#define QUOTE(name)	#name
+#define STR(macro)	QUOTE(macro)
+#define OPTION_DELIM	" "
+
 struct cmdline {
 	int argc;
 	char **argv;
 };
 
+static void cmdline_build(int argc, char *argv[], int defc, char *defv[]);
 static int param_sort_compare(const void *a, const void *b);
 int param_bsearch_compare(const void *key, const void *elem);
 static bool cmdline_parse_arg(char *long_name, bool has_arg, char **arg);
@@ -26,7 +31,7 @@ static bool cmdline_parse_string(char *long_name, char **string);
 struct param **params;
 static int num_params;
 static struct cmdline cmdline;
-static char *path;
+static char def_cmdline[] = STR(CONFIG_CMDLINE);
 
 int param_sort_compare(const void *a, const void *b)
 {
@@ -163,20 +168,61 @@ bool cmdline_set_param(char *name, char *module, char *value)
 	return false;
 }
 
+void cmdline_build(int argc, char *argv[], int defc, char *defv[])
+{
+#if defined(CONFIG_CMDLINE_EXTEND)
+	/* Append passed command line to default one */
+	cmdline.argc = defc + argc;
+	cmdline.argv = malloc(cmdline.argc * sizeof(char *));
+	cmdline.argv[0] = argv[0];
+	memcpy(&cmdline.argv[1], defv, defc * sizeof(char *));
+	memcpy(&cmdline.argv[defc + 1], &argv[1], (argc - 1) * sizeof(char *));
+#elif defined(CONFIG_CMDLINE_FORCE)
+	/* Force use of default command line */
+	(void)argc;
+	cmdline.argc = defc + 1;
+	cmdline.argv = malloc(cmdline.argc * sizeof(char *));
+	cmdline.argv[0] = argv[0];
+	memcpy(&cmdline.argv[1], defv, defc * sizeof(char *));
+#else
+	/* Use passed command line if provided or default one otherwise */
+	if (argc > 1) {
+		cmdline.argc = argc;
+		cmdline.argv = malloc(cmdline.argc * sizeof(char *));
+		memcpy(cmdline.argv, argv, cmdline.argc * sizeof(char *));
+	} else {
+		cmdline.argc = defc + 1;
+		cmdline.argv = malloc(cmdline.argc * sizeof(char *));
+		cmdline.argv[0] = argv[0];
+		memcpy(&cmdline.argv[1], defv, defc * sizeof(char *));
+	}
+#endif
+}
+
 void cmdline_init(int argc, char *argv[])
 {
+	char **defv = NULL;
+	int defc = 0;
 	struct param *p;
+	char *s;
 	int i;
 
-	/* Save command line */
-	cmdline.argc = argc;
-	cmdline.argv = argv;
+	/* Build default command line as separate tokens */
+	s = strtok(def_cmdline, OPTION_DELIM);
+	while (s) {
+		defv = realloc(defv, ++defc * sizeof(char *));
+		defv[defc - 1] = s;
+		s = strtok(NULL, OPTION_DELIM);
+	}
+
+	/* Build final command line based on project configuration */
+	cmdline_build(argc, argv, defc, defv);
 
 	/* Print version and command line first */
 	fprintf(stdout, "Emux version %s\n", PACKAGE_VERSION);
 	fprintf(stdout, "Command line:");
-	for (i = 0; i < argc; i++)
-		fprintf(stdout, " %s", argv[i]);
+	for (i = 0; i < cmdline.argc; i++)
+		fprintf(stdout, " %s", cmdline.argv[i]);
 	fprintf(stdout, "\n");
 
 	/* Parse and fill parameters */
@@ -189,6 +235,10 @@ void cmdline_init(int argc, char *argv[])
 		else if (!strcmp(p->type, "string"))
 			cmdline_parse_string(p->name, p->address);
 	}
+
+	/* Free command lines */
+	free(cmdline.argv);
+	free(defv);
 }
 
 void cmdline_print_usage(bool error)
@@ -280,12 +330,6 @@ void cmdline_print_module_options(char *module)
 			fprintf(stderr, "  --%s (%s)\n", p->name, p->desc);
 	}
 	fprintf(stderr, "\n");
-}
-
-char *cmdline_get_path()
-{
-	/* Return previously stored command-line file/dir path */
-	return path;
 }
 
 bool cmdline_parse_arg(char *long_name, bool has_arg, char **arg)
