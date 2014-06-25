@@ -9,3 +9,36 @@ source "$EMUX_SRC_DIR/frontends/Kconfig"
 source "$EMUX_SRC_DIR/controllers/Kconfig"
 source "$EMUX_SRC_DIR/cpu/Kconfig"
 
+config CMDLINE
+	string "Default command string"
+	default ""
+	help
+		This option can be modified in order to allow, extend or force
+		Emux command line arguments, which may be desired or required
+		for certain project configurations.
+
+choice
+	prompt "Command line type" if CMDLINE != ""
+	default CMDLINE_FROM_ARGS
+
+config CMDLINE_FROM_ARGS
+	bool "Use arguments if available"
+	help
+		Uses the command-line options passed as arguments to Emux. If
+		none is specified, the default command string provided in
+		CMDLINE will be used.
+
+config CMDLINE_EXTEND
+	bool "Extend arguments"
+	help
+		The command line arguments provided to Emux will be appended
+		to the default command string.
+
+config CMDLINE_FORCE
+	bool "Always use the default command string"
+	help
+		Always use the default command string, even when specifying
+		arguments at run-time. This is useful if you can't or don't want
+		to change the command line options passed to Emux.
+endchoice
+
