@@ -1,8 +1,9 @@
 #include <stdint.h>
 #include <strings.h>
 #include <bitops.h>
+#include <config.h>
 
-#ifdef _WIN32
+#ifndef HAVE_FFS
 #define ffs __builtin_ffs
 #endif
 
