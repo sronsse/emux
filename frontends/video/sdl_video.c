@@ -6,8 +6,24 @@
 #include <util.h>
 #include <video.h>
 
+#define BIT_DEPTH	32
+
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+#define RMASK		0xFF000000
+#define GMASK		0x00FF0000
+#define BMASK		0x0000FF00
+#define AMASK		0x000000FF
+#else
+#define RMASK		0x000000FF
+#define GMASK		0x0000FF00
+#define BMASK		0x00FF0000
+#define AMASK		0xFF000000
+#endif
+
 struct sdl_data {
 	SDL_Surface *screen;
+	SDL_Renderer *renderer;
+	SDL_Texture *texture;
 	int scale;
 };
 
@@ -22,25 +38,63 @@ static void sdl_deinit(struct video_frontend *fe);
 window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 {
 	struct sdl_data *data;
+	SDL_Window *window;
+	SDL_Renderer *renderer;
 	SDL_Surface *screen;
-	Uint32 flags = SDL_SWSURFACE;
+	SDL_Texture *texture;
 	int w = vs->width * vs->scale;
 	int h = vs->height * vs->scale;
 
 	/* Initialize video sub-system */
-	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
+	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
 		LOG_E("Error initializing SDL video: %s\n", SDL_GetError());
 		return NULL;
 	}
 
 	/* Set window position and title */
-	SDL_putenv("SDL_VIDEO_CENTERED=center");
-	SDL_WM_SetCaption("emux", NULL);
+	window = SDL_CreateWindow("emux",
+		SDL_WINDOWPOS_CENTERED,
+		SDL_WINDOWPOS_CENTERED,
+		w,
+		h,
+		0);
+	if (!window) {
+		LOG_E("Error creating window: %s\n", SDL_GetError());
+		SDL_VideoQuit();
+		return NULL;
+	}
 
-	/* Create main video surface */
-	screen = SDL_SetVideoMode(w, h, 0, flags);
+	/* Create renderer */
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	if (renderer == NULL) {
+		LOG_E("Error creating renderer: %s\n", SDL_GetError());
+		SDL_VideoQuit();
+		return NULL;
+	}
+
+	/* Create screen */
+	screen = SDL_CreateRGBSurface(0,
+		w,
+		h,
+		BIT_DEPTH,
+		RMASK,
+		GMASK,
+		BMASK,
+		AMASK);
 	if (!screen) {
-		LOG_E("Error creating video surface: %s\n", SDL_GetError());
+		LOG_E("Error creating surface: %s\n", SDL_GetError());
+		SDL_VideoQuit();
+		return NULL;
+	}
+
+	/* Create texture based on screen format */
+	texture = SDL_CreateTexture(renderer,
+		screen->format->format,
+		SDL_TEXTUREACCESS_STREAMING,
+		w,
+		h);
+	if (!texture) {
+		LOG_E("Error creating texture: %s\n", SDL_GetError());
 		SDL_VideoQuit();
 		return NULL;
 	}
@@ -48,6 +102,8 @@ window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 	/* Create and fill private data */
 	data = malloc(sizeof(struct sdl_data));
 	data->screen = screen;
+	data->renderer = renderer;
+	data->texture = texture;
 	data->scale = vs->scale;
 	fe->priv_data = data;
 
@@ -57,13 +113,21 @@ window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 void sdl_update(struct video_frontend *fe)
 {
 	struct sdl_data *data = fe->priv_data;
-	SDL_Flip(data->screen);
+	SDL_Surface *screen = data->screen;
+	SDL_Renderer *renderer = data->renderer;
+	SDL_Texture *texture = data->texture;
+
+	SDL_UpdateTexture(texture, NULL, screen->pixels, screen->pitch);
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, texture, NULL, NULL);
+	SDL_RenderPresent(renderer);
 }
 
 void sdl_lock(struct video_frontend *fe)
 {
 	struct sdl_data *data = fe->priv_data;
 	SDL_Surface *screen = data->screen;
+
 	if (SDL_MUSTLOCK(screen) && (SDL_LockSurface(screen) < 0))
 		LOG_W("Couldn't lock surface: %s\n", SDL_GetError());
 }
@@ -91,26 +155,7 @@ struct color sdl_get_p(struct video_frontend *fe, int x, int y)
 	p = (uint8_t *)screen->pixels + y * screen->pitch + x * bpp;
 
 	/* Read pixel */
-	switch (bpp) {
-	case 1:
-		pixel = *p;
-		break;
-	case 2:
-		pixel = *(uint16_t *)p;
-		break;
-	case 3:
-		if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-			pixel = (p[0] << 16) | (p[1] << 8) | p[2];
-		else
-			pixel = p[0] | (p[1] << 8) | (p[2] << 16);
-		break;
-	case 4:
-		pixel = *(uint32_t *)p;
-		break;
-	default:
-		pixel = 0;
-		break;
-	}
+	memcpy(&pixel, p, bpp);
 
 	/* Get RGB components */
 	SDL_GetRGB(pixel, screen->format, &color.r, &color.g, &color.b);
@@ -137,30 +182,7 @@ void sdl_set_p(struct video_frontend *fe, int x, int y, struct color c)
 
 	/* Set pixel contents */
 	p1 = (uint8_t *)screen->pixels + y * screen->pitch + x * bpp;
-	switch (bpp) {
-	case 1:
-		*p1 = pixel;
-		break;
-	case 2:
-		*(uint16_t *)p1 = pixel;
-		break;
-	case 3:
-		if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
-			p1[0] = (pixel >> 16) & 0xFF;
-			p1[1] = (pixel >> 8) & 0xFF;
-			p1[2] = pixel & 0xFF;
-		} else {
-			p1[0] = pixel & 0xFF;
-			p1[1] = (pixel >> 8) & 0xFF;
-			p1[2] = (pixel >> 16) & 0xFF;
-		}
-		break;
-	case 4:
-		*(uint32_t *)p1 = pixel;
-		break;
-	default:
-		break;
-	}
+	memcpy(p1, &pixel, bpp);
 
 	/* Write remaining square of pixels depending on scaling factor */
 	for (i = x; i < x + data->scale; i++)
@@ -180,6 +202,14 @@ void sdl_set_p(struct video_frontend *fe, int x, int y, struct color c)
 
 void sdl_deinit(struct video_frontend *fe)
 {
+	struct sdl_data *data = fe->priv_data;
+
+	/* Free SDL resources */
+	SDL_DestroyTexture(data->texture);
+	SDL_DestroyRenderer(data->renderer);
+	SDL_FreeSurface(data->screen);
+
+	/* Free subsystem and private data */
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
 	free(fe->priv_data);
 }
@@ -194,4 +224,3 @@ VIDEO_START(sdl)
 	.set_p = sdl_set_p,
 	.deinit = sdl_deinit
 VIDEO_END
-
