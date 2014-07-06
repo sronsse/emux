@@ -77,7 +77,7 @@ endif
 
 # Frontends
 if CONFIG_AUDIO_SDL
-#emux_SOURCES += frontends/audio/sdl_audio.c
+emux_SOURCES += frontends/audio/sdl_audio.c
 endif
 if CONFIG_INPUT_CACA
 emux_SOURCES += frontends/input/caca_input.c

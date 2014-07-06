@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <audio.h>
 #include <clock.h>
 #include <log.h>
@@ -103,6 +103,9 @@ void pull(struct audio_data *data, void *buffer, int len)
 	/* Lock access */
 	SDL_LockAudio();
 
+	/* Empty buffer first */
+	SDL_memset(buffer, 0, len);
+		
 	/* Handle underrun */
 	if (data->count < len) {
 		SDL_UnlockAudio();
