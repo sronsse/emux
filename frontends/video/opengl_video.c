@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #define NO_SDL_GLEXT
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengl.h>
@@ -27,6 +27,8 @@ struct gl {
 	GLuint vertex_shader;
 	GLuint fragment_shader;
 	GLuint texture;
+	SDL_GLContext *context;
+	SDL_Window *window;
 };
 
 struct vertex {
@@ -164,12 +166,16 @@ void init_pixels(struct video_frontend *fe)
 
 window_t *gl_init(struct video_frontend *fe, struct video_specs *vs)
 {
-	SDL_Surface *screen;
-	Uint32 flags = SDL_OPENGL;
+	SDL_Window *window;
+	SDL_GLContext *context;
+	Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
 	struct gl *gl;
 	int w = vs->width;
 	int h = vs->height;
 	int s = vs->scale;
+
+	/* Create frontend private structure */
+	gl = malloc(sizeof(struct gl));
 
 	/* Initialize video sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
@@ -178,24 +184,36 @@ window_t *gl_init(struct video_frontend *fe, struct video_specs *vs)
 	}
 
 	/* Set window position and title */
-	SDL_putenv("SDL_VIDEO_CENTERED=center");
-	SDL_WM_SetCaption("emux", NULL);
+	window = SDL_CreateWindow("emux",
+														SDL_WINDOWPOS_CENTERED,
+														SDL_WINDOWPOS_CENTERED,
+														w * s,
+														h * s,
+														flags);
 
-	/* Create frontend private structure */
-	gl = malloc(sizeof(struct gl));
-	gl->width = w;
-	gl->height = h;
-	gl->scale = s;
-	fe->priv_data = gl;
-
-	/* Create main video surface */
-	screen = SDL_SetVideoMode(w * s, h * s, 0, flags);
-	if (!screen) {
-		LOG_E("Error creating video surface: %s\n", SDL_GetError());
+	if (window == NULL) {
+		LOG_E("Error creating window: %s\n", SDL_GetError());
 		free(gl);
 		SDL_VideoQuit();
 		return NULL;
 	}
+
+	/* Create an OpenGL context associated with the window */
+	context = SDL_GL_CreateContext(window);
+	if (context == NULL) {
+		LOG_E("Error creating GL Context: %s\n", SDL_GetError());
+		free(gl);
+		SDL_VideoQuit();
+		return NULL;
+	}
+
+  /* Initialize frontend private structure */
+	gl->width = w;
+	gl->height = h;
+	gl->scale = s;
+	gl->context = context;
+	gl->window = window;
+	fe->priv_data = gl;
 
 	/* Initialize shaders and return in case of failure */
 	if (!init_shaders(fe)) {
@@ -209,7 +227,7 @@ window_t *gl_init(struct video_frontend *fe, struct video_specs *vs)
 	init_buffers(fe);
 	init_pixels(fe);
 
-	return screen;
+	return window;
 }
 
 void gl_update(struct video_frontend *fe)
@@ -244,7 +262,7 @@ void gl_update(struct video_frontend *fe)
 	glUseProgram(0);
 
 	/* Flip screen */
-	SDL_GL_SwapBuffers();
+	SDL_GL_SwapWindow(gl->window);
 }
 
 struct color gl_get_p(struct video_frontend *fe, int x, int y)
@@ -278,6 +296,8 @@ void gl_set_p(struct video_frontend *fe, int x, int y, struct color c)
 void gl_deinit(struct video_frontend *fe)
 {
 	struct gl *gl = fe->priv_data;
+	SDL_GLContext *context = gl->context;
+	SDL_Window *window = gl->window;
 
 	/* Free allocated components */
 	free(gl->pixels);
@@ -286,6 +306,12 @@ void gl_deinit(struct video_frontend *fe)
 	glDeleteShader(gl->vertex_shader);
 	glDeleteShader(gl->fragment_shader);
 	glDeleteProgram(gl->program);
+
+	SDL_GL_DeleteContext(context);
+	context = NULL;
+
+	SDL_DestroyWindow(window);
+	window = NULL;
 
 	/* Quit SDL video sub-system */
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
