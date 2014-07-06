@@ -50,6 +50,7 @@ struct video_frontend {
 
 bool video_init(struct video_specs *vs);
 void video_update();
+bool video_updated();
 void video_lock();
 void video_unlock();
 struct color video_get_pixel(int x, int y);

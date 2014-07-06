@@ -26,7 +26,6 @@ struct retro_data {
 
 void retro_video_fill_timing(struct retro_system_timing *timing);
 void retro_video_fill_geometry(struct retro_game_geometry *geometry);
-bool retro_video_updated();
 
 static window_t *ret_init(struct video_frontend *fe, struct video_specs *vs);
 static void ret_update(struct video_frontend *fe);
@@ -56,21 +55,6 @@ void retro_video_fill_geometry(struct retro_game_geometry *geometry)
 	geometry->base_height = retro_data.height;
 	geometry->max_width = retro_data.width;
 	geometry->max_height = retro_data.height;
-}
-
-bool retro_video_updated()
-{
-	bool ret;
-
-	/* Get current state */
-	ret = retro_data.video_updated;
-
-	/* Reset state if needed */
-	if (retro_data.video_updated)
-		retro_data.video_updated = 0;
-
-	/* Return old state */
-	return ret;
 }
 
 window_t *ret_init(struct video_frontend *UNUSED(fe), struct video_specs *vs)

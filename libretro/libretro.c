@@ -9,6 +9,7 @@
 #include <libretro.h>
 #include <log.h>
 #include <machine.h>
+#include <video.h>
 
 /* Retro frontends functions */
 void retro_audio_fill_timing(struct retro_system_timing *timing);
@@ -79,7 +80,7 @@ void retro_reset(void)
 void retro_run(void)
 {
 	/* Run until screen is updated */
-	while (!retro_video_updated())
+	while (!video_updated())
 		machine_step();
 }
 

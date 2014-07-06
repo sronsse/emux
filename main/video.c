@@ -14,6 +14,7 @@ PARAM(scale, int, "scale", NULL, "Applies a screen scale ratio")
 
 struct list_link *video_frontends;
 static struct video_frontend *frontend;
+static bool updated;
 
 bool video_init(struct video_specs *vs)
 {
@@ -37,6 +38,9 @@ bool video_init(struct video_specs *vs)
 		LOG_E("Scaling factor should be positive!\n");
 		return false;
 	}
+
+	/* Reset updated state */
+	updated = false;
 
 	/* Find video frontend */
 	while ((fe = list_get_next(&link))) {
@@ -72,8 +76,26 @@ void video_update()
 	if (frontend->update)
 		frontend->update(frontend);
 
+	/* Set updated state */
+	updated = true;
+
 	/* Update input sub-system as well */
 	input_update();
+}
+
+bool video_updated()
+{
+	bool ret;
+
+	/* Get current state */
+	ret = updated;
+
+	/* Reset state if needed */
+	if (updated)
+		updated = false;
+
+	/* Return old state */
+	return ret;
 }
 
 void video_lock()
