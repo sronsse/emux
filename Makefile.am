@@ -83,7 +83,7 @@ if CONFIG_INPUT_CACA
 emux_SOURCES += frontends/input/caca_input.c
 endif
 if CONFIG_INPUT_SDL
-#emux_SOURCES += frontends/input/sdl_input.c
+emux_SOURCES += frontends/input/sdl_input.c
 endif
 if CONFIG_VIDEO_CACA
 emux_SOURCES += frontends/video/caca_video.c
