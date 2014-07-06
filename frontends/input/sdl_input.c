@@ -7,6 +7,7 @@
 
 struct joy_data {
 	SDL_Joystick *joystick;
+	SDL_JoystickID id;
 	Uint8 hat;
 };
 
@@ -28,7 +29,25 @@ void key_event(SDL_KeyboardEvent *e)
 	down = (e->state == SDL_PRESSED);
 	event.device = DEVICE_KEYBOARD;
 	event.type = down ? EVENT_BUTTON_DOWN : EVENT_BUTTON_UP;
-	event.code = e->keysym.sym;
+
+	/* Fill event code (SDL codes match apart from arrows) */
+	switch (e->keysym.sym) {
+	case SDLK_UP:
+		event.code = KEY_UP;
+		break;
+	case SDLK_DOWN:
+		event.code = KEY_DOWN;
+		break;
+	case SDLK_RIGHT:
+		event.code = KEY_RIGHT;
+		break;
+	case SDLK_LEFT:
+		event.code = KEY_LEFT;
+		break;
+	default:
+		event.code = e->keysym.sym;
+		break;
+	}
 
 	/* Report event */
 	input_report(&event);
@@ -152,9 +171,10 @@ bool sdl_init(struct input_frontend *fe, window_t *UNUSED(window))
 	for (i = 0; i < num; i++) {
 		joy_data = malloc(sizeof(struct joy_data));
 		joy_data->joystick = SDL_JoystickOpen(i);
+		joy_data->id = SDL_JoystickInstanceID(joy_data->joystick);
 		joy_data->hat = SDL_HAT_CENTERED;
 		list_insert(&joysticks, joy_data);
-		LOG_D("%s enabled.\n", SDL_JoystickName(i));
+		LOG_D("%s enabled.\n", SDL_JoystickName(joy_data->joystick));
 	}
 
 	/* Save joysticks list */
