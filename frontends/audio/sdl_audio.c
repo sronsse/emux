@@ -104,6 +104,9 @@ void pull(struct audio_data *data, void *buffer, int len)
 	/* Lock access */
 	SDL_LockAudio();
 
+	/* Empty buffer first */
+	SDL_memset(buffer, 0, len);
+
 	/* Handle underrun */
 	if (data->count < len) {
 		SDL_UnlockAudio();
