@@ -75,6 +75,8 @@ void retro_set_environment(retro_environment_t cb)
 
 void retro_reset(void)
 {
+	/* Reset machine */
+	machine_reset();
 }
 
 void retro_run(void)
