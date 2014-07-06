@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <SDL.h>
 #include <input.h>
 #include <log.h>
