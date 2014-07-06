@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef EMSCRIPTEN
+#include <emscripten.h>
+#endif
 #include <audio.h>
 #include <clock.h>
 #include <cmdline.h>
@@ -11,6 +14,7 @@
 #include <machine.h>
 #include <memory.h>
 #include <util.h>
+#include <video.h>
 
 static void machine_event(int id, enum input_type type, input_data_t *data);
 
@@ -21,6 +25,7 @@ PARAM(no_sync, bool, "no-sync", NULL, "Disables emulation syncing")
 
 struct list_link *machines;
 static struct machine *machine;
+static struct input_config input_config;
 
 static struct input_desc input_descs[] = {
 	{ NULL, DEVICE_NONE, GENERIC_QUIT },
@@ -32,6 +37,15 @@ void machine_event(int UNUSED(id), enum input_type UNUSED(type),
 {
 	/* Request machine to stop running */
 	machine->running = false;
+
+	/* Stop audio processing */
+	audio_stop();
+
+	/* Unregister quit events */
+	input_unregister(&input_config);
+
+	/* Deinitialize machine */
+	machine_deinit();
 }
 
 bool machine_init()
@@ -70,6 +84,13 @@ bool machine_init()
 		return false;
 	}
 
+	/* Register for quit events */
+	input_config.descs = input_descs;
+	input_config.num_descs = ARRAY_SIZE(input_descs);
+	input_config.callback = machine_event;
+	input_config.data = NULL;
+	input_register(&input_config, false);
+
 	/* Reset machine */
 	machine_reset();
 
@@ -90,30 +111,31 @@ void machine_reset()
 	LOG_I("Machine reset.\n");
 }
 
+#ifdef EMSCRIPTEN
+void emscripten_run()
+{
+	/* Run until screen is updated */
+	while (!video_updated())
+		machine_step();
+}
+#endif
+
 void machine_run()
 {
-	struct input_config input_config;
-
-	/* Register for quit events */
-	input_config.descs = input_descs;
-	input_config.num_descs = ARRAY_SIZE(input_descs);
-	input_config.callback = machine_event;
-	input_config.data = NULL;
-	input_register(&input_config, false);
-
 	/* Start audio processing */
 	audio_start();
 
-	/* Set running flag and run until user quits */
+	/* Set running flag */
 	machine->running = true;
+
+#ifndef EMSCRIPTEN
+	/* Run until user quits */
 	while (machine->running)
 		clock_tick_all(!no_sync);
-
-	/* Stop audio processing */
-	audio_stop();
-
-	/* Unregister quit events */
-	input_unregister(&input_config);
+#else
+	/* Set emscripten loop */
+	emscripten_set_main_loop(emscripten_run, 0, 0);
+#endif
 }
 
 void machine_step()

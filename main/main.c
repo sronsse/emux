@@ -36,11 +36,12 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	/* Initialize, run, and deinitialize machine */
+	/* Initialize machine */
 	if (!machine_init())
 		goto err;
+
+	/* Run machine until user quits */
 	machine_run();
-	machine_deinit();
 
 	return 0;
 err:
