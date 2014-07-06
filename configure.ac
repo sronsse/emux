@@ -58,14 +58,14 @@ fi
 
 # Add OpenGL/SDL if needed
 if test "$CONFIG_VIDEO_OPENGL" == "y"; then
-PKG_CHECK_MODULES([SDL], [sdl])
+PKG_CHECK_MODULES([SDL2], [sdl2])
 PKG_CHECK_MODULES([GL], [gl])
 PKG_CHECK_MODULES([GLU], [glu])
 fi
 
 # Add SDL if needed
 if test "$CONFIG_INPUT_SDL" == "y" || test "$CONFIG_VIDEO_SDL" == "y"; then
-PKG_CHECK_MODULES([SDL], [sdl])
+PKG_CHECK_MODULES([SDL2], [sdl2])
 fi
 
 # Check for ffs function

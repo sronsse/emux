@@ -4,8 +4,8 @@ emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
 	$(CACA_CFLAGS) \
 	$(GL_CFLAGS) \
 	$(GLU_CFLAGS) \
-	$(SDL_CFLAGS)
-emux_LDADD = $(CACA_LIBS) $(GL_LIBS) $(GLU_LIBS) $(SDL_LIBS) $(ROXML_LIBS) -lm
+	$(SDL2_CFLAGS)
+emux_LDADD = $(CACA_LIBS) $(GL_LIBS) $(GLU_LIBS) $(SDL2_LIBS) $(ROXML_LIBS) -lm
 emux_SOURCES = include/audio.h \
 	include/bitops.h \
 	include/clock.h \
@@ -77,13 +77,13 @@ endif
 
 # Frontends
 if CONFIG_AUDIO_SDL
-emux_SOURCES += frontends/audio/sdl_audio.c
+#emux_SOURCES += frontends/audio/sdl_audio.c
 endif
 if CONFIG_INPUT_CACA
 emux_SOURCES += frontends/input/caca_input.c
 endif
 if CONFIG_INPUT_SDL
-emux_SOURCES += frontends/input/sdl_input.c
+#emux_SOURCES += frontends/input/sdl_input.c
 endif
 if CONFIG_VIDEO_CACA
 emux_SOURCES += frontends/video/caca_video.c
