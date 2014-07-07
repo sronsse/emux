@@ -136,6 +136,28 @@ LIBRETRO
   to build these cores:
     make libretro
 
+EMSCRIPTEN
+
+  Emscripten is an LLVM to JavaScript compiler. It takes LLVM bytecode (which
+  can be generated from C/C++ using Clang, or any other language that can be
+  converted into LLVM bytecode) and compiles that into JavaScript, which can be
+  run on the web (or anywhere else JavaScript can run).
+
+  After setting up an Emscripten environment on your development machine, the
+  following commands (which include optimization flags) will allow an
+  HTML/JavaScript version of Emux to be built and run within your favorite web
+  browser:
+    emconfigure ./configure
+    emmake make CFLAGS=-O2
+    mv emux emux.bc
+    emcc -O2 emux.bc -o emux.html
+
+  Note: the --preload-file Emscripten directive allows files to be packaged as
+  part of the generated output (helpful when bundling ROMs). You may also need
+  to specify a default command line as described earlier, as Emscripten will not
+  allow it to be entered via the produced HTML/JavaScript (at least without
+  extra JavaScript modifications).
+
 HELP
   If you need help with Emux, or would like to report bugs (as long as these are
   detailed), feel free to contact me directly at sronsse@gmail.com. Emux is
