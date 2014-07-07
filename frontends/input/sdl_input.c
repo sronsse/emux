@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <input.h>
 #include <log.h>
 #include <util.h>
 
 struct joy_data {
 	SDL_Joystick *joystick;
+	SDL_JoystickID id;
 	Uint8 hat;
 };
 
@@ -152,9 +153,10 @@ bool sdl_init(struct input_frontend *fe, window_t *UNUSED(window))
 	for (i = 0; i < num; i++) {
 		joy_data = malloc(sizeof(struct joy_data));
 		joy_data->joystick = SDL_JoystickOpen(i);
+		joy_data->id = SDL_JoystickInstanceID(joy_data->joystick);
 		joy_data->hat = SDL_HAT_CENTERED;
 		list_insert(&joysticks, joy_data);
-		LOG_D("%s enabled.\n", SDL_JoystickName(i));
+		LOG_D("%s enabled.\n", SDL_JoystickName(joy_data->joystick));
 	}
 
 	/* Save joysticks list */

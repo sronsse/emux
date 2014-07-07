@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <log.h>
 #include <util.h>
 #include <video.h>
 
 struct sdl_data {
 	SDL_Surface *screen;
+	SDL_Renderer *renderer;
+	SDL_Texture *texture;
 	int scale;
 };
 
@@ -21,25 +23,65 @@ static void sdl_deinit(struct video_frontend *fe);
 window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 {
 	struct sdl_data *data;
+	SDL_Window *window;
+	SDL_Renderer *renderer;
 	SDL_Surface *screen;
-	Uint32 flags = SDL_SWSURFACE;
+	SDL_Texture *texture;
+
+	Uint32 rmask, gmask, bmask, amask;
+
 	int w = vs->width * vs->scale;
 	int h = vs->height * vs->scale;
 
 	/* Initialize video sub-system */
-	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
+	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
 		LOG_E("Error initializing SDL video: %s\n", SDL_GetError());
 		return NULL;
 	}
 
 	/* Set window position and title */
-	SDL_putenv("SDL_VIDEO_CENTERED=center");
-	SDL_WM_SetCaption("emux", NULL);
+	window = SDL_CreateWindow("emux",
+														SDL_WINDOWPOS_CENTERED,
+														SDL_WINDOWPOS_CENTERED,
+														w,
+														h,
+														0);
+	if (window == NULL) {
+		LOG_E("Error creating window: %s\n", SDL_GetError());
+		return NULL;
+	}
 
-	/* Create main video surface */
-	screen = SDL_SetVideoMode(w, h, 0, flags);
-	if (!screen) {
+	/* Create main renderer */
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	if (renderer == NULL) {
+		LOG_E("Error creating video renderer: %s\n", SDL_GetError());
+		SDL_VideoQuit();
+		return NULL;
+	}
+
+/* SDL interprets each pixel as a 32-bit number, so our masks must depend
+	 on the endianness (byte order) of the machine */
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+	rmask = 0xff000000;
+	gmask = 0x00ff0000;
+	bmask = 0x0000ff00;
+	amask = 0x000000ff;
+#else
+	rmask = 0x000000ff;
+	gmask = 0x0000ff00;
+	bmask = 0x00ff0000;
+	amask = 0xff000000;
+#endif
+	screen = SDL_CreateRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask);
+	if (screen == NULL) {
 		LOG_E("Error creating video surface: %s\n", SDL_GetError());
+		SDL_VideoQuit();
+		return NULL;
+	}
+
+	texture = SDL_CreateTextureFromSurface(renderer, screen);
+	if (texture == NULL) {
+		LOG_E("Error creating texture: %s\n", SDL_GetError());
 		SDL_VideoQuit();
 		return NULL;
 	}
@@ -47,6 +89,8 @@ window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 	/* Create and fill private data */
 	data = malloc(sizeof(struct sdl_data));
 	data->screen = screen;
+	data->renderer = renderer;
+	data->texture = texture;
 	data->scale = vs->scale;
 	fe->priv_data = data;
 
@@ -56,13 +100,21 @@ window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 void sdl_update(struct video_frontend *fe)
 {
 	struct sdl_data *data = fe->priv_data;
-	SDL_Flip(data->screen);
+	SDL_Surface *screen = data->screen;
+	SDL_Renderer *renderer = data->renderer;
+	SDL_Texture *texture = data->texture;
+
+	SDL_UpdateTexture(texture, NULL, screen->pixels, screen->pitch);
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, texture, NULL, NULL);
+	SDL_RenderPresent(renderer);
 }
 
 void sdl_lock(struct video_frontend *fe)
 {
 	struct sdl_data *data = fe->priv_data;
 	SDL_Surface *screen = data->screen;
+
 	if (SDL_MUSTLOCK(screen) && (SDL_LockSurface(screen) < 0))
 		LOG_W("Couldn't lock surface: %s\n", SDL_GetError());
 }
@@ -179,6 +231,20 @@ void sdl_set_p(struct video_frontend *fe, int x, int y, struct color c)
 
 void sdl_deinit(struct video_frontend *fe)
 {
+	struct sdl_data *data = fe->priv_data;
+	SDL_Surface *screen = data->screen;
+	SDL_Renderer *renderer = data->renderer;
+	SDL_Texture *texture = data->texture;
+
+	SDL_DestroyTexture(texture);
+	texture = NULL;
+
+	SDL_DestroyRenderer(renderer);
+	renderer = NULL;
+
+	SDL_FreeSurface(screen);
+	screen = NULL;
+
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
 	free(fe->priv_data);
 }
@@ -193,4 +259,3 @@ VIDEO_START(sdl)
 	.set_p = sdl_set_p,
 	.deinit = sdl_deinit
 VIDEO_END
-

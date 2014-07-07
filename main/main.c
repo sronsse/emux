@@ -9,7 +9,7 @@
 
 #if (defined(CONFIG_AUDIO_SDL) || defined(CONFIG_VIDEO_SDL)) && \
 	defined(__APPLE__)
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #endif
 
 /* Command-line parameter */

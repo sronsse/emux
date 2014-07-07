@@ -4,8 +4,8 @@ emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
 	$(CACA_CFLAGS) \
 	$(GL_CFLAGS) \
 	$(GLU_CFLAGS) \
-	$(SDL_CFLAGS)
-emux_LDADD = $(CACA_LIBS) $(GL_LIBS) $(GLU_LIBS) $(SDL_LIBS) $(ROXML_LIBS) -lm
+	$(SDL2_CFLAGS)
+emux_LDADD = $(CACA_LIBS) $(GL_LIBS) $(GLU_LIBS) $(SDL2_LIBS) $(ROXML_LIBS) -lm
 emux_SOURCES = include/audio.h \
 	include/bitops.h \
 	include/clock.h \
