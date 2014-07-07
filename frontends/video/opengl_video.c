@@ -5,7 +5,11 @@
 #define NO_SDL_GLEXT
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengl.h>
+#ifdef __APPLE__
+#include <OpenGL/glext.h>
+#else
 #include <GL/glext.h>
+#endif
 #include <log.h>
 #include <video.h>
 
