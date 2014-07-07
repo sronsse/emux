@@ -5,9 +5,14 @@
 #define NO_SDL_GLEXT
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengl.h>
-#include <GL/glext.h>
 #include <log.h>
 #include <video.h>
+
+#ifdef __APPLE__
+#include <OpenGL/glext.h>
+#else
+#include <GL/glext.h>
+#endif
 
 /* Vertex parameters */
 #define NUM_POS_COORDS	2
