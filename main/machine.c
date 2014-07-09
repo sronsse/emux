@@ -26,6 +26,8 @@ static char *machine_name;
 PARAM(machine_name, string, "machine", NULL, "Selects machine to emulate")
 static bool no_sync;
 PARAM(no_sync, bool, "no-sync", NULL, "Disables emulation syncing")
+static unsigned int frames;
+PARAM(frames, int, "frames", NULL, "Sets number of frames to emulate")
 
 struct list_link *machines;
 static struct machine *machine;
@@ -62,7 +64,11 @@ void emscripten_run()
 	while (!video_updated())
 		machine_step();
 
-	/* Quit once user has requested it */
+	/* Stop machine if frame count is reached */
+	if ((frames > 0) && (--frames == 0))
+		machine->running = false;
+
+	/* Quit once user has requested it (or if frame count is reached) */
 	if (!machine->running)
 		quit();
 }
@@ -141,8 +147,14 @@ void machine_run()
 
 #ifndef EMSCRIPTEN
 	/* Run until user quits */
-	while (machine->running)
+	while (machine->running) {
+		/* Tick registered clocks */
 		clock_tick_all(!no_sync);
+
+		/* Stop machine if frame count is reached */
+		if (video_updated() && (frames > 0) && (--frames == 0))
+			machine->running = false;
+	}
 
 	/* Clean up resources */
 	quit();

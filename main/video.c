@@ -70,14 +70,14 @@ bool video_init(struct video_specs *vs)
 
 void video_update()
 {
+	/* Set updated state */
+	updated = true;
+
 	if (!frontend)
 		return;
 
 	if (frontend->update)
 		frontend->update(frontend);
-
-	/* Set updated state */
-	updated = true;
 
 	/* Update input sub-system as well */
 	input_update();
