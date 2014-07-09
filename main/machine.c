@@ -17,6 +17,10 @@
 #include <video.h>
 
 static void machine_event(int id, enum input_type type, input_data_t *data);
+static void quit();
+#ifdef EMSCRIPTEN
+static void emscripten_run();
+#endif
 
 static char *machine_name;
 PARAM(machine_name, string, "machine", NULL, "Selects machine to emulate")
@@ -37,7 +41,10 @@ void machine_event(int UNUSED(id), enum input_type UNUSED(type),
 {
 	/* Request machine to stop running */
 	machine->running = false;
+}
 
+void quit()
+{
 	/* Stop audio processing */
 	audio_stop();
 
@@ -47,6 +54,19 @@ void machine_event(int UNUSED(id), enum input_type UNUSED(type),
 	/* Deinitialize machine */
 	machine_deinit();
 }
+
+#ifdef EMSCRIPTEN
+void emscripten_run()
+{
+	/* Run until screen is updated */
+	while (!video_updated())
+		machine_step();
+
+	/* Quit once user has requested it */
+	if (!machine->running)
+		quit();
+}
+#endif
 
 bool machine_init()
 {
@@ -111,15 +131,6 @@ void machine_reset()
 	LOG_I("Machine reset.\n");
 }
 
-#ifdef EMSCRIPTEN
-void emscripten_run()
-{
-	/* Run until screen is updated */
-	while (!video_updated())
-		machine_step();
-}
-#endif
-
 void machine_run()
 {
 	/* Start audio processing */
@@ -132,6 +143,9 @@ void machine_run()
 	/* Run until user quits */
 	while (machine->running)
 		clock_tick_all(!no_sync);
+
+	/* Clean up resources */
+	quit();
 #else
 	/* Set emscripten loop */
 	emscripten_set_main_loop(emscripten_run, 0, 0);
