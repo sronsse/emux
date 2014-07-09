@@ -121,6 +121,10 @@ $(eval $(call DEFINE_TARGET,nes,nes|bin|rom,\
    ../cpu/rp2a03.o \
    ../mach/nes.o))
 
+# SMS target definition
+$(eval $(call DEFINE_TARGET,sms,sms|bin|rom,\
+   ../mach/sms.o))
+
 all: $(TARGETS)
 
 $(TARGETS): libretro.c $(OBJECTS)

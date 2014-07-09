@@ -38,5 +38,12 @@ config MACH_NES
 	help
 		Enable NES (Nintendo Entertainment System) support
 
+config MACH_SMS
+	bool "sms (Sega Master System)"
+	select MACH
+	default y
+	help
+		Enable SMS (Sega Master System) support
+
 endmenu
 
