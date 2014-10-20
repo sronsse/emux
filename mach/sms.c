@@ -1,17 +1,93 @@
+#include <stdlib.h>
+#include <cmdline.h>
+#include <file.h>
 #include <log.h>
 #include <machine.h>
+#include <memory.h>
+#include <resource.h>
 #include <util.h>
+
+#define BUS_ID		0
+
+/* Memory map */
+#define BIOS_START	0x0000
+#define BIOS_END	0xBFFF
+
+struct sms_data {
+	int bios_size;
+	uint8_t *bios;
+	struct bus bus;
+	struct region bios_region;
+};
 
 static bool sms_init(struct machine *machine);
 static void sms_deinit(struct machine *machine);
+static bool sms_load_bios(struct sms_data *data);
 
-bool sms_init(struct machine *UNUSED(machine))
+/* Command-line parameters */
+static char *bios_path = "bios.sms";
+PARAM(bios_path, string, "bios", "sms", "SMS BIOS path")
+
+/* BIOS area */
+static struct resource bios_area = MEM("bios", BUS_ID, BIOS_START, BIOS_END);
+
+bool sms_load_bios(struct sms_data *data)
 {
+	file_handle_t f;
+
+	/* Open BIOS file, get its size, and close it */
+	f = file_open(PATH_SYSTEM, bios_path, "rb");
+	if (!f) {
+		LOG_E("Could not open BIOS!\n");
+		return false;
+	}
+	data->bios_size = file_get_size(f);
+	file_close(f);
+
+	/* Map BIOS */
+	data->bios = file_map(PATH_SYSTEM,
+		bios_path,
+		0,
+		data->bios_size);
+	if (!data->bios) {
+		LOG_E("Could not map BIOS!\n");
+		return false;
+	}
+
+	/* Add BIOS region */
+	data->bios_region.area = &bios_area;
+	data->bios_region.mops = &rom_mops;
+	data->bios_region.data = data->bios;
+	memory_region_add(&data->bios_region);
 	return true;
 }
 
-void sms_deinit(struct machine *UNUSED(machine))
+bool sms_init(struct machine *machine)
 {
+	struct sms_data *data;
+
+	/* Create machine data structure */
+	data = malloc(sizeof(struct sms_data));
+	machine->priv_data = data;
+
+	/* Add 16-bit memory bus */
+	data->bus.id = BUS_ID;
+	data->bus.width = 16;
+	memory_bus_add(&data->bus);
+
+	/* Load BIOS */
+	if (!sms_load_bios(data)) {
+		free(data);
+		return false;
+	}
+
+	return true;
+}
+
+void sms_deinit(struct machine *machine)
+{
+	struct sms_data *data = machine->priv_data;
+	file_unmap(data->bios, data->bios_size);
 }
 
 MACHINE_START(sms, "Sega Master System")
