@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <cmdline.h>
+#include <cpu.h>
 #include <file.h>
 #include <log.h>
 #include <machine.h>
@@ -7,6 +8,7 @@
 #include <resource.h>
 #include <util.h>
 
+#define SMS_CLOCK_RATE	3579540
 #define BUS_ID		0
 
 /* Memory map */
@@ -27,6 +29,18 @@ static bool sms_load_bios(struct sms_data *data);
 /* Command-line parameters */
 static char *bios_path = "bios.sms";
 PARAM(bios_path, string, "bios", "sms", "SMS BIOS path")
+
+/* Z80A CPU */
+static struct resource cpu_resources[] = {
+	CLK("clk", SMS_CLOCK_RATE)
+};
+
+static struct cpu_instance cpu_instance = {
+	.cpu_name = "z80",
+	.bus_id = BUS_ID,
+	.resources = cpu_resources,
+	.num_resources = ARRAY_SIZE(cpu_resources)
+};
 
 /* BIOS area */
 static struct resource bios_area = MEM("bios", BUS_ID, BIOS_START, BIOS_END);
@@ -77,6 +91,13 @@ bool sms_init(struct machine *machine)
 
 	/* Load BIOS */
 	if (!sms_load_bios(data)) {
+		free(data);
+		return false;
+	}
+
+	/* Add CPU */
+	if (!cpu_add(&cpu_instance)) {
+		file_unmap(data->bios, data->bios_size);
 		free(data);
 		return false;
 	}

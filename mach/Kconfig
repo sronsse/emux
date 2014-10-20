@@ -41,6 +41,7 @@ config MACH_NES
 config MACH_SMS
 	bool "sms (Sega Master System)"
 	select MACH
+	select CPU_Z80
 	default y
 	help
 		Enable SMS (Sega Master System) support
