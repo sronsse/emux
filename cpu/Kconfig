@@ -18,5 +18,11 @@ config CPU_RP2A03
 	help
 		Enable RP2A03 CPU
 
+config CPU_Z80
+	bool "Z80"
+	default y
+	help
+		Enable Z80 CPU
+
 endmenu
 
