@@ -19,6 +19,7 @@ emux_SOURCES = include/audio.h \
 	include/log.h \
 	include/machine.h \
 	include/memory.h \
+	include/port.h \
 	include/resource.h \
 	include/util.h \
 	include/video.h \
@@ -36,6 +37,7 @@ emux_SOURCES = include/audio.h \
 	main/machine.c \
 	main/main.c \
 	main/memory.c \
+	main/port.c \
 	main/resource.c \
 	main/video.c
 EXTRA_DIST = Kconfig \

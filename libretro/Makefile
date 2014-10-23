@@ -79,6 +79,7 @@ COMMON_OBJS := ../frontends/audio/retro_audio.o \
    ../main/list.o \
    ../main/machine.o \
    ../main/memory.o \
+   ../main/port.o \
    ../main/resource.o \
    ../main/video.o
 

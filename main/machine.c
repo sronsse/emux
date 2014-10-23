@@ -13,6 +13,7 @@
 #include <log.h>
 #include <machine.h>
 #include <memory.h>
+#include <port.h>
 #include <util.h>
 #include <video.h>
 
@@ -104,6 +105,7 @@ bool machine_init()
 		cpu_remove_all();
 		controller_remove_all();
 		memory_bus_remove_all();
+		port_region_remove_all();
 
 		/* Print machine-specific options */
 		cmdline_print_module_options(machine_name);
@@ -176,6 +178,7 @@ void machine_deinit()
 	cpu_remove_all();
 	controller_remove_all();
 	memory_bus_remove_all();
+	port_region_remove_all();
 	if (machine && machine->deinit)
 		machine->deinit(machine);
 }

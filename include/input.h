@@ -283,7 +283,7 @@
 #define INDEX_MASK	0xFF
 #define ID_SHIFT	0
 #define ID_MASK		0xFFFF
-#define PORT(port)	((port & PORT_MASK) << PORT_SHIFT)
+#define PRT(port)	((port & PORT_MASK) << PORT_SHIFT)
 #define INDEX(index)	((index & INDEX_MASK) << INDEX_SHIFT)
 #define ID(id)		((id & & ID_MASK) << ID_SHIFT)
 
