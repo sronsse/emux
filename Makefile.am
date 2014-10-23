@@ -156,6 +156,9 @@ endif
 if CONFIG_CONTROLLER_VIDEO_PPU
 emux_SOURCES += controllers/video/ppu.c
 endif
+if CONFIG_CONTROLLER_VIDEO_VDP
+emux_SOURCES += controllers/video/vdp.c
+endif
 
 libretro:
 	make -C $(srcdir)/libretro/
