@@ -14,15 +14,24 @@
 /* Bus definitions */
 #define BUS_ID		0
 
+/* Memory sizes */
+#define RAM_SIZE	0x2000
+
 /* Memory map */
 #define BIOS_START	0x0000
 #define BIOS_END	0xBFFF
+#define RAM_START	0xC000
+#define RAM_END		0xDFFF
+#define ECHO_START	0xE000
+#define ECHO_END	0xFFF7
 
 struct sms_data {
 	int bios_size;
 	uint8_t *bios;
+	uint8_t ram[RAM_SIZE];
 	struct bus bus;
 	struct region bios_region;
+	struct region ram_region;
 };
 
 static bool sms_init(struct machine *machine);
@@ -48,6 +57,11 @@ static struct cpu_instance cpu_instance = {
 /* BIOS area */
 static struct resource bios_area =
 	MEM("bios", BUS_ID, BIOS_START, BIOS_END);
+
+/* RAM area */
+static struct resource ram_mirror = MEM("echo", BUS_ID, ECHO_START, ECHO_END);
+static struct resource ram_area =
+	MEMX("ram", BUS_ID, RAM_START, RAM_END, &ram_mirror, 1);
 
 bool sms_load_bios(struct sms_data *data)
 {
@@ -98,6 +112,12 @@ bool sms_init(struct machine *machine)
 		free(data);
 		return false;
 	}
+
+	/* Add RAM region */
+	data->ram_region.area = &ram_area;
+	data->ram_region.mops = &ram_mops;
+	data->ram_region.data = data->ram;
+	memory_region_add(&data->ram_region);
 
 	/* Add CPU */
 	if (!cpu_add(&cpu_instance)) {
