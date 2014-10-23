@@ -18,6 +18,20 @@
 #define MEM(_name, _bus_id, _start, _end) \
 	MEMX(_name, _bus_id, _start, _end, NULL, 0)
 
+#define PORTX(_name, _start, _end, _children, _num_children) \
+	{ \
+		.name = _name, \
+		.data.port = { \
+			.start = _start, \
+			.end = _end \
+		}, \
+		.type = RESOURCE_PORT, \
+		.children = _children, \
+		.num_children = _num_children \
+	}
+#define PORT(_name, _start, _end) \
+	PORTX(_name, _start, _end, NULL, 0)
+
 #define IRQ(_name, _irq) \
 	{ \
 		.name = _name, \
@@ -34,6 +48,7 @@
 
 enum resource_type {
 	RESOURCE_MEM,
+	RESOURCE_PORT,
 	RESOURCE_IRQ,
 	RESOURCE_CLK
 };
@@ -46,6 +61,10 @@ struct resource {
 			uint16_t start;
 			uint16_t end;
 		} mem;
+		struct {
+			uint8_t start;
+			uint8_t end;
+		} port;
 		int irq;
 		uint64_t clk;
 	} data;
