@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <cmdline.h>
+#include <controller.h>
 #include <cpu.h>
 #include <file.h>
 #include <log.h>
@@ -18,12 +19,18 @@
 #define RAM_SIZE	0x2000
 
 /* Memory map */
-#define BIOS_START	0x0000
-#define BIOS_END	0xBFFF
-#define RAM_START	0xC000
-#define RAM_END		0xDFFF
-#define ECHO_START	0xE000
-#define ECHO_END	0xFFF7
+#define BIOS_START		0x0000
+#define BIOS_END		0xBFFF
+#define RAM_START		0xC000
+#define RAM_END			0xDFFF
+#define ECHO_START		0xE000
+#define ECHO_END		0xFFF7
+
+/* Port map */
+#define VDP_PORT_START		0xBE
+#define VDP_PORT_END		0xBF
+#define VDP_PORT_MIRROR_START	0x80
+#define VDP_PORT_MIRROR_END	0xBD
 
 struct sms_data {
 	int bios_size;
@@ -52,6 +59,19 @@ static struct cpu_instance cpu_instance = {
 	.bus_id = BUS_ID,
 	.resources = cpu_resources,
 	.num_resources = ARRAY_SIZE(cpu_resources)
+};
+
+/* VDP controller */
+static struct resource vdp_mirror =
+	PORT("port_mirror", VDP_PORT_MIRROR_START, VDP_PORT_MIRROR_END);
+
+static struct resource vdp_port =
+	PORTX("port", VDP_PORT_START, VDP_PORT_END, &vdp_mirror, 1);
+
+static struct controller_instance vdp_instance = {
+	.controller_name = "vdp",
+	.resources = &vdp_port,
+	.num_resources = 1
 };
 
 /* BIOS area */
@@ -119,8 +139,8 @@ bool sms_init(struct machine *machine)
 	data->ram_region.data = data->ram;
 	memory_region_add(&data->ram_region);
 
-	/* Add CPU */
-	if (!cpu_add(&cpu_instance)) {
+	/* Add controllers and CPU */
+	if (!controller_add(&vdp_instance) || !cpu_add(&cpu_instance)) {
 		file_unmap(data->bios, data->bios_size);
 		free(data);
 		return false;

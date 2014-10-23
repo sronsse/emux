@@ -124,6 +124,7 @@ $(eval $(call DEFINE_TARGET,nes,nes|bin|rom,\
 
 # SMS target definition
 $(eval $(call DEFINE_TARGET,sms,sms|bin|rom,\
+   ../controllers/video/vdp.o \
    ../cpu/z80.o \
    ../mach/sms.o))
 

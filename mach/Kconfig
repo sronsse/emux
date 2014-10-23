@@ -42,6 +42,7 @@ config MACH_SMS
 	bool "sms (Sega Master System)"
 	select MACH
 	select CPU_Z80
+	select CONTROLLER_VIDEO_VDP
 	default y
 	help
 		Enable SMS (Sega Master System) support
