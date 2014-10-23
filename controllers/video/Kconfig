@@ -12,5 +12,11 @@ config CONTROLLER_VIDEO_PPU
 	help
 		Enable NES PPU (Picture Processing Unit)
 
+config CONTROLLER_VIDEO_VDP
+	bool "SMS VDP"
+	default y
+	help
+		Enable SMS VDP (Video Display Processor)
+
 endmenu
 
