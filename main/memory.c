@@ -72,9 +72,12 @@ struct bus *get_bus(int bus_id)
 	struct bus *bus;
 
 	/* Find bus with match bus ID */
-	while ((bus = list_get_next(&bus_link)))
+	while (bus_link) {
+		bus = bus_link->data;
 		if (bus->id == bus_id)
 			return bus;
+		bus_link = bus_link->next;
+	}
 
 	/* No bus was found */
 	return NULL;
@@ -267,9 +270,15 @@ uint8_t memory_readb(int bus_id, address_t address)
 		return 0;
 	}
 
-	/* Get region */
+	/* Get map */
 	map = bus->readb_map[address];
-	region = list_get_next(&map);
+	if (!map) {
+		LOG_W("Map not found (readb %u, %04x)!\n", bus_id, address);
+		return 0;
+	}
+
+	/* Get region */
+	region = map->data;
 	if (!region) {
 		LOG_W("Region not found (readb %u, %04x)!\n", bus_id, address);
 		return 0;
@@ -298,9 +307,15 @@ uint16_t memory_readw(int bus_id, address_t address)
 		return 0;
 	}
 
-	/* Get region */
+	/* Get map */
 	map = bus->readw_map[address];
-	region = list_get_next(&map);
+	if (!map) {
+		LOG_W("Map not found (readw %u, %04x)!\n", bus_id, address);
+		return 0;
+	}
+
+	/* Get region */
+	region = map->data;
 	if (!region) {
 		LOG_W("Region not found (readw %u, %04x)!\n", bus_id, address);
 		return 0;
@@ -329,9 +344,15 @@ void memory_writeb(int bus_id, uint8_t b, address_t address)
 		return;
 	}
 
-	/* Get region */
+	/* Get map */
 	map = bus->writeb_map[address];
-	region = list_get_next(&map);
+	if (!map) {
+		LOG_W("Map not found (writeb %u, %04x)!\n", bus_id, address);
+		return;
+	}
+
+	/* Get region */
+	region = map->data;
 	if (!region) {
 		LOG_W("Region not found (writeb %u, %04x)!\n", bus_id, address);
 		return;
@@ -360,9 +381,15 @@ void memory_writew(int bus_id, uint16_t w, address_t address)
 		return;
 	}
 
-	/* Get region */
+	/* Get map */
 	map = bus->writew_map[address];
-	region = list_get_next(&map);
+	if (!map) {
+		LOG_W("Map not found (writew %u, %04x)!\n", bus_id, address);
+		return;
+	}
+
+	/* Get region */
+	region = map->data;
 	if (!region) {
 		LOG_W("Region not found (writew %u, %04x)!\n", bus_id, address);
 		return;
