@@ -18,7 +18,6 @@
 
 #define WRAM_SIZE			KB(2)
 #define VRAM_SIZE			KB(2)
-#define PALETTE_SIZE			32
 
 /* CPU memory map */
 #define WRAM_START			0x0000
@@ -62,17 +61,13 @@ enum {
 struct nes_data {
 	uint8_t wram[WRAM_SIZE];
 	uint8_t vram[VRAM_SIZE];
-	uint8_t palette[PALETTE_SIZE];
 	struct bus cpu_bus;
 	struct bus ppu_bus;
 	struct region wram_region;
-	struct region palette_region;
 };
 
 static bool nes_init();
 static void nes_deinit();
-static uint8_t palette_readb(uint8_t *ram, address_t address);
-static void palette_writeb(uint8_t *ram, uint8_t b, address_t address);
 
 /* WRAM area */
 static struct resource wram_mirror =
@@ -80,18 +75,6 @@ static struct resource wram_mirror =
 
 static struct resource wram_area =
 	MEMX("mem", CPU_BUS_ID, WRAM_START, WRAM_END, &wram_mirror, 1);
-
-/* Palette area */
-static struct resource palette_mirror =
-	MEM("mem_mirror", PPU_BUS_ID, PALETTE_MIRROR_START, PALETTE_MIRROR_END);
-
-static struct resource palette_area =
-	MEMX("mem", PPU_BUS_ID, PALETTE_START, PALETTE_END, &palette_mirror, 1);
-
-static struct mops palette_mops = {
-	.readb = (readb_t)palette_readb,
-	.writeb = (writeb_t)palette_writeb
-};
 
 /* RP2A03 CPU */
 static struct resource rp2a03_resources[] = {
@@ -152,8 +135,12 @@ static struct controller_instance nes_mapper_instance = {
 static struct resource ppu_mirror =
 	MEM("mem_mirror", CPU_BUS_ID, PPU_MIRROR_START, PPU_MIRROR_END);
 
+static struct resource palette_mirror =
+	MEM("pal_mirror", PPU_BUS_ID, PALETTE_MIRROR_START, PALETTE_MIRROR_END);
+
 static struct resource ppu_resources[] = {
 	MEMX("mem", CPU_BUS_ID, PPU_START, PPU_END, &ppu_mirror, 1),
+	MEMX("pal", PPU_BUS_ID, PALETTE_START, PALETTE_END, &palette_mirror, 1),
 	IRQ("irq", NMI_IRQ),
 	CLK("clk", PPU_CLOCK_RATE)
 };
@@ -164,44 +151,6 @@ static struct controller_instance ppu_instance = {
 	.resources = ppu_resources,
 	.num_resources = ARRAY_SIZE(ppu_resources)
 };
-
-uint8_t palette_readb(uint8_t *ram, address_t address)
-{
-	/* Addresses 0x3F10, 0x3F14, 0x3F18, 0x3F1C are mirrors of
-	0x3F00, 0x3F04, 0x3F08, 0x3F0C */
-	switch (address) {
-	case 0x10:
-	case 0x14:
-	case 0x18:
-	case 0x1C:
-		address -= 0x10;
-		break;
-	default:
-		break;
-	}
-
-	/* Read palette entry */
-	return ram[address];
-}
-
-void palette_writeb(uint8_t *ram, uint8_t b, address_t address)
-{
-	/* Addresses 0x3F10, 0x3F14, 0x3F18, 0x3F1C are mirrors of
-	0x3F00, 0x3F04, 0x3F08, 0x3F0C */
-	switch (address) {
-	case 0x10:
-	case 0x14:
-	case 0x18:
-	case 0x1C:
-		address -= 0x10;
-		break;
-	default:
-		break;
-	}
-
-	/* Read palette entry */
-	ram[address] = b;
-}
 
 bool nes_init(struct machine *machine)
 {
@@ -228,12 +177,6 @@ bool nes_init(struct machine *machine)
 	nes_data->wram_region.mops = &ram_mops;
 	nes_data->wram_region.data = nes_data->wram;
 	memory_region_add(&nes_data->wram_region);
-
-	/* Add palette region */
-	nes_data->palette_region.area = &palette_area;
-	nes_data->palette_region.mops = &palette_mops;
-	nes_data->palette_region.data = nes_data->palette;
-	memory_region_add(&nes_data->palette_region);
 
 	/* NES cart controls VRAM address lines so let the mapper handle it */
 	nes_mapper_mach_data.vram = nes_data->vram;

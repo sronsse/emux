@@ -29,6 +29,7 @@
 #define NUM_SCANLINES		262
 #define OAM_SIZE		256
 #define SEC_OAM_SIZE		32
+#define PALETTE_SIZE		32
 #define TILE_WIDTH		8
 #define TILE_HEIGHT		8
 #define PATTERN_TABLE_0_START	0x0000
@@ -200,9 +201,11 @@ struct ppu {
 	struct clock clock;
 	uint8_t oam[OAM_SIZE];
 	uint8_t sec_oam[SEC_OAM_SIZE];
+	uint8_t palette[PALETTE_SIZE];
 	int bus_id;
 	int irq;
 	struct region region;
+	struct region palette_region;
 };
 
 typedef void (*ppu_event_t)(struct ppu *ppu);
@@ -213,6 +216,8 @@ static void ppu_deinit(struct controller_instance *instance);
 static void ppu_tick(struct ppu *ppu);
 static void ppu_update_counters(struct ppu *ppu);
 static void ppu_set_events(struct ppu *ppu);
+static uint8_t palette_readb(uint8_t *ram, address_t address);
+static void palette_writeb(uint8_t *ram, uint8_t b, address_t address);
 static uint8_t ppu_readb(struct ppu *ppu, address_t address);
 static void ppu_writeb(struct ppu *ppu, uint8_t b, address_t address);
 static void ppu_output(struct ppu *ppu);
@@ -232,6 +237,11 @@ static void ppu_loopy_set_vert_v(struct ppu *ppu);
 static void ppu_sec_oam_clear(struct ppu *ppu);
 static void ppu_sprite_eval(struct ppu *ppu);
 static void ppu_fetch_sprite(struct ppu *ppu);
+
+static struct mops palette_mops = {
+	.readb = (readb_t)palette_readb,
+	.writeb = (writeb_t)palette_writeb
+};
 
 static struct mops ppu_mops = {
 	.readb = (readb_t)ppu_readb,
@@ -300,6 +310,44 @@ static struct color ppu_palette[NUM_LUMA_VALUES][NUM_CHROMA_VALUES] = {
 		{ 0x11, 0x11, 0x11 }, { 0x11, 0x11, 0x11 }
 	}
 };
+
+uint8_t palette_readb(uint8_t *ram, address_t address)
+{
+	/* Addresses 0x3F10, 0x3F14, 0x3F18, 0x3F1C are mirrors of
+	0x3F00, 0x3F04, 0x3F08, 0x3F0C */
+	switch (address) {
+	case 0x10:
+	case 0x14:
+	case 0x18:
+	case 0x1C:
+		address -= 0x10;
+		break;
+	default:
+		break;
+	}
+
+	/* Read palette entry */
+	return ram[address];
+}
+
+void palette_writeb(uint8_t *ram, uint8_t b, address_t address)
+{
+	/* Addresses 0x3F10, 0x3F14, 0x3F18, 0x3F1C are mirrors of
+	0x3F00, 0x3F04, 0x3F08, 0x3F0C */
+	switch (address) {
+	case 0x10:
+	case 0x14:
+	case 0x18:
+	case 0x1C:
+		address -= 0x10;
+		break;
+	default:
+		break;
+	}
+
+	/* Read palette entry */
+	ram[address] = b;
+}
 
 uint8_t ppu_readb(struct ppu *ppu, address_t address)
 {
@@ -1034,6 +1082,16 @@ bool ppu_init(struct controller_instance *instance)
 	ppu->region.mops = &ppu_mops;
 	ppu->region.data = ppu;
 	memory_region_add(&ppu->region);
+
+	/* Add palette region */
+	res = resource_get("pal",
+		RESOURCE_MEM,
+		instance->resources,
+		instance->num_resources);
+	ppu->palette_region.area = res;
+	ppu->palette_region.mops = &palette_mops;
+	ppu->palette_region.data = ppu->palette;
+	memory_region_add(&ppu->palette_region);
 
 	/* Save bus ID for later use */
 	ppu->bus_id = instance->bus_id;
