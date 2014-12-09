@@ -8,7 +8,10 @@
 #include <resource.h>
 #include <util.h>
 
+/* Clock frequencies */
 #define SMS_CLOCK_RATE	3579540
+
+/* Bus definitions */
 #define BUS_ID		0
 
 /* Memory map */
@@ -43,7 +46,8 @@ static struct cpu_instance cpu_instance = {
 };
 
 /* BIOS area */
-static struct resource bios_area = MEM("bios", BUS_ID, BIOS_START, BIOS_END);
+static struct resource bios_area =
+	MEM("bios", BUS_ID, BIOS_START, BIOS_END);
 
 bool sms_load_bios(struct sms_data *data)
 {

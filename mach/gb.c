@@ -11,59 +11,63 @@
 #include <util.h>
 #include <controllers/mapper/gb_mapper.h>
 
+/* Clock frequencies */
 #define GB_CLOCK_RATE		4194304
 #define SOUND_CLOCK_RATE	GB_CLOCK_RATE
 #define SERIAL_CLOCK_RATE	(GB_CLOCK_RATE / 512)
 #define DIV_CLOCK_RATE		(GB_CLOCK_RATE / 256)
 #define TIMA_CLOCK_RATE		GB_CLOCK_RATE
 
-#define VRAM_SIZE	KB(8)
-#define WRAM_SIZE	KB(8)
-#define HRAM_SIZE	127
-#define OAM_SIZE	160
-#define WAVE_SIZE	16
+/* Interrupt definitions */
+#define VBLANK_IRQ		0
+#define LCDC_IRQ		1
+#define TIMER_IRQ		2
+#define SERIAL_IRQ		3
+#define JOYPAD_IRQ		4
+
+/* Bus definitions */
+#define BUS_ID			0
+
+/* Memory sizes */
+#define VRAM_SIZE		KB(8)
+#define WRAM_SIZE		KB(8)
+#define HRAM_SIZE		127
+#define OAM_SIZE		160
+#define WAVE_SIZE		16
 
 /* Memory map */
-#define BOOTROM_START	0x0000
-#define BOOTROM_END	0x00FF
-#define ROM0_START	0x0000
-#define ROM0_END	0x3FFF
-#define ROM1_START	0x4000
-#define ROM1_END	0x7FFF
-#define VRAM_START	0x8000
-#define VRAM_END	0x9FFF
-#define EXTRAM_START	0xA000
-#define EXTRAM_END	0xBFFF
-#define WRAM_START	0xC000
-#define WRAM_END	0xDFFF
-#define ECHO_START	0xE000
-#define ECHO_END	0xFDFF
-#define OAM_START	0xFE00
-#define OAM_END		0xFE9F
-#define JOYPAD		0xFF00
-#define SERIAL_START	0xFF01
-#define SERIAL_END	0xFF02
-#define TIMER_START	0xFF04
-#define TIMER_END	0xFF07
-#define IFR		0xFF0F
-#define SOUND_START	0xFF10
-#define SOUND_END	0xFF26
-#define WAVE_START	0xFF30
-#define WAVE_END	0xFF3F
-#define LCDC_START	0xFF40
-#define LCDC_END	0xFF4B
-#define BOOT_LOCK	0xFF50
-#define HRAM_START	0xFF80
-#define HRAM_END	0xFFFE
-#define IER		0xFFFF
-
-#define BUS_ID		0
-
-#define VBLANK_IRQ	0
-#define LCDC_IRQ	1
-#define TIMER_IRQ	2
-#define SERIAL_IRQ	3
-#define JOYPAD_IRQ	4
+#define BOOTROM_START		0x0000
+#define BOOTROM_END		0x00FF
+#define ROM0_START		0x0000
+#define ROM0_END		0x3FFF
+#define ROM1_START		0x4000
+#define ROM1_END		0x7FFF
+#define VRAM_START		0x8000
+#define VRAM_END		0x9FFF
+#define EXTRAM_START		0xA000
+#define EXTRAM_END		0xBFFF
+#define WRAM_START		0xC000
+#define WRAM_END		0xDFFF
+#define ECHO_START		0xE000
+#define ECHO_END		0xFDFF
+#define OAM_START		0xFE00
+#define OAM_END			0xFE9F
+#define JOYPAD			0xFF00
+#define SERIAL_START		0xFF01
+#define SERIAL_END		0xFF02
+#define TIMER_START		0xFF04
+#define TIMER_END		0xFF07
+#define IFR			0xFF0F
+#define SOUND_START		0xFF10
+#define SOUND_END		0xFF26
+#define WAVE_START		0xFF30
+#define WAVE_END		0xFF3F
+#define LCDC_START		0xFF40
+#define LCDC_END		0xFF4B
+#define BOOT_LOCK		0xFF50
+#define HRAM_START		0xFF80
+#define HRAM_END		0xFFFE
+#define IER			0xFFFF
 
 struct gb_data {
 	uint8_t vram[VRAM_SIZE];
@@ -87,22 +91,27 @@ static char *bootrom_path = "DMG_ROM.bin";
 PARAM(bootrom_path, string, "bootrom", "gb", "GameBoy boot ROM path")
 
 /* VRAM area */
-static struct resource vram_area = MEM("vram", BUS_ID, VRAM_START, VRAM_END);
+static struct resource vram_area =
+	MEM("vram", BUS_ID, VRAM_START, VRAM_END);
 
 /* WRAM area */
-static struct resource wram_mirror = MEM("echo", BUS_ID, ECHO_START, ECHO_END);
+static struct resource wram_mirror =
+	MEM("echo", BUS_ID, ECHO_START, ECHO_END);
 
 static struct resource wram_area =
 	MEMX("wram", BUS_ID, WRAM_START, WRAM_END, &wram_mirror, 1);
 
 /* HRAM area */
-static struct resource hram_area = MEM("hram", BUS_ID, HRAM_START, HRAM_END);
+static struct resource hram_area =
+	MEM("hram", BUS_ID, HRAM_START, HRAM_END);
 
 /* OAM area */
-static struct resource oam_area = MEM("oam", BUS_ID, OAM_START, OAM_END);
+static struct resource oam_area =
+	MEM("oam", BUS_ID, OAM_START, OAM_END);
 
 /* Wave RAM area */
-static struct resource wave_area = MEM("wave", BUS_ID, WAVE_START, WAVE_END);
+static struct resource wave_area =
+	MEM("wave", BUS_ID, WAVE_START, WAVE_END);
 
 /* LR35902 CPU */
 static struct resource cpu_resources[] = {

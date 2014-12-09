@@ -12,51 +12,53 @@
 #include <util.h>
 #include <controllers/mapper/nes_mapper.h>
 
-#define MASTER_CLOCK_RATE		21477264
-#define CPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 12)
-#define PPU_CLOCK_RATE			(MASTER_CLOCK_RATE / 4)
+/* Clock frequencies */
+#define MASTER_CLOCK_RATE	21477264
+#define CPU_CLOCK_RATE		(MASTER_CLOCK_RATE / 12)
+#define PPU_CLOCK_RATE		(MASTER_CLOCK_RATE / 4)
 
-#define WRAM_SIZE			KB(2)
-#define VRAM_SIZE			KB(2)
+/* Interrupt definitions */
+#define NMI_IRQ			0
+
+/* Bus definitions */
+#define CPU_BUS_ID		0
+#define PPU_BUS_ID		1
+
+/* Memory sizes */
+#define WRAM_SIZE		KB(2)
+#define VRAM_SIZE		KB(2)
 
 /* CPU memory map */
-#define WRAM_START			0x0000
-#define WRAM_END			0x07FF
-#define WRAM_MIRROR_START		0x0800
-#define WRAM_MIRROR_END			0x1FFF
-#define PPU_START			0x2000
-#define PPU_END				0x2007
-#define PPU_MIRROR_START		0x2008
-#define PPU_MIRROR_END			0x3FFF
-#define SPRITE_DMA_START		0x4014
-#define SPRITE_DMA_END			0x4014
-#define CTRL_START			0x4016
-#define CTRL_END			0x4017
-#define EXPANSION_START			0x4018
-#define EXPANSION_END			0x5FFF
-#define SRAM_START			0x6000
-#define SRAM_END			0x7FFF
-#define PRG_ROM_START			0x8000
-#define PRG_ROM_END			0xFFFF
+#define WRAM_START		0x0000
+#define WRAM_END		0x07FF
+#define WRAM_MIRROR_START	0x0800
+#define WRAM_MIRROR_END		0x1FFF
+#define PPU_START		0x2000
+#define PPU_END			0x2007
+#define PPU_MIRROR_START	0x2008
+#define PPU_MIRROR_END		0x3FFF
+#define SPRITE_DMA_START	0x4014
+#define SPRITE_DMA_END		0x4014
+#define CTRL_START		0x4016
+#define CTRL_END		0x4017
+#define EXPANSION_START		0x4018
+#define EXPANSION_END		0x5FFF
+#define SRAM_START		0x6000
+#define SRAM_END		0x7FFF
+#define PRG_ROM_START		0x8000
+#define PRG_ROM_END		0xFFFF
 
 /* PPU memory map */
-#define CHR_START			0x0000
-#define CHR_END				0x1FFF
-#define VRAM_START			0x2000
-#define VRAM_END			0x2FFF
-#define VRAM_MIRROR_START		0x3000
-#define VRAM_MIRROR_END			0x3EFF
-#define PALETTE_START			0x3F00
-#define PALETTE_END			0x3F1F
-#define PALETTE_MIRROR_START		0x3F20
-#define PALETTE_MIRROR_END		0x3FFF
-
-#define NMI_IRQ				0
-
-enum {
-	CPU_BUS_ID,
-	PPU_BUS_ID
-};
+#define CHR_START		0x0000
+#define CHR_END			0x1FFF
+#define VRAM_START		0x2000
+#define VRAM_END		0x2FFF
+#define VRAM_MIRROR_START	0x3000
+#define VRAM_MIRROR_END		0x3EFF
+#define PALETTE_START		0x3F00
+#define PALETTE_END		0x3F1F
+#define PALETTE_MIRROR_START	0x3F20
+#define PALETTE_MIRROR_END	0x3FFF
 
 struct nes_data {
 	uint8_t wram[WRAM_SIZE];

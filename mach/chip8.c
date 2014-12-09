@@ -8,8 +8,13 @@
 #include <memory.h>
 #include <util.h>
 
+/* Bus definitions */
 #define CPU_BUS_ID	0
+
+/* Memory sizes */
 #define RAM_SIZE	4096
+
+/* Memory map */
 #define RAM_START	0x0000
 #define RAM_END		0x0FFF
 #define ROM_ADDRESS	0x0200
