@@ -30,8 +30,17 @@ else ifeq ($(platform), ios)
    EXTENSION := libretro_ios.dylib
    fpic := -fPIC
    SHARED := -dynamiclib
+   ifeq ($(IOSSDK),)
+      IOSSDK := $(shell xcrun -sdk iphoneos -show-sdk-path)
+   endif
    DEFINES := -DIOS
    CC = clang -arch armv7 -isysroot $(IOSSDK)
+   OSXVER = `sw_vers -productVersion | cut -d. -f 2`
+   OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
+   ifeq ($(OSX_LT_MAVERICKS),"YES")
+      CC += -miphoneos-version-min=5.0
+      CFLAGS += -miphoneos-version-min=5.0
+   endif
 else ifeq ($(platform), qnx)
    EXTENSION := libretro_qnx.so
    fpic := -fPIC
