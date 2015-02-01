@@ -71,6 +71,13 @@ else
 override CFLAGS += -std=gnu99
 endif
 
+ifeq ($(platform), osx)
+ifndef ($(NOUNIVERSAL))
+override CFLAGS += $(ARCHFLAGS)
+override SHARED += $(ARCHFLAGS)
+endif
+endif
+
 # Object files used in all implementations
 COMMON_OBJS := ../frontends/audio/retro_audio.o \
    ../frontends/input/retro_input.o \
