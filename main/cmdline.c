@@ -305,7 +305,7 @@ void cmdline_print_usage(bool error)
 
 	/* Display project related info */
 	fprintf(stream, "Report bugs to: sronsse@gmail.com\n");
-	fprintf(stream, "Project page: <http://emux.googlecode.com>\n");
+	fprintf(stream, "Project page: <https://github.com/sronsse/emux>\n");
 }
 
 void cmdline_print_module_options(char *module)
