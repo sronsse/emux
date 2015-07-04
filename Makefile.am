@@ -64,7 +64,8 @@ EXTRA_DIST = Kconfig \
 	mach/configs/all_defconfig \
 	mach/configs/chip8_defconfig \
 	mach/configs/gb_defconfig \
-	mach/configs/nes_defconfig
+	mach/configs/nes_defconfig \
+	mach/configs/sms_defconfig
 
 # Machines
 if CONFIG_MACH_CHIP8
