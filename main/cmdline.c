@@ -15,6 +15,12 @@
 #define STR(macro)	QUOTE(macro)
 #define OPTION_DELIM	" "
 
+#ifdef CONFIG_CMDLINE
+#define DEF_CMDLINE	STR(CONFIG_CMDLINE)
+#else
+#define DEF_CMDLINE	""
+#endif
+
 struct cmdline {
 	int argc;
 	char **argv;
@@ -31,7 +37,7 @@ static bool cmdline_parse_string(char *long_name, char **string);
 struct param **params;
 static int num_params;
 static struct cmdline cmdline;
-static char def_cmdline[] = STR(CONFIG_CMDLINE);
+static char def_cmdline[] = DEF_CMDLINE;
 
 int param_sort_compare(const void *a, const void *b)
 {
