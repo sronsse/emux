@@ -106,9 +106,6 @@ bool machine_init()
 		controller_remove_all();
 		memory_bus_remove_all();
 		port_region_remove_all();
-
-		/* Print machine-specific options */
-		cmdline_print_module_options(machine_name);
 		return false;
 	}
 
