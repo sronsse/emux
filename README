@@ -117,9 +117,8 @@ RUNNING EMUX
   audio, and use the default window size, the command would be:
     emux --machine=chip8 --video=caca --audio=sdl INVADERS
 
-  Certain machines have a subset of options which can be displayed by executing
-  emux --machine=MACH where MACH is the machine name. Example:
-    emux --machine=gb
+  Certain machines also have a subset of options. These are displayed below the
+  main ones described above.
 
   Note: when configuring the project, you may also specify a default command
   line, with the option of replacing, extending, or forcing it.

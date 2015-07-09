@@ -28,7 +28,8 @@ struct cmdline {
 
 static void cmdline_build(int argc, char *argv[], int defc, char *defv[]);
 static int param_sort_compare(const void *a, const void *b);
-int param_bsearch_compare(const void *key, const void *elem);
+static void cmdline_print_module_options(char *module, bool error);
+static void cmdline_print_option(struct param *p, bool error);
 static bool cmdline_parse_arg(char *long_name, bool has_arg, char **arg);
 static bool cmdline_parse_bool(char *long_name, bool *arg);
 static bool cmdline_parse_int(char *long_name, int *arg);
@@ -66,19 +67,6 @@ int param_sort_compare(const void *a, const void *b)
 
 	/* Sort by parameter name */
 	return strcmp(p1->name, p2->name);
-}
-
-int param_bsearch_compare(const void *key, const void *elem)
-{
-	char *module = (char *)key;
-	struct param *p = *(struct param **)elem;
-
-	/* Checked for global options first */
-	if (!p->module)
-		return 1;
-	
-	/* Check for module name next */
-	return strcmp(module, p->module);
 }
 
 void cmdline_register_param(struct param *param)
@@ -255,9 +243,9 @@ void cmdline_print_usage(bool error)
 	struct machine *m;
 	struct audio_frontend *af;
 	struct video_frontend *vf;
-	char str[20];
 	int i;
 
+	fprintf(stream, "\n");
 	fprintf(stream, "Usage: emux [OPTION]... path\n");
 	fprintf(stream, "Emulates various machines (consoles, arcades).\n");
 
@@ -276,15 +264,8 @@ void cmdline_print_usage(bool error)
 		if (p->module)
 			break;
 
-		/* Print argument name and type (not applicable to booleans) */
-		if (!strcmp(p->type, "bool"))
-			snprintf(str, 20, "%s", p->name);
-		else
-			snprintf(str, 20, "%s=%s", p->name, p->type);
-		fprintf(stream, "  --%-20s", str);
-
-		/* Print description */
-		fprintf(stream, "%s\n", p->desc);
+		/* Print single option */
+		cmdline_print_option(p, error);
 	}
 	fprintf(stream, "\n");
 
@@ -309,33 +290,60 @@ void cmdline_print_usage(bool error)
 		fprintf(stream, "  %s\n", vf->name);
 	fprintf(stream, "\n");
 
+	/* Print machine-specific options */
+	link = machines;
+	while ((m = list_get_next(&link)))
+		cmdline_print_module_options(m->name, error);
+
 	/* Display project related info */
 	fprintf(stream, "Report bugs to: sronsse@gmail.com\n");
 	fprintf(stream, "Project page: <https://github.com/sronsse/emux>\n");
 }
 
-void cmdline_print_module_options(char *module)
+void cmdline_print_module_options(char *module, bool error)
 {
+	FILE *stream = error ? stderr : stdout;
 	struct param *p;
+	bool found = false;
 	int i;
 
-	/* Check if module has options */
-	if (!bsearch(module,
-		params,
-		num_params,
-		sizeof(struct param *),
-		param_bsearch_compare))
-		return;
-
 	/* Print module options */
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Valid %s options:\n", module);
 	for (i = 0; i < num_params; i++) {
 		p = params[i];
-		if (p->module && !strcmp(p->module, module))
-			fprintf(stderr, "  --%s (%s)\n", p->name, p->desc);
+
+		/* Skip parameter if needed */
+		if (!p->module || strcmp(p->module, module))
+			continue;
+
+		/* Print module section on first found option */
+		if (!found) {
+			fprintf(stream, "Valid %s options:\n", module);
+			found = true;
+		}
+
+		/* Print single option */
+		cmdline_print_option(p, error);
 	}
-	fprintf(stderr, "\n");
+
+	/* Print new line if one or more options were found */
+	if (found)
+		fprintf(stream, "\n");
+}
+
+void cmdline_print_option(struct param *p, bool error)
+{
+	FILE *stream = error ? stderr : stdout;
+	char str[20];
+
+	/* Print argument name and type (not applicable to booleans) */
+	if (!strcmp(p->type, "bool"))
+		snprintf(str, 20, "%s", p->name);
+	else
+		snprintf(str, 20, "%s=%s", p->name, p->type);
+	fprintf(stream, "  --%-20s", str);
+
+	/* Print description */
+	fprintf(stream, "%s\n", p->desc);
 }
 
 bool cmdline_parse_arg(char *long_name, bool has_arg, char **arg)
