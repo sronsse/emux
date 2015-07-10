@@ -132,9 +132,10 @@ LIBRETRO
 
   Emux can also be built as separate libretro cores to be loaded by libretro
   frontends such as RetroArch. All supported libretro implementations are
-  generated under the libretro/ directory. The following command should be used
-  to build these cores:
-    make libretro
+  generated under the libretro/ directory. Each of the following commands can be
+  used to build these cores:
+    cd libretro/ && make (does not require the initial configure step)
+    make libretro (requires the initial configure step)
 
 EMSCRIPTEN
 
