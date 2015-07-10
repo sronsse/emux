@@ -18,11 +18,11 @@ WHAT IS EMUX?
 SOFTWARE DEPENDENCIES
 
   Emux can use different audio and video/input frontends. At the time of
-  writing, SDL and libcaca are supported for video/input and only SDL for audio.
-  During the configuration step, you may select the frontends to be included
-  in the build. The configure script will complain if these libraries are not
-  found. Note: no particular dependency is required in order to build libretro
-  implementations.
+  writing, SDL (standalone and OpenGL) and libcaca are supported for video/input
+  and only SDL for audio. During the configuration step, you may select the
+  frontends to be included in the build. The configure script will complain if
+  these libraries are not found. Note: no particular dependency is required in
+  order to build libretro implementations.
 
   Emux can now use libroxml - a tiny XML parsing library - in order to read
   input configuration files. This optional library is typically not part of
@@ -48,7 +48,7 @@ SOFTWARE DEPENDENCIES
   - kconfig-frontends (optional)
   - libcaca-dev (optional)
   - libroxml (optional)
-  - libsdl1.2-dev (optional)
+  - libsdl2-dev (optional)
   - pkg-config
 
 CONFIGURING EMUX
