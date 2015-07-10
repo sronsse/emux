@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef LIBRETRO
 #include <config.h>
+#endif
 #include <cmdline.h>
 #include <env.h>
 #include <input.h>

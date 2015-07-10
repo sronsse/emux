@@ -1,10 +1,14 @@
 #include <stdint.h>
 #include <strings.h>
 #include <bitops.h>
+#ifndef LIBRETRO
 #include <config.h>
+#endif
 
+#ifndef LIBRETRO
 #ifndef HAVE_FFS
 #define ffs __builtin_ffs
+#endif
 #endif
 
 #define DEFINE_BITOPS_GET(ext, type) \

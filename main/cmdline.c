@@ -6,7 +6,9 @@
 #include <string.h>
 #include <audio.h>
 #include <cmdline.h>
+#ifndef LIBRETRO
 #include <config.h>
+#endif
 #include <list.h>
 #include <machine.h>
 #include <video.h>
@@ -26,19 +28,23 @@ struct cmdline {
 	char **argv;
 };
 
-static void cmdline_build(int argc, char *argv[], int defc, char *defv[]);
 static int param_sort_compare(const void *a, const void *b);
+#ifndef LIBRETRO
+static void cmdline_build(int argc, char *argv[], int defc, char *defv[]);
 static void cmdline_print_module_options(char *module, bool error);
 static void cmdline_print_option(struct param *p, bool error);
 static bool cmdline_parse_arg(char *long_name, bool has_arg, char **arg);
 static bool cmdline_parse_bool(char *long_name, bool *arg);
 static bool cmdline_parse_int(char *long_name, int *arg);
 static bool cmdline_parse_string(char *long_name, char **string);
+#endif
 
 struct param **params;
 static int num_params;
+#ifndef LIBRETRO
 static struct cmdline cmdline;
 static char def_cmdline[] = DEF_CMDLINE;
+#endif
 
 int param_sort_compare(const void *a, const void *b)
 {
@@ -162,6 +168,7 @@ bool cmdline_set_param(char *name, char *module, char *value)
 	return false;
 }
 
+#ifndef LIBRETRO
 void cmdline_build(int argc, char *argv[], int defc, char *defv[])
 {
 #if defined(CONFIG_CMDLINE_EXTEND)
@@ -425,4 +432,5 @@ bool cmdline_parse_string(char *long_name, char **arg)
 		*arg = str;
 	return true;
 }
+#endif
 

@@ -5,11 +5,14 @@
 #include <stdarg.h>
 #include <audio.h>
 #include <cmdline.h>
-#include <config.h>
 #include <libretro.h>
 #include <log.h>
 #include <machine.h>
 #include <video.h>
+
+/* Package definitions */
+#define PACKAGE_NAME	"emux"
+#define PACKAGE_VERSION	"0.1"
 
 /* Retro frontends functions */
 void retro_audio_fill_timing(struct retro_system_timing *timing);
