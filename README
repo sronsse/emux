@@ -137,6 +137,10 @@ LIBRETRO
     cd libretro/ && make (does not require the initial configure step)
     make libretro (requires the initial configure step)
 
+  Note: once within the libretro folder, individual machines can be built using
+  their name as a make target, such as:
+    make sms
+
 EMSCRIPTEN
 
   Emscripten is an LLVM to JavaScript compiler. It takes LLVM bytecode (which

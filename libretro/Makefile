@@ -1,3 +1,4 @@
+.DEFAULT_GOAL := all
 
 ifneq ($(EMSCRIPTEN),)
    platform = emscripten
@@ -103,11 +104,14 @@ OBJECTS := $(COMMON_OBJS)
 
 # Macro used to define a libretro target (name, valid extensions, objects)
 define DEFINE_TARGET
-$(TARGET_NAME)_$(1)_$(EXTENSION)_MACH := $(1)
-$(TARGET_NAME)_$(1)_$(EXTENSION)_EXTS := $(2)
-$(TARGET_NAME)_$(1)_$(EXTENSION)_OBJS := $(COMMON_OBJS) $(3)
-TARGETS += $(TARGET_NAME)_$(1)_$(EXTENSION)
+LIBS += $(TARGET_NAME)_$(1)_$(EXTENSION)
 OBJECTS += $(3)
+$(1): $(TARGET_NAME)_$(1)_$(EXTENSION)
+$(TARGET_NAME)_$(1)_$(EXTENSION): libretro.c $(COMMON_OBJS) $(3)
+	$(CC) $(CFLAGS) -DMACHINE=\"$(1)\" -DVALID_EXTS="\"$(2)\"" -c -o libretro.o libretro.c
+	$(CC) $(fpic) $(SHARED) $(INCLUDES) -o $(TARGET_NAME)_$(1)_$(EXTENSION) libretro.o $(COMMON_OBJS) $(3) -lm
+TARGETS += $(1)
+.PHONY: $(1)
 endef
 
 # CHIP-8 target definition
@@ -146,15 +150,11 @@ $(eval $(call DEFINE_TARGET,sms,sms|bin|rom,\
 
 all: $(TARGETS)
 
-$(TARGETS): libretro.c $(OBJECTS)
-	$(CC) $(CFLAGS) -DMACHINE=\"$($@_MACH)\" -DVALID_EXTS="\"$($@_EXTS)\"" -c -o libretro.o libretro.c
-	$(CC) $(fpic) $(SHARED) $(INCLUDES) -o $@ libretro.o $($@_OBJS) -lm
-
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f libretro.o $(OBJECTS) $(TARGETS)
+	rm -f libretro.o $(OBJECTS) $(LIBS)
 
-.PHONY: clean
+.PHONY: all clean
 
