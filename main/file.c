@@ -204,10 +204,10 @@ void file_unmap(void *data, int size)
 {
 #ifdef _WIN32
 	SYSTEM_INFO system_info;
-	int pa_data;
+	intptr_t pa_data;
 	GetSystemInfo(&system_info);
-	pa_data = (int)data & ~(system_info.dwPageSize - 1);
-	size += (int)data - pa_data;
+	pa_data = (intptr_t)data & ~(system_info.dwPageSize - 1);
+	size += (intptr_t)data - pa_data;
 	UnmapViewOfFile((void *)pa_data);
 #else
 	intptr_t pa_data = (intptr_t)data & ~(sysconf(_SC_PAGE_SIZE) - 1);
