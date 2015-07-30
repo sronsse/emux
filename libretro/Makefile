@@ -52,7 +52,7 @@ else ifeq ($(platform), emscripten)
    SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
 else
    CC = gcc
-   EXTENSION := retro.dll
+   EXTENSION := libretro.dll
    SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=link.T -Wl,--no-undefined
 endif
 
