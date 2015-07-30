@@ -1,15 +1,4 @@
-#include <stdint.h>
-#include <strings.h>
 #include <bitops.h>
-#ifndef LIBRETRO
-#include <config.h>
-#endif
-
-#ifndef LIBRETRO
-#ifndef HAVE_FFS
-#define ffs __builtin_ffs
-#endif
-#endif
 
 #define DEFINE_BITOPS_GET(ext, type) \
 	type bitops_get##ext(type *a, type shift, type length) \
@@ -47,6 +36,16 @@ int bitops_reverse(int i, int length)
 
 int bitops_ffs(int i)
 {
-	return ffs(i);
+	int bit;
+
+	/* Handle case where no bit is set */
+	if (i == 0)
+		return 0;
+
+	/* Find position of first bit set within argument */
+	for (bit = 1; (i & 0x01) == 0; bit++)
+		i >>= 1;
+
+	return bit;
 }
 
