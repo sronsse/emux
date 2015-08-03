@@ -1,6 +1,7 @@
 #ifndef _BITOPS_H
 #define _BITOPS_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define DECLARE_BITOPS_GET(ext, type) \
@@ -19,6 +20,7 @@ DECLARE_BITOPS_SET(w, uint16_t)
 
 int bitops_reverse(int i, int length);
 int bitops_ffs(int i);
+bool bitops_parity(int i);
 
 #endif
 

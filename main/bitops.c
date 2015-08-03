@@ -49,3 +49,16 @@ int bitops_ffs(int i)
 	return bit;
 }
 
+bool bitops_parity(int i)
+{
+	bool parity = false;
+
+	/* Compute input parity */
+	while (i) {
+		parity = !parity;
+		i = i & (i - 1);
+	}
+
+	return parity;
+}
+
