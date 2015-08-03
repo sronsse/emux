@@ -6,5 +6,11 @@ config CONTROLLER_AUDIO_PAPU
 	help
 		Enable Game Boy PAPU sound chip
 
+config CONTROLLER_AUDIO_SN76489
+	bool "SN76489"
+	default y
+	help
+		Enable SN76489 sound chip
+
 endmenu
 

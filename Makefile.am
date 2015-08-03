@@ -119,6 +119,9 @@ endif
 if CONFIG_CONTROLLER_AUDIO_PAPU
 emux_SOURCES += controllers/audio/papu.c
 endif
+if CONFIG_CONTROLLER_AUDIO_SN76489
+emux_SOURCES += controllers/audio/sn76489.c
+endif
 if CONFIG_CONTROLLER_DMA_NES
 emux_SOURCES += controllers/dma/nes_sprite.c
 endif
