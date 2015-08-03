@@ -2,48 +2,64 @@
 #include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
+#include <env.h>
 #include <file.h>
 #include <log.h>
 #include <machine.h>
 #include <memory.h>
+#include <port.h>
 #include <resource.h>
 #include <util.h>
+#include <controllers/mapper/sms_mapper.h>
 
 /* Clock frequencies */
-#define SMS_CLOCK_RATE	3579540
+#define MASTER_CLOCK_RATE	53693175
+#define AUDIO_CLOCK_RATE	(MASTER_CLOCK_RATE / 15)
+#define CPU_CLOCK_RATE		(MASTER_CLOCK_RATE / 15)
+#define VDP_CLOCK_RATE		(MASTER_CLOCK_RATE / 5)
+
+/* Interrupt definitions */
+#define VDP_IRQ			0
 
 /* Bus definitions */
-#define BUS_ID		0
+#define CPU_BUS_ID		0
+#define VDP_BUS_ID		1
 
 /* Memory sizes */
-#define RAM_SIZE	0x2000
+#define RAM_SIZE		0x2000
 
 /* Memory map */
-#define BIOS_START		0x0000
-#define BIOS_END		0xBFFF
+#define MAPPER_START		0x0000
+#define MAPPER_END		0xBFFF
 #define RAM_START		0xC000
 #define RAM_END			0xDFFF
 #define ECHO_START		0xE000
-#define ECHO_END		0xFFF7
+#define ECHO_END		0xFFFF
 
 /* Port map */
+#define IO_CTL_PORT_START	0x01
+#define IO_CTL_PORT_END		0x3F
+#define MAPPER_PORT		0x3E
+#define AUDIO_PORT		0x7F
+#define AUDIO_PORT_MIRROR_START	0x40
+#define AUDIO_PORT_MIRROR_END	0x7E
 #define VDP_PORT_START		0xBE
 #define VDP_PORT_END		0xBF
 #define VDP_PORT_MIRROR_START	0x80
 #define VDP_PORT_MIRROR_END	0xBD
+#define IO_DATA_PORT_START	0xC0
+#define IO_DATA_PORT_END	0xFF
+#define VDP_SCANLINE_PORT_START	0x7E
+#define VDP_SCANLINE_PORT_END	0x7F
 
 struct sms_data {
-	int bios_size;
-	uint8_t *bios;
 	uint8_t ram[RAM_SIZE];
 	struct bus bus;
-	struct region bios_region;
 	struct region ram_region;
 };
 
 static bool sms_init(struct machine *machine);
 static void sms_deinit(struct machine *machine);
-static bool sms_load_bios(struct sms_data *data);
 
 /* Command-line parameters */
 static char *bios_path = "bios.sms";
@@ -51,68 +67,83 @@ PARAM(bios_path, string, "bios", "sms", "SMS BIOS path")
 
 /* Z80A CPU */
 static struct resource cpu_resources[] = {
-	CLK("clk", SMS_CLOCK_RATE)
+	CLK("clk", CPU_CLOCK_RATE)
 };
 
 static struct cpu_instance cpu_instance = {
 	.cpu_name = "z80",
-	.bus_id = BUS_ID,
+	.bus_id = CPU_BUS_ID,
 	.resources = cpu_resources,
 	.num_resources = ARRAY_SIZE(cpu_resources)
+};
+
+/* Audio controller */
+static struct resource sn76489_mirror =
+	PORT("port_mirror", AUDIO_PORT_MIRROR_START, AUDIO_PORT_MIRROR_END);
+
+static struct resource sn76489_resources[] = {
+	PORTX("port", AUDIO_PORT, AUDIO_PORT, &sn76489_mirror, 1),
+	CLK("clk", AUDIO_CLOCK_RATE)
+};
+
+static struct controller_instance sn76489_instance = {
+	.controller_name = "sn76489",
+	.resources = sn76489_resources,
+	.num_resources = ARRAY_SIZE(sn76489_resources)
+};
+
+/* SMS mapper controller */
+static struct sms_mapper_mach_data sms_mapper_mach_data;
+
+static struct resource sms_mapper_resources[] = {
+	MEM("mapper", CPU_BUS_ID, MAPPER_START, MAPPER_END),
+	PORT("port", MAPPER_PORT, MAPPER_PORT)
+};
+
+static struct controller_instance sms_mapper_instance = {
+	.controller_name = "sms_mapper",
+	.bus_id = CPU_BUS_ID,
+	.resources = sms_mapper_resources,
+	.num_resources = ARRAY_SIZE(sms_mapper_resources),
+	.mach_data = &sms_mapper_mach_data
+};
+
+/* Input controller */
+static struct resource input_resources[] = {
+	PORT("ctl", IO_CTL_PORT_START, IO_CTL_PORT_END),
+	PORT("io", IO_DATA_PORT_START, IO_DATA_PORT_END)
+};
+
+static struct controller_instance input_instance = {
+	.controller_name = "sms_controller",
+	.resources = input_resources,
+	.num_resources = ARRAY_SIZE(input_resources)
 };
 
 /* VDP controller */
 static struct resource vdp_mirror =
 	PORT("port_mirror", VDP_PORT_MIRROR_START, VDP_PORT_MIRROR_END);
 
-static struct resource vdp_port =
-	PORTX("port", VDP_PORT_START, VDP_PORT_END, &vdp_mirror, 1);
+static struct resource vdp_resources[] = {
+	PORTX("port", VDP_PORT_START, VDP_PORT_END, &vdp_mirror, 1),
+	PORT("scanline", VDP_SCANLINE_PORT_START, VDP_SCANLINE_PORT_END),
+	IRQ("irq", VDP_IRQ),
+	CLK("clk", VDP_CLOCK_RATE)
+};
 
 static struct controller_instance vdp_instance = {
 	.controller_name = "vdp",
-	.resources = &vdp_port,
-	.num_resources = 1
+	.bus_id = VDP_BUS_ID,
+	.resources = vdp_resources,
+	.num_resources = ARRAY_SIZE(vdp_resources)
 };
 
-/* BIOS area */
-static struct resource bios_area =
-	MEM("bios", BUS_ID, BIOS_START, BIOS_END);
-
 /* RAM area */
-static struct resource ram_mirror = MEM("echo", BUS_ID, ECHO_START, ECHO_END);
+static struct resource ram_mirror =
+	MEM("echo", CPU_BUS_ID, ECHO_START, ECHO_END);
+
 static struct resource ram_area =
-	MEMX("ram", BUS_ID, RAM_START, RAM_END, &ram_mirror, 1);
-
-bool sms_load_bios(struct sms_data *data)
-{
-	file_handle_t f;
-
-	/* Open BIOS file, get its size, and close it */
-	f = file_open(PATH_SYSTEM, bios_path, "rb");
-	if (!f) {
-		LOG_E("Could not open BIOS!\n");
-		return false;
-	}
-	data->bios_size = file_get_size(f);
-	file_close(f);
-
-	/* Map BIOS */
-	data->bios = file_map(PATH_SYSTEM,
-		bios_path,
-		0,
-		data->bios_size);
-	if (!data->bios) {
-		LOG_E("Could not map BIOS!\n");
-		return false;
-	}
-
-	/* Add BIOS region */
-	data->bios_region.area = &bios_area;
-	data->bios_region.mops = &rom_mops;
-	data->bios_region.data = data->bios;
-	memory_region_add(&data->bios_region);
-	return true;
-}
+	MEMX("ram", CPU_BUS_ID, RAM_START, RAM_END, &ram_mirror, 1);
 
 bool sms_init(struct machine *machine)
 {
@@ -123,15 +154,13 @@ bool sms_init(struct machine *machine)
 	machine->priv_data = data;
 
 	/* Add 16-bit memory bus */
-	data->bus.id = BUS_ID;
+	data->bus.id = CPU_BUS_ID;
 	data->bus.width = 16;
 	memory_bus_add(&data->bus);
 
-	/* Load BIOS */
-	if (!sms_load_bios(data)) {
-		free(data);
-		return false;
-	}
+	/* Set mapper mach data */
+	sms_mapper_mach_data.bios_path = bios_path;
+	sms_mapper_mach_data.cart_path = env_get_data_path();
 
 	/* Add RAM region */
 	data->ram_region.area = &ram_area;
@@ -140,8 +169,11 @@ bool sms_init(struct machine *machine)
 	memory_region_add(&data->ram_region);
 
 	/* Add controllers and CPU */
-	if (!controller_add(&vdp_instance) || !cpu_add(&cpu_instance)) {
-		file_unmap(data->bios, data->bios_size);
+	if (!controller_add(&sn76489_instance) ||
+		!controller_add(&vdp_instance) ||
+		!controller_add(&input_instance) ||
+		!controller_add(&sms_mapper_instance) ||
+		!cpu_add(&cpu_instance)) {
 		free(data);
 		return false;
 	}
@@ -151,8 +183,7 @@ bool sms_init(struct machine *machine)
 
 void sms_deinit(struct machine *machine)
 {
-	struct sms_data *data = machine->priv_data;
-	file_unmap(data->bios, data->bios_size);
+	free(machine->priv_data);
 }
 
 MACHINE_START(sms, "Sega Master System")

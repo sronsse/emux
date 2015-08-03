@@ -42,6 +42,10 @@ config MACH_SMS
 	bool "sms (Sega Master System)"
 	select MACH
 	select CPU_Z80
+	select CONTROLLER_AUDIO_SN76489
+	select CONTROLLER_INPUT_SMS
+	select CONTROLLER_MAPPER_SMS
+	select CONTROLLER_MAPPER_SEGA
 	select CONTROLLER_VIDEO_VDP
 	default y
 	help

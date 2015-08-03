@@ -144,6 +144,10 @@ $(eval $(call DEFINE_TARGET,nes,nes|bin|rom,\
 
 # SMS target definition
 $(eval $(call DEFINE_TARGET,sms,sms|bin|rom,\
+   ../controllers/audio/sn76489.o \
+   ../controllers/input/sms_controller.o \
+   ../controllers/mapper/sega_mapper.o \
+   ../controllers/mapper/sms_mapper.o \
    ../controllers/video/vdp.o \
    ../cpu/z80.o \
    ../mach/sms.o))
