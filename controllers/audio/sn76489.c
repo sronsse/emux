@@ -16,6 +16,9 @@
 #define LATCH_TONE_CMD_TYPE	0
 #define MAX_ATTENUATION		0x0F
 #define MAX_VOLUME		0xFF
+#define WHITE_NOISE		1
+#define PERIODIC_NOISE		0
+#define TAP_MASK		0x09
 
 union volume_register {
 	uint8_t raw;
@@ -93,6 +96,7 @@ static void sn76489_reset(struct controller_instance *instance);
 static void sn76489_deinit(struct controller_instance *instance);
 static void sn76489_write(struct sn76489 *sn76489, uint8_t b);
 static void handle_tone_channel(struct sn76489 *sn76489, int channel);
+static void handle_noise_channel(struct sn76489 *sn76489);
 static void mix(struct sn76489 *sn76489);
 static void sn76489_tick(struct sn76489 *sn76489);
 
@@ -163,6 +167,13 @@ void sn76489_write(struct sn76489 *sn76489, uint8_t b)
 				4,
 				cmd.data_cmd.data);
 	}
+
+	/* Reset shift register if needed */
+	if ((sn76489->current_reg_type == LATCH_TONE_CMD_TYPE) &&
+		(channel == NOISE_CHANNEL)) {
+		sn76489->lfsr = 0;
+		bitops_setw(&sn76489->lfsr, 15, 1, 1);
+	}
 }
 
 void handle_tone_channel(struct sn76489 *sn76489, int channel)
@@ -186,6 +197,55 @@ void handle_tone_channel(struct sn76489 *sn76489, int channel)
 	changes to 0, and vice versa. */
 	sn76489->channels[channel].bit = !sn76489->channels[channel].bit;
 	sn76489->channels[channel].output = sn76489->channels[channel].bit;
+}
+
+void handle_noise_channel(struct sn76489 *sn76489)
+{
+	struct channel *channel = &sn76489->channels[NOISE_CHANNEL];
+	bool bit;
+
+	/* Reset counter according to the low 2 bits of the noise register */
+	switch (sn76489->noise_reg.shift_rate) {
+	case 0x00:
+		channel->counter = 0x10;
+		break;
+	case 0x01:
+		channel->counter = 0x20;
+		break;
+	case 0x02:
+		channel->counter = 0x40;
+		break;
+	case 0x03:
+		channel->counter = sn76489->tone_regs[2].reset_value;
+		break;
+	}
+
+	/* As with the tone channels, the output bit is toggled between 0 and 1.
+	However, this is not sent to the mixer, but to a "linear feedback shift
+	register" (LFSR), which can generate noise or act as a divider. */
+	channel->bit = !channel->bit;
+
+	/* Handle LFSR only when input changes from 0 to 1 */
+	if (!channel->bit)
+		return;
+
+	/* Handle white or periodic noise depending on mode */
+	if (sn76489->noise_reg.mode == WHITE_NOISE) {
+		/* The input bit is determined by an XOR feedback network.
+		Certain bits are used as inputs to the XOR gates; these are the
+		"tapped" bits. */
+		bit = bitops_parity(sn76489->lfsr & TAP_MASK);
+	} else {
+		/* Bit 0 is tapped (the output bit is also the input bit) */
+		bit = bitops_getw(&sn76489->lfsr, 0, 1);
+	}
+
+	/* Output bit 0 to the mixer */
+	channel->output = bitops_getw(&sn76489->lfsr, 0, 1);
+
+	/* Shift array by one bit and add input bit */
+	sn76489->lfsr >>= 1;
+	bitops_setw(&sn76489->lfsr, 15, 1, bit);
 }
 
 void mix(struct sn76489 *sn76489)
@@ -235,6 +295,8 @@ void sn76489_tick(struct sn76489 *sn76489)
 			/* Handle tone channel */
 			if (channel != NOISE_CHANNEL)
 				handle_tone_channel(sn76489, channel);
+			else
+				handle_noise_channel(sn76489);
 		}
 
 		/* Reset internal counter */
