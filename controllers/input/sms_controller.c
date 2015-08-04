@@ -1,21 +1,82 @@
+#include <stdlib.h>
 #include <controller.h>
-#include <util.h>
+#include <port.h>
+
+union ctl_port {
+	uint8_t raw;
+	struct {
+		uint8_t p_a_tr_dir:1;
+		uint8_t p_a_th_dir:1;
+		uint8_t p_b_tr_dir:1;
+		uint8_t p_b_th_dir:1;
+		uint8_t p_a_tr_lvl:1;
+		uint8_t p_a_th_lvl:1;
+		uint8_t p_b_tr_lvl:1;
+		uint8_t p_b_th_lvl:1;
+	};
+};
+
+struct sms_ctrl {
+	union ctl_port ctl_port;
+	struct port_region ctl_region;
+};
 
 static bool sms_ctrl_init(struct controller_instance *instance);
 static void sms_ctrl_reset(struct controller_instance *instance);
 static void sms_ctrl_deinit(struct controller_instance *instance);
+static void ctl_write(struct sms_ctrl *sms_ctrl, uint8_t b, port_t port);
 
-bool sms_ctrl_init(struct controller_instance *UNUSED(instance))
+static struct pops ctl_pops = {
+	.write = (write_t)ctl_write
+};
+
+void ctl_write(struct sms_ctrl *sms_ctrl, uint8_t b, port_t port)
 {
+	/* Handle odd addresses only */
+	if (!(port & 0x01))
+		return;
+
+	/* Save control port register */
+	sms_ctrl->ctl_port.raw = b;
+}
+
+bool sms_ctrl_init(struct controller_instance *instance)
+{
+	struct sms_ctrl *sms_ctrl;
+	struct resource *area;
+
+	/* Allocate sms_ctrl structure */
+	instance->priv_data = malloc(sizeof(struct sms_ctrl));
+	sms_ctrl = instance->priv_data;
+
+	/* Set up control port region */
+	area = resource_get("ctl",
+		RESOURCE_PORT,
+		instance->resources,
+		instance->num_resources);
+	sms_ctrl->ctl_region.area = area;
+	sms_ctrl->ctl_region.pops = &ctl_pops;
+	sms_ctrl->ctl_region.data = sms_ctrl;
+	port_region_add(&sms_ctrl->ctl_region);
+
 	return true;
 }
 
-void sms_ctrl_reset(struct controller_instance *UNUSED(instance))
+void sms_ctrl_reset(struct controller_instance *instance)
 {
+	struct sms_ctrl *sms_ctrl = instance->priv_data;
+
+	/* Set control lines as input (1 = input) */
+	sms_ctrl->ctl_port.p_a_tr_dir = 1;
+	sms_ctrl->ctl_port.p_a_th_dir = 1;
+	sms_ctrl->ctl_port.p_b_tr_dir = 1;
+	sms_ctrl->ctl_port.p_b_tr_dir = 1;
 }
 
-void sms_ctrl_deinit(struct controller_instance *UNUSED(instance))
+void sms_ctrl_deinit(struct controller_instance *instance)
 {
+	struct sms_ctrl *sms_ctrl = instance->priv_data;
+	free(sms_ctrl);
 }
 
 CONTROLLER_START(sms_controller)
