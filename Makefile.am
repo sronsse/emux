@@ -128,6 +128,9 @@ endif
 if CONFIG_CONTROLLER_INPUT_NES
 emux_SOURCES += controllers/input/nes_controller.c
 endif
+if CONFIG_CONTROLLER_INPUT_SMS
+emux_SOURCES += controllers/input/sms_controller.c
+endif
 if CONFIG_CONTROLLER_MAPPER_GB
 emux_SOURCES += controllers/mapper/gb_mapper.c
 emux_SOURCES += include/controllers/mapper/gb_mapper.h

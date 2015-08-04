@@ -12,5 +12,11 @@ config CONTROLLER_INPUT_NES
 	help
 		Enable NES standard controller for players 1 and 2
 
+config CONTROLLER_INPUT_SMS
+	bool "SMS controller"
+	default y
+	help
+		Enable SMS peripheral support
+
 endmenu
 
