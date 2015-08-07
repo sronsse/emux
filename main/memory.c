@@ -336,6 +336,8 @@ void memory_writeb(int bus_id, uint8_t b, address_t address)
 	struct bus *bus;
 	struct region *region;
 	struct list_link *map;
+	struct list_link *link;
+	address_t a;
 
 	/* Get bus */
 	bus = get_bus(bus_id);
@@ -351,21 +353,27 @@ void memory_writeb(int bus_id, uint8_t b, address_t address)
 		return;
 	}
 
-	/* Get region */
-	region = map->data;
-	if (!region) {
-		LOG_W("Region not found (writeb %u, %04x)!\n", bus_id, address);
-		return;
-	}
+	/* Cycle regions */
+	link = map;
+	while (link) {
+		/* Get region */
+		region = link->data;
+		link = link->next;
+		if (!region) {
+			LOG_W("Region not found (writeb %u, %04x)!\n", bus_id, address);
+			continue;
+		}
 
-	/* Adapt address */
-	if (!fixup_address(region, &address)) {
-		LOG_E("Address %04x fixup (bus %u) failed!\n", address, bus_id);
-		return;
-	}
+		/* Adapt address */
+		a = address;
+		if (!fixup_address(region, &a)) {
+			LOG_E("Address %04x fixup (bus %u) failed!\n", a, bus_id);
+			continue;
+		}
 
-	/* Call memory operation */
-	region->mops->writeb(region->data, b, address);
+		/* Call memory operation */
+		region->mops->writeb(region->data, b, a);
+	}
 }
 
 void memory_writew(int bus_id, uint16_t w, address_t address)
