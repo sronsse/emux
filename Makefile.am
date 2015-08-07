@@ -145,6 +145,10 @@ endif
 if CONFIG_CONTROLLER_MAPPER_ROM
 emux_SOURCES += controllers/mapper/rom.c
 endif
+if CONFIG_CONTROLLER_MAPPER_SMS
+emux_SOURCES += controllers/mapper/sms_mapper.c
+emux_SOURCES += include/controllers/mapper/sms_mapper.h
+endif
 if CONFIG_CONTROLLER_SERIAL_GB
 emux_SOURCES += controllers/serial/gb_serial.c
 endif

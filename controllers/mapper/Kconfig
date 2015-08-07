@@ -33,5 +33,11 @@ config CONTROLLER_MAPPER_NROM
 	help
 		Enable NES NROM - No Mapper (or unknown mapper)
 
+config CONTROLLER_MAPPER_SMS
+	bool "SMS"
+	default y
+	help
+		Enable SMS mapper
+
 endmenu
 
