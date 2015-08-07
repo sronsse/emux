@@ -41,11 +41,18 @@
 #define NUM_COLUMNS			342
 #define NUM_ROWS			262
 #define MAX_BG_Y			224
+#define NUM_SPRITES			64
+#define SPRITE_OVERFLOW			8
 #define VRAM_SIZE			16384
 #define CRAM_SIZE			32
 #define TILE_WIDTH			8
 #define TILE_HEIGHT			8
 #define TILE_SIZE			32
+#define SPRITE_SHIFT			8
+#define SPRITE_HEIGHT			8
+#define SPRITE_ATTR_X_OFFSET		128
+#define SPRITE_ATTR_TILE_OFFSET		129
+#define SPRITE_ATTR_SIZE		2
 #define NUM_BIT_PLANES			4
 #define SPRITE_PALETTE_OFFSET		16
 #define HORI_SCROLL_LOCK_HEIGHT		16
@@ -175,6 +182,8 @@ struct vdp {
 	uint8_t bg_x_scroll;
 	uint8_t bg_y_scroll;
 	uint8_t line_counter;
+	bool priority[SCREEN_WIDTH];
+	bool collision[SCREEN_WIDTH];
 	struct clock clock;
 	uint8_t vram[VRAM_SIZE];
 	uint8_t cram[CRAM_SIZE];
@@ -187,6 +196,7 @@ static bool vdp_init(struct controller_instance *instance);
 static void vdp_tick(struct vdp *vdp);
 static void vdp_deinit(struct controller_instance *instance);
 static void vdp_draw_line_bg(struct vdp *vdp);
+static void vdp_draw_line_sprites(struct vdp *vdp);
 static uint8_t vdp_read(struct vdp *vdp, port_t port);
 static void vdp_write(struct vdp *vdp, uint8_t b, port_t port);
 static uint8_t ctrl_read(struct vdp *vdp);
@@ -414,6 +424,10 @@ void vdp_draw_line_bg(struct vdp *vdp)
 			bitops_setb(&palette_index, i, 1, bit);
 		}
 
+		/* Save priority based on tile information and palette index */
+		vdp->priority[x] = tile.priority && (palette_index != 0);
+		vdp->collision[x] = false;
+
 		/* Switch to second (sprite) palette if needed */
 		if (tile.palette_sel)
 			palette_index += SPRITE_PALETTE_OFFSET;
@@ -427,12 +441,189 @@ void vdp_draw_line_bg(struct vdp *vdp)
 	}
 }
 
+void vdp_draw_line_sprites(struct vdp *vdp)
+{
+	uint16_t sprite_attr_table_addr;
+	uint16_t sprite_attr_addr;
+	uint16_t tile_data_addr;
+	uint16_t pattern_index;
+	uint16_t spr_x;
+	uint16_t spr_y;
+	int16_t final_x;
+	uint8_t palette_index;
+	uint8_t tile_data;
+	uint8_t tile_x;
+	uint8_t x_off;
+	uint8_t y_off;
+	uint8_t bit;
+	uint8_t h;
+	uint8_t v;
+	bool sprite_collision;
+	int num_sprites;
+	int sprite_count;
+	int sprite;
+	int i;
+	struct color color;
+
+	/* Return already if display is disabled */
+	if (!vdp->regs.mode_ctrl_2.enable_display)
+		return;
+
+	/* Set sprite attribute table address */
+	sprite_attr_table_addr = 0;
+	bitops_setw(&sprite_attr_table_addr,
+		8,
+		6,
+		vdp->regs.sprite_attr_table_base_addr.addr);
+
+	/* Set sprite height (double it if needed) */
+	h = SPRITE_HEIGHT;
+	if (vdp->regs.mode_ctrl_2.large_sprites)
+		h += SPRITE_HEIGHT;
+
+	/* If the Y coordinate is set to 0xD0, then the sprite in question and
+	all remaining sprites of the 64 available will not be drawn. This only
+	works in the 192-line display mode, in the 224 and 240-line modes a Y
+	coordinate of 0xD0 has no special meaning. */
+	num_sprites = NUM_SPRITES;
+	for (sprite = 0; sprite < NUM_SPRITES; sprite++)
+		if (vdp->vram[sprite_attr_table_addr + sprite] == 0xD0) {
+			num_sprites = sprite;
+			break;
+		}
+
+	/* Draw sprites in reverse order */
+	sprite_collision = false;
+	sprite_count = 0;
+	for (sprite = num_sprites - 1; sprite >= 0; sprite--) {
+		/* The Y coordinate is treated as being plus one, so a value of
+		zero would place a sprite on scanline 1. */
+		sprite_attr_addr = sprite_attr_table_addr + sprite;
+		spr_y = vdp->vram[sprite_attr_addr] + 1;
+
+		/* Skip sprite if scanline does not intersect with it */
+		if ((vdp->v_counter < spr_y) || (vdp->v_counter >= (spr_y + h)))
+			continue;
+
+		/* Increment sprite count and set overflow bit if needed */
+		if (++sprite_count == SPRITE_OVERFLOW)
+			vdp->status.sprite_overflow = 1;
+
+		/* Get sprite X coordinate */
+		sprite_attr_addr = sprite_attr_table_addr;
+		sprite_attr_addr += SPRITE_ATTR_X_OFFSET;
+		sprite_attr_addr += (sprite * SPRITE_ATTR_SIZE);
+		spr_x = vdp->vram[sprite_attr_addr];
+
+		/* Update X coordinate if needed */
+		if (vdp->regs.mode_ctrl_1.shift_sprites_left_8_pixels)
+			spr_x -= SPRITE_SHIFT;
+
+		/* Sprites that are partially off-screen when the X coordinate
+		is greater than 248 do not wrap around to the other side of the
+		screen. Sprites that are partially displayed on the left edge of
+		the screen do not wrap, either. */
+		if (spr_x >= SCREEN_WIDTH)
+			continue;
+
+		/* Get sprite tile index */
+		sprite_attr_addr = sprite_attr_table_addr;
+		sprite_attr_addr += SPRITE_ATTR_TILE_OFFSET;
+		sprite_attr_addr += (sprite * SPRITE_ATTR_SIZE);
+		pattern_index = vdp->vram[sprite_attr_addr];
+
+		/* When bit 1 of register #1 is set, bit 0 of the pattern index
+		is ignored. */
+		if (vdp->regs.mode_ctrl_2.double_sprites)
+			bitops_setw(&pattern_index,
+				0,
+				1,
+				0);
+
+		/* The pattern index selects one of 256 patterns to use. Bit 2
+		of register #6 acts like a global bit 8 in addition to this
+		value, allowing sprite patterns to be taken from the first 256
+		or last 256 of the 512 available patterns. */
+		bitops_setw(&pattern_index,
+			8,
+			1,
+			vdp->regs.sprite_patt_gen_base_addr.sel);
+
+		/* Compute Y offset */
+		y_off = vdp->v_counter - spr_y;
+
+		/* Compute tile data address from pattern index and Y offset */
+		tile_data_addr = pattern_index * TILE_SIZE;
+		tile_data_addr += y_off * (TILE_SIZE / TILE_WIDTH);
+
+		/* Draw sprite tile */
+		for (tile_x = 0; tile_x < TILE_WIDTH; tile_x++) {
+			/* Compute final sprite pixel X coordinate */
+			final_x = spr_x + tile_x;
+
+			/* Break if final X coordinate is past screen width */
+			if (final_x >= SCREEN_WIDTH)
+				break;
+
+			/* Skip if final X coordinate is not on screen */
+			if (final_x < 0)
+				continue;
+
+			/* Skip sprite pixel if within masked column */
+			if (vdp->regs.mode_ctrl_1.mask_col_0 &&
+				(final_x < TILE_WIDTH))
+				continue;
+
+			/* Skip sprite pixel if background has priority */
+			if (vdp->priority[final_x])
+				continue;
+
+			/* Get X offset within tile data */
+			x_off = TILE_WIDTH - 1 - tile_x;
+
+			/* Compute palette index from bit planes */
+			palette_index = 0;
+			for (i = 0; i < NUM_BIT_PLANES; i++) {
+				tile_data = vdp->vram[tile_data_addr + i];
+				bit = (tile_data >> x_off) & 1;
+				bitops_setb(&palette_index, i, 1, bit);
+			}
+
+			/* Skip if index is 0 (indicating transparency) */
+			if (palette_index == 0)
+				continue;
+
+			/* Switch to sprite palette */
+			palette_index += SPRITE_PALETTE_OFFSET;
+
+			/* Draw sprite pixel */
+			v = vdp->cram[palette_index];
+			color.r = RED(v);
+			color.g = GREEN(v);
+			color.b = BLUE(v);
+			video_set_pixel(final_x, vdp->v_counter, color);
+
+			/* Set collision flag if needed */
+			if (vdp->collision[final_x])
+				sprite_collision = true;
+
+			/* Save pixel state in collision map */
+			vdp->collision[final_x] = true;
+		}
+	}
+
+	/* Save collision status if needed */
+	if (sprite_collision)
+		vdp->status.sprite_collision = true;
+}
+
 void vdp_tick(struct vdp *vdp)
 {
 	/* Draw current line if within bounds */
 	if (vdp->v_counter < SCREEN_HEIGHT) {
 		video_lock();
 		vdp_draw_line_bg(vdp);
+		vdp_draw_line_sprites(vdp);
 		video_unlock();
 	}
 
