@@ -38,6 +38,8 @@
 		uint16_t IXY; \
 	};
 
+#define INT_VECTOR 0x38
+
 struct z80_flags {
 	uint8_t C:1;
 	uint8_t N:1;
@@ -78,6 +80,7 @@ static bool z80_init(struct cpu_instance *instance);
 static void z80_reset(struct cpu_instance *instance);
 static void z80_interrupt(struct cpu_instance *instance, int irq);
 static void z80_deinit(struct cpu_instance *instance);
+static bool z80_handle_interrupts(struct z80 *cpu);
 static void z80_tick(struct z80 *cpu);
 static void z80_opcode_CB(struct z80 *cpu);
 static void z80_opcode_DDFD(struct z80 *cpu, uint8_t prefix);
@@ -2059,9 +2062,54 @@ void OTDR(struct z80 *cpu)
 	clock_consume(16);
 }
 
+bool z80_handle_interrupts(struct z80 *cpu)
+{
+	/* Reset interrupt delay and exit if needed */
+	if (cpu->interrupt_delay) {
+		cpu->interrupt_delay = false;
+		return false;
+	}
+
+	/* Leave if no interrupt is pending */
+	if (!cpu->interrupt_pending)
+		return false;
+
+	/* Any interrupt should resume CPU */
+	if (cpu->halted) {
+		cpu->PC++;
+		cpu->halted = false;
+	}
+
+	/* Check if interrupts are enabled */
+	if (!cpu->IFF1)
+		return false;
+
+	/* Clear flip-flops */
+	cpu->IFF1 = 0;
+	cpu->IFF2 = 0;
+
+	/* Push PC on stack */
+	memory_writeb(cpu->bus_id, cpu->PC >> 8, --cpu->SP);
+	memory_writeb(cpu->bus_id, cpu->PC, --cpu->SP);
+
+	/* Jump to interrupt address */
+	cpu->PC = INT_VECTOR;
+
+	/* Interrupt handler should consume 20 cycles */
+	clock_consume(20);
+
+	/* Reset interrupt pending flag */
+	cpu->interrupt_pending = false;
+	return true;
+}
+
 void z80_tick(struct z80 *cpu)
 {
 	uint8_t opcode;
+
+	/* Check for interrupt requests */
+	if (z80_handle_interrupts(cpu))
+		return;
 
 	/* Fetch opcode */
 	opcode = memory_readb(cpu->bus_id, cpu->PC++);
@@ -4121,8 +4169,10 @@ void z80_reset(struct cpu_instance *instance)
 	cpu->clock.enabled = true;
 }
 
-void z80_interrupt(struct cpu_instance *UNUSED(instance), int UNUSED(irq))
+void z80_interrupt(struct cpu_instance *instance, int UNUSED(irq))
 {
+	struct z80 *cpu = instance->priv_data;
+	cpu->interrupt_pending = true;
 }
 
 void z80_deinit(struct cpu_instance *instance)
