@@ -190,6 +190,7 @@ struct vdp {
 	int bus_id;
 	int irq;
 	struct port_region region;
+	struct port_region scanline_region;
 };
 
 static bool vdp_init(struct controller_instance *instance);
@@ -203,10 +204,15 @@ static uint8_t ctrl_read(struct vdp *vdp);
 static void ctrl_write(struct vdp *vdp, uint8_t b);
 static uint8_t data_read(struct vdp *vdp);
 static void data_write(struct vdp *vdp, uint8_t b);
+static uint8_t scanline_read(struct vdp *vdp, port_t port);
 
 static struct pops vdp_pops = {
 	.read = (read_t)vdp_read,
 	.write = (write_t)vdp_write
+};
+
+static struct pops scanline_pops = {
+	.read = (read_t)scanline_read
 };
 
 uint8_t ctrl_read(struct vdp *vdp)
@@ -323,6 +329,12 @@ void vdp_write(struct vdp *vdp, uint8_t b, port_t port)
 	default:
 		break;
 	}
+}
+
+uint8_t scanline_read(struct vdp *vdp, port_t UNUSED(port))
+{
+	/* Return current scanline index */
+	return vdp->v_counter;
 }
 
 void vdp_draw_line_bg(struct vdp *vdp)
@@ -693,6 +705,16 @@ bool vdp_init(struct controller_instance *instance)
 	vdp->region.pops = &vdp_pops;
 	vdp->region.data = vdp;
 	port_region_add(&vdp->region);
+
+	/* Add VDP scanline port region */
+	res = resource_get("scanline",
+		RESOURCE_PORT,
+		instance->resources,
+		instance->num_resources);
+	vdp->scanline_region.area = res;
+	vdp->scanline_region.pops = &scanline_pops;
+	vdp->scanline_region.data = vdp;
+	port_region_add(&vdp->scanline_region);
 
 	/* Get IRQ number */
 	res = resource_get("irq",
