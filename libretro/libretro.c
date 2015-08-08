@@ -24,6 +24,27 @@ retro_environment_t retro_environment_cb;
 
 void retro_init(void)
 {
+	char *system_dir;
+	char *config_dir;
+	struct retro_log_callback log_callback;
+
+	/* Get system directory from frontend */
+	retro_environment_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY,
+		&system_dir);
+
+	/* Get config directory from frontend (currently equal to system dir) */
+	retro_environment_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY,
+		&config_dir);
+
+	/* Override log callback if supported by frontend */
+	if (retro_environment_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE,
+		&log_callback))
+		log_cb = (log_print_t)log_callback.log;
+
+	/* Set system/config directories */
+	cmdline_set_param("system-dir", NULL, system_dir);
+	cmdline_set_param("config-dir", NULL, config_dir);
+
 	/* Set machine to be run */
 	cmdline_set_param("machine", NULL, MACHINE);
 
@@ -66,14 +87,8 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 void retro_set_environment(retro_environment_t cb)
 {
-	struct retro_log_callback log_callback;
-
 	/* Set retro environment callback */
 	retro_environment_cb = cb;
-
-	/* Override log callback if supported by frontend */
-	if (cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log_callback))
-		log_cb = (log_print_t)log_callback.log;
 }
 
 void retro_reset(void)
