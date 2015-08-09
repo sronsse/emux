@@ -1,0 +1,48 @@
+# Display an error if no machine is selected
+ifeq ($(MACHINE),)
+$(error Machine was not selected! Please use "make MACHINE=mach" (ie. make MACHINE=sms))
+endif
+
+# Get full extension based on linking type
+ifeq ($(STATIC_LINKING), 1)
+	EXTENSION = $(platform).a
+else
+	EXTENSION = libretro$(SOEXT)
+endif
+
+# Set target, objects, and compilation flags based on selected machine
+TARGET = emux_$(MACHINE)_$(EXTENSION)
+OBJS = $(COMMON_SOURCES:.c=$(OBJEXT)) $($(MACHINE)_SOURCES:.c=$(OBJEXT))
+CFLAGS := -I$(CORE_DIR)/include/ -Wall $(CFLAGS)
+
+# Set valid extensions depending on machine
+ifeq ($(MACHINE), chip8)
+	VALID_EXTS = ch8|bin|rom
+else ifeq ($(MACHINE), gb)
+	VALID_EXTS = gb|bin|rom
+else ifeq ($(MACHINE), nes)
+	VALID_EXTS = nes|bin|rom
+else ifeq ($(MACHINE), sms)
+	VALID_EXTS = sms|bin|rom
+endif
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS) libretro.o
+ifeq ($(STATIC_LINKING), 1)
+	$(AR) rcs $@ $(OBJS) libretro.o
+else
+	$(CC) -o $@ $(OBJS) libretro.o $(LDFLAGS)
+endif
+
+%$(OBJEXT): %.c
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+libretro.o: FORCE
+	$(CC) -c -o libretro.o libretro.c $(CFLAGS) -DMACHINE="\"$(MACHINE)\"" -DVALID_EXTS="\"$(VALID_EXTS)\""
+
+clean:
+	rm -f $(TARGET) $(OBJS) libretro.o
+
+.PHONY: all clean FORCE
+

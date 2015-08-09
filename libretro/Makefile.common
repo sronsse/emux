@@ -1,0 +1,59 @@
+# Source files used in all implementations
+COMMON_SOURCES = \
+	$(CORE_DIR)/frontends/audio/retro_audio.c \
+	$(CORE_DIR)/frontends/input/retro_input.c \
+	$(CORE_DIR)/frontends/video/retro_video.c \
+	$(CORE_DIR)/main/audio.c \
+	$(CORE_DIR)/main/bitops.c \
+	$(CORE_DIR)/main/clock.c \
+	$(CORE_DIR)/main/cmdline.c \
+	$(CORE_DIR)/main/controller.c \
+	$(CORE_DIR)/main/cpu.c \
+	$(CORE_DIR)/main/env.c \
+	$(CORE_DIR)/main/file.c \
+	$(CORE_DIR)/main/input.c \
+	$(CORE_DIR)/main/log.c \
+	$(CORE_DIR)/main/list.c \
+	$(CORE_DIR)/main/machine.c \
+	$(CORE_DIR)/main/memory.c \
+	$(CORE_DIR)/main/port.c \
+	$(CORE_DIR)/main/resource.c \
+	$(CORE_DIR)/main/video.c
+
+# CHIP-8 sources
+chip8_SOURCES = \
+	$(CORE_DIR)/cpu/chip8_cpu.c \
+	$(CORE_DIR)/mach/chip8.c
+
+# Nintendo Game Boy sources
+gb_SOURCES = $(CORE_DIR)/controllers/audio/papu.c \
+	$(CORE_DIR)/controllers/input/gb_joypad.c \
+	$(CORE_DIR)/controllers/mapper/gb_mapper.c \
+	$(CORE_DIR)/controllers/mapper/mbc1.c \
+	$(CORE_DIR)/controllers/mapper/rom.c \
+	$(CORE_DIR)/controllers/serial/gb_serial.c \
+	$(CORE_DIR)/controllers/timer/gb_timer.c \
+	$(CORE_DIR)/controllers/video/lcdc.c \
+	$(CORE_DIR)/cpu/lr35902.c \
+	$(CORE_DIR)/mach/gb.c
+
+# Nintendo Entertainment System sources
+nes_SOURCES = \
+	$(CORE_DIR)/controllers/dma/nes_sprite.c \
+	$(CORE_DIR)/controllers/input/nes_controller.c \
+	$(CORE_DIR)/controllers/mapper/nes_mapper.c \
+	$(CORE_DIR)/controllers/mapper/nrom.c \
+	$(CORE_DIR)/controllers/video/ppu.c \
+	$(CORE_DIR)/cpu/rp2a03.c \
+	$(CORE_DIR)/mach/nes.c
+
+# Sega Master System sources
+sms_SOURCES = \
+	$(CORE_DIR)/controllers/audio/sn76489.c \
+	$(CORE_DIR)/controllers/input/sms_controller.c \
+	$(CORE_DIR)/controllers/mapper/sega_mapper.c \
+	$(CORE_DIR)/controllers/mapper/sms_mapper.c \
+	$(CORE_DIR)/controllers/video/vdp.c \
+	$(CORE_DIR)/cpu/z80.c \
+	$(CORE_DIR)/mach/sms.c
+
