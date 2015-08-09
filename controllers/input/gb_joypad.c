@@ -2,7 +2,7 @@
 #include <controller.h>
 #include <cpu.h>
 #include <input.h>
-#ifdef LIBRETRO
+#ifdef __LIBRETRO__
 #include <libretro.h>
 #endif
 #include <memory.h>
@@ -42,7 +42,7 @@ static void joypad_event(int id, enum input_type type, struct joypad *joypad);
 static void update_reg(struct joypad *joypad);
 
 static struct input_desc input_descs[] = {
-#ifndef LIBRETRO
+#ifndef __LIBRETRO__
 	{ "A", DEVICE_KEYBOARD, KEY_q },
 	{ "B", DEVICE_KEYBOARD, KEY_w },
 	{ "Select", DEVICE_KEYBOARD, KEY_o },

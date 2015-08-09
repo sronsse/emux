@@ -6,7 +6,7 @@
 #include <clock.h>
 #include <controller.h>
 #include <input.h>
-#ifdef LIBRETRO
+#ifdef __LIBRETRO__
 #include <libretro.h>
 #endif
 #include <memory.h>
@@ -51,7 +51,7 @@ static void nes_ctrl_writeb(struct nes_ctrl *nes_ctrl, uint8_t b, address_t a);
 static void nes_ctrl_reload(struct nes_ctrl *nes_ctrl);
 
 static struct input_desc input_descs[] = {
-#ifndef LIBRETRO
+#ifndef __LIBRETRO__
 	{ "Player 1 A", DEVICE_KEYBOARD, KEY_q },
 	{ "Player 1 B", DEVICE_KEYBOARD, KEY_w },
 	{ "Player 1 Select", DEVICE_KEYBOARD, KEY_o },

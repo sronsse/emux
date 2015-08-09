@@ -6,7 +6,7 @@
 #include <string.h>
 #include <audio.h>
 #include <cmdline.h>
-#ifndef LIBRETRO
+#ifndef __LIBRETRO__
 #include <config.h>
 #endif
 #include <list.h>
@@ -29,7 +29,7 @@ struct cmdline {
 };
 
 static int param_sort_compare(const void *a, const void *b);
-#ifndef LIBRETRO
+#ifndef __LIBRETRO__
 static void cmdline_build(int argc, char *argv[], int defc, char *defv[]);
 static void cmdline_print_module_options(char *module, bool error);
 static void cmdline_print_option(struct param *p, bool error);
@@ -41,7 +41,7 @@ static bool cmdline_parse_string(char *long_name, char **string);
 
 struct param **params;
 static int num_params;
-#ifndef LIBRETRO
+#ifndef __LIBRETRO__
 static struct cmdline cmdline;
 static char def_cmdline[] = DEF_CMDLINE;
 #endif
@@ -168,7 +168,7 @@ bool cmdline_set_param(char *name, char *module, char *value)
 	return false;
 }
 
-#ifndef LIBRETRO
+#ifndef __LIBRETRO__
 void cmdline_build(int argc, char *argv[], int defc, char *defv[])
 {
 #if defined(CONFIG_CMDLINE_EXTEND)

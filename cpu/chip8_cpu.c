@@ -8,7 +8,7 @@
 #include <clock.h>
 #include <cpu.h>
 #include <input.h>
-#ifdef LIBRETRO
+#ifdef __LIBRETRO__
 #include <libretro.h>
 #endif
 #include <log.h>
@@ -117,7 +117,7 @@ static void opcode_E(struct chip8 *chip8);
 static void opcode_F(struct chip8 *chip8);
 
 static struct input_desc input_descs[] = {
-#ifndef LIBRETRO
+#ifndef __LIBRETRO__
 	{ "Key 0", DEVICE_KEYBOARD, KEY_a },
 	{ "Key 1", DEVICE_KEYBOARD, KEY_b },
 	{ "Key 2", DEVICE_KEYBOARD, KEY_c },

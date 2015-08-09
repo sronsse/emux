@@ -2,7 +2,7 @@
 #include <bitops.h>
 #include <controller.h>
 #include <input.h>
-#ifdef LIBRETRO
+#ifdef __LIBRETRO__
 #include <libretro.h>
 #endif
 #include <port.h>
@@ -52,7 +52,7 @@ static void ctl_write(struct sms_ctrl *sms_ctrl, uint8_t b, port_t port);
 static uint8_t io_read(struct sms_ctrl *sms_ctrl, port_t port);
 
 static struct input_desc input_descs[] = {
-#ifndef LIBRETRO
+#ifndef __LIBRETRO__
 	{ "Up", DEVICE_KEYBOARD, KEY_UP },
 	{ "Down", DEVICE_KEYBOARD, KEY_DOWN },
 	{ "Left", DEVICE_KEYBOARD, KEY_LEFT },

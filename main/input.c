@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifndef LIBRETRO
+#ifndef __LIBRETRO__
 #include <config.h>
 #endif
 #include <cmdline.h>
@@ -9,9 +9,6 @@
 #include <input.h>
 #include <list.h>
 #include <log.h>
-#ifdef LIBRETRO
-#undef CONFIG_INPUT_XML
-#endif
 #ifdef CONFIG_INPUT_XML
 #include <file.h>
 #include <roxml.h>
