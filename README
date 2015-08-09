@@ -131,15 +131,14 @@ LIBRETRO
   cross-platform camera support, location support, and more in the future.
 
   Emux can also be built as separate libretro cores to be loaded by libretro
-  frontends such as RetroArch. All supported libretro implementations are
-  generated under the libretro/ directory. Each of the following commands can be
-  used to build these cores:
-    cd libretro/ && make (does not require the initial configure step)
-    make libretro (requires the initial configure step)
+  frontends such as RetroArch. After navigating to libretro/, you may build any
+  machine using the following command, replacing "platform" and "machine"
+  accordingly:
+    make -f Makefile.platform MACHINE=machine
 
-  Note: once within the libretro folder, individual machines can be built using
-  their name as a make target, such as:
-    make sms
+  Here is an example of how to build the Sega Master System core for Wii:
+    cd libretro/
+    make -f Makefile.wii MACHINE=sms
 
 EMSCRIPTEN
 
