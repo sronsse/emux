@@ -174,14 +174,6 @@ if CONFIG_CONTROLLER_VIDEO_VDP
 emux_SOURCES += controllers/video/vdp.c
 endif
 
-libretro:
-	make -C $(srcdir)/libretro/
-
-.PHONY: libretro
-
-clean-local:
-	make -C $(srcdir)/libretro/ clean
-
 distclean-local:
 	rm -f $(PWD)/.config $(PWD)/.config.old
 
