@@ -1,6 +1,7 @@
 #ifndef _MEMORY_H
 #define _MEMORY_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <list.h>
 #include <resource.h>
