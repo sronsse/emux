@@ -86,7 +86,6 @@ struct sn76489 {
 	uint16_t lfsr;
 	uint8_t current_reg_type;
 	uint8_t current_channel;
-	uint8_t counter;
 	struct port_region region;
 	struct clock clock;
 };
@@ -280,27 +279,21 @@ void sn76489_tick(struct sn76489 *sn76489)
 {
 	int channel;
 
-	/* Decrement internal counter and handle channels if needed */
-	if (--sn76489->counter == 0) {
-		/* Cycle through channels */
-		for (channel = 0; channel < NUM_CHANNELS; channel++) {
-			/* Decrement channel counter if non-zero */
-			if (sn76489->channels[channel].counter > 0)
-				sn76489->channels[channel].counter--;
+	/* Cycle through channels */
+	for (channel = 0; channel < NUM_CHANNELS; channel++) {
+		/* Decrement channel counter if non-zero */
+		if (sn76489->channels[channel].counter > 0)
+			sn76489->channels[channel].counter--;
 
-			/* Skip channel if counter is still non-zero */
-			if (sn76489->channels[channel].counter != 0)
-				continue;
+		/* Skip channel if counter is still non-zero */
+		if (sn76489->channels[channel].counter != 0)
+			continue;
 
-			/* Handle tone channel */
-			if (channel != NOISE_CHANNEL)
-				handle_tone_channel(sn76489, channel);
-			else
-				handle_noise_channel(sn76489);
-		}
-
-		/* Reset internal counter */
-		sn76489->counter = INTERNAL_DIVIDER;
+		/* Handle tone channel */
+		if (channel != NOISE_CHANNEL)
+			handle_tone_channel(sn76489, channel);
+		else
+			handle_noise_channel(sn76489);
 	}
 
 	/* Mix all channels */
@@ -335,7 +328,7 @@ bool sn76489_init(struct controller_instance *instance)
 		RESOURCE_CLK,
 		instance->resources,
 		instance->num_resources);
-	sn76489->clock.rate = res->data.clk;
+	sn76489->clock.rate = res->data.clk / INTERNAL_DIVIDER;
 	sn76489->clock.data = sn76489;
 	sn76489->clock.tick = (clock_tick_t)sn76489_tick;
 	sn76489->clock.enabled = true;
@@ -357,9 +350,6 @@ void sn76489_reset(struct controller_instance *instance)
 {
 	struct sn76489 *sn76489 = instance->priv_data;
 	int channel;
-
-	/* Reset internal counter */
-	sn76489->counter = INTERNAL_DIVIDER;
 
 	/* Reset all attenuations and channel counters */
 	for (channel = 0; channel < NUM_CHANNELS; channel++) {
