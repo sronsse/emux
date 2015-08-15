@@ -37,7 +37,6 @@
 /* VDP constant parameters */
 #define SCREEN_WIDTH			256
 #define SCREEN_HEIGHT			192
-#define SCREEN_REFRESH_RATE		60
 #define NUM_COLUMNS			342
 #define NUM_ROWS			262
 #define MAX_BG_Y			224
@@ -681,13 +680,7 @@ bool vdp_init(struct controller_instance *instance)
 	struct vdp *vdp;
 	struct video_specs video_specs;
 	struct resource *res;
-
-	/* Initialize video frontend */
-	video_specs.width = SCREEN_WIDTH;
-	video_specs.height = SCREEN_HEIGHT;
-	video_specs.fps = SCREEN_REFRESH_RATE;
-	if (!video_init(&video_specs))
-		return false;
+	float fps;
 
 	/* Allocate VDP structure */
 	instance->priv_data = malloc(sizeof(struct vdp));
@@ -732,6 +725,18 @@ bool vdp_init(struct controller_instance *instance)
 	vdp->clock.data = vdp;
 	vdp->clock.tick = (clock_tick_t)vdp_tick;
 	clock_add(&vdp->clock);
+
+	/* Calculate desired FPS */
+	fps = (float)vdp->clock.rate / (NUM_COLUMNS * NUM_ROWS * 2);
+
+	/* Initialize video frontend */
+	video_specs.width = SCREEN_WIDTH;
+	video_specs.height = SCREEN_HEIGHT;
+	video_specs.fps = fps;
+	if (!video_init(&video_specs)) {
+		free(vdp);
+		return false;
+	}
 
 	return true;
 }
