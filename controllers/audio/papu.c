@@ -235,7 +235,11 @@ static void channel2_write(struct papu *papu, address_t address);
 static void channel3_write(struct papu *papu, address_t address);
 static void channel4_write(struct papu *papu, address_t address);
 static void papu_tick(struct papu *papu);
-static void square_update(struct channel *channel, uint16_t freq, uint8_t duty);
+static void square1_update(struct papu *papu);
+static void square2_update(struct papu *papu);
+static void wave_update(struct papu *papu);
+static void noise_update(struct papu *papu);
+static uint8_t noise_get_divisor(struct papu *papu);
 
 static struct mops papu_mops = {
 	.readb = (readb_t)papu_readb,
@@ -548,72 +552,286 @@ void channel4_write(struct papu *papu, address_t address)
 	}
 }
 
-void square_update(struct channel *channel, uint16_t freq, uint8_t duty)
+void square1_update(struct papu *papu)
 {
+	uint16_t freq;
 	uint8_t s;
 
-	/* Leave already if channel is disabled */
-	if (!channel->enabled)
+	/* Leave already if channel is disabled (zeroing the output) */
+	if (!papu->channel1.enabled) {
+		papu->channel1.value = 0;
 		return;
+	}
 
 	/* Check if channel needs update */
-	if (channel->counter == 0) {
+	if (papu->channel1.counter == 0) {
 		/* Reset counter based on frequency */
-		channel->counter = (2048 - freq) * 4;
+		freq = papu->regs.nr13 | (papu->regs.nr14.freq_high << 8);
+		papu->channel1.counter = (MAX_FREQ - freq) * SQUARE_FREQ_MUL;
 
 		/* Update channel value based on following duty cycles:
 		Duty   Waveform    Ratio
+		------------------------
 		0      00000001    12.5%
 		1      10000001    25%
 		2      10000111    50%
 		3      01111110    75% */
-		s = channel->step;
-		switch (duty) {
+		s = papu->channel1.step;
+		switch (papu->regs.nr11.wave_duty) {
 		case 0:
-			channel->value = (s == 7);
+			papu->channel1.value = (s == 7);
 			break;
 		case 1:
-			channel->value = ((s == 0) || (s == 7));
+			papu->channel1.value = ((s == 0) || (s == 7));
 			break;
 		case 2:
-			channel->value = ((s == 0) || (s >= 5));
+			papu->channel1.value = ((s == 0) || (s >= 5));
 			break;
 		case 3:
-			channel->value = ((s >= 1) && (s <= 6));
+			papu->channel1.value = ((s >= 1) && (s <= 6));
 			break;
 		}
 
 		/* Increment step and handle overflow */
-		if (++channel->step == 8)
-			channel->step = 0;
+		if (++papu->channel1.step == NUM_SQUARE_STEPS)
+			papu->channel1.step = 0;
 	}
 
 	/* Decrement channel counter */
-	channel->counter--;
+	papu->channel1.counter--;
+}
+
+void square2_update(struct papu *papu)
+{
+	uint16_t freq;
+	uint8_t s;
+
+	/* Leave already if channel is disabled (zeroing the output) */
+	if (!papu->channel2.enabled) {
+		papu->channel2.value = 0;
+		return;
+	}
+
+	/* Check if channel needs update */
+	if (papu->channel2.counter == 0) {
+		/* Reset counter based on frequency */
+		freq = papu->regs.nr23 | (papu->regs.nr24.freq_high << 8);
+		papu->channel2.counter = (MAX_FREQ - freq) * SQUARE_FREQ_MUL;
+
+		/* Update channel value based on following duty cycles:
+		Duty   Waveform    Ratio
+		------------------------
+		0      00000001    12.5%
+		1      10000001    25%
+		2      10000111    50%
+		3      01111110    75% */
+		s = papu->channel2.step;
+		switch (papu->regs.nr21.wave_duty) {
+		case 0:
+			papu->channel2.value = (s == 7);
+			break;
+		case 1:
+			papu->channel2.value = ((s == 0) || (s == 7));
+			break;
+		case 2:
+			papu->channel2.value = ((s == 0) || (s >= 5));
+			break;
+		case 3:
+			papu->channel2.value = ((s >= 1) && (s <= 6));
+			break;
+		}
+
+		/* Increment step and handle overflow */
+		if (++papu->channel2.step == NUM_SQUARE_STEPS)
+			papu->channel2.step = 0;
+	}
+
+	/* Decrement channel counter */
+	papu->channel2.counter--;
+}
+
+void wave_update(struct papu *papu)
+{
+	uint16_t freq;
+	uint8_t sample;
+	uint8_t addr;
+	uint8_t shift;
+
+	/* Leave already if channel is disabled (zeroing the sample) */
+	if (!papu->channel3.enabled) {
+		papu->channel3.sample = 0;
+		return;
+	}
+
+	/* Check if channel needs update */
+	if (papu->channel3.counter == 0) {
+		/* Reset counter based on frequency */
+		freq = papu->regs.nr33 | (papu->regs.nr34.freq_high << 8);
+		papu->channel3.counter = (MAX_FREQ - freq) * WAVE_FREQ_MUL;
+
+		/* When the timer generates a clock, the position counter is
+		advanced one sample (half a byte) in the wave table, looping
+		back to the beginning when it goes past the end. */
+		if (++papu->channel3.pos == WAVE_RAM_SIZE * 2)
+			papu->channel3.pos = 0;
+
+		/* Read sample from this new position (each byte encodes two
+		samples, the first in the high bits) */
+		addr = papu->channel3.pos / 2;
+		shift = (papu->channel3.pos % 2 != 0) ? 0 : 4;
+		sample = bitops_getb(&papu->wave_ram[addr], shift, 4);
+
+		/* The DAC receives the current value from the upper/lower
+		nibble of the sample buffer, shifted right by the volume
+		control.
+		Code   Shift   Volume
+		-----------------------
+		0      4         0% (silent)
+		1      0       100%
+		2      1        50%
+		3      2        25% */
+		switch (papu->regs.nr32.level) {
+		case 0:
+			papu->channel3.sample = 0;
+			break;
+		case 1:
+			papu->channel3.sample = sample;
+			break;
+		case 2:
+			papu->channel3.sample = sample >> 1;
+			break;
+		case 3:
+			papu->channel3.sample = sample >> 2;
+			break;
+		}
+	}
+
+	/* Decrement channel counter */
+	papu->channel3.counter--;
+}
+
+uint8_t noise_get_divisor(struct papu *papu)
+{
+	/* The noise channel's frequency timer period is set by a base
+	divisor shifted left some number of bits:
+	Divisor code   Divisor
+	----------------------
+	0                8
+	1               16
+	2               32
+	3               48
+	4               64
+	5               80
+	6               96
+	7              112 */
+	switch (papu->regs.nr43.ratio) {
+	case 0:
+		return 8;
+	case 1:
+		return 16;
+	case 2:
+		return 32;
+	case 3:
+		return 48;
+	case 4:
+		return 64;
+	case 5:
+		return 80;
+	case 6:
+		return 96;
+	case 7:
+		return 112;
+	}
+}
+
+void noise_update(struct papu *papu)
+{
+	uint8_t divisor;
+	uint8_t b;
+
+	/* Leave already if channel is disabled (zeroing the output) */
+	if (!papu->channel4.enabled) {
+		papu->channel4.value = 0;
+		return;
+	}
+
+	/* Check if channel needs update */
+	if (papu->channel4.counter == 0) {
+		/* Update counter */
+		divisor = noise_get_divisor(papu);
+		papu->channel4.counter = divisor << papu->regs.nr43.shift;
+
+		/* The linear feedback shift register (LFSR) generates a
+		pseudo-random bit sequence. It has a 15-bit shift register with
+		feedback. When clocked by the frequency timer, the low two bits
+		(0 and 1) are XORed, all bits are shifted right by one, and the
+		result of the XOR is put into the now-empty high bit. */
+		b = bitops_getw(&papu->channel4.lfsr, 0, 1);
+		b ^= bitops_getw(&papu->channel4.lfsr, 1, 1);
+		papu->channel4.lfsr >>= 1;
+		bitops_setw(&papu->channel4.lfsr, 14, 1, b);
+
+		/* If width mode is 1 (NR43), the XOR result is also put into
+		bit 6 after the shift, resulting in a 7-bit LFSR. */
+		if (papu->regs.nr43.width)
+			bitops_setw(&papu->channel4.lfsr, 6, 1, b);
+
+		/* The waveform output is bit 0 of the LFSR, inverted. */
+		papu->channel4.value = !bitops_getw(&papu->channel4.lfsr, 0, 1);
+	}
+
+	/* Decrement channel counter */
+	papu->channel4.counter--;
 }
 
 void papu_tick(struct papu *papu)
 {
+	float ch1_output;
+	float ch2_output;
+	float ch3_output;
+	float ch4_output;
+	float left;
+	float right;
 	uint8_t buffer[2];
-	uint8_t value;
-	uint16_t freq;
-	uint8_t duty;
 
-	/* Update square channel 1 */
-	freq = papu->regs.nr13 | (papu->regs.nr14.freq_high << 8);
-	duty = papu->regs.nr11.wave_duty;
-	square_update(&papu->channel1, freq, duty);
+	/* Update square channels, wave channel, and noise channel */
+	square1_update(papu);
+	square2_update(papu);
+	wave_update(papu);
+	noise_update(papu);
 
-	/* Update square channel 2 */
-	freq = papu->regs.nr23 | (papu->regs.nr24.freq_high << 8);
-	duty = papu->regs.nr21.wave_duty;
-	square_update(&papu->channel2, freq, duty);
+	/* Compute square channel 1 output */
+	ch1_output = papu->channel1.value;
+	ch1_output *= (float)papu->channel1.volume / MAX_VOLUME;
 
-	/* Compute final value */
-	/* TODO: split left and right */
-	value = (papu->channel1.value + papu->channel2.value) * UCHAR_MAX / 2;
-	buffer[0] = value;
-	buffer[1] = value;
+	/* Compute square channel 2 output */
+	ch2_output = papu->channel2.value;
+	ch2_output *= (float)papu->channel2.volume / MAX_VOLUME;
+
+	/* Compute wave channel output (sample has frequency and volume info) */
+	ch3_output = (float)papu->channel3.sample / MAX_VOLUME;
+
+	/* Compute noise channel output */
+	ch4_output = papu->channel4.value;
+	ch4_output *= (float)papu->channel4.volume / MAX_VOLUME;
+
+	/* Mix all channels and compute left channel output */
+	left = ch1_output * papu->regs.nr51.snd1_so2;
+	left += ch2_output * papu->regs.nr51.snd2_so2;
+	left += ch3_output * papu->regs.nr51.snd3_so2;
+	left += ch4_output * papu->regs.nr51.snd4_so2;
+	left /= NUM_CHANNELS;
+
+	/* Mix all channels and compute right channel output */
+	right = ch1_output * papu->regs.nr51.snd1_so1;
+	right += ch2_output * papu->regs.nr51.snd2_so1;
+	right += ch3_output * papu->regs.nr51.snd3_so1;
+	right += ch4_output * papu->regs.nr51.snd4_so1;
+	right /= NUM_CHANNELS;
+
+	/* Enqueue audio data */
+	buffer[0] = left * UCHAR_MAX;
+	buffer[1] = right * UCHAR_MAX;
 	audio_enqueue(buffer, 1);
 
 	/* Always consume one cycle */
