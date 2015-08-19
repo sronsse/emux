@@ -173,7 +173,9 @@ struct papu {
 	union papu_regs regs;
 	struct channel channel1;
 	struct channel channel2;
+	uint8_t wave_ram[WAVE_RAM_SIZE];
 	struct region region;
+	struct region wave_region;
 	struct clock main_clock;
 };
 
@@ -468,6 +470,16 @@ bool papu_init(struct controller_instance *instance)
 	papu->region.mops = &papu_mops;
 	papu->region.data = papu;
 	memory_region_add(&papu->region);
+
+	/* Add wave RAM region */
+	res = resource_get("wave",
+		RESOURCE_MEM,
+		instance->resources,
+		instance->num_resources);
+	papu->wave_region.area = res;
+	papu->wave_region.mops = &ram_mops;
+	papu->wave_region.data = papu->wave_ram;
+	memory_region_add(&papu->wave_region);
 
 	/* Add main clock */
 	res = resource_get("clk",
