@@ -108,7 +108,7 @@ static inline void LD_dd_nn(struct z80 *cpu, uint16_t *dd);
 static inline void LD_IXY_nn(struct z80 *cpu, uint16_t *reg);
 static inline void LD_HL_cnn(struct z80 *cpu);
 static inline void LD_dd_cnn(struct z80 *cpu, uint16_t *dd);
-static inline void LD_IXY_cnn(struct z80 *cpu);
+static inline void LD_IXY_cnn(struct z80 *cpu, uint16_t *reg);
 static inline void LD_cnn_HL(struct z80 *cpu);
 static inline void LD_cnn_dd(struct z80 *cpu, uint16_t *dd);
 static inline void LD_cnn_IXY(struct z80 *cpu, uint16_t *reg);
@@ -179,7 +179,6 @@ static inline void HALT(struct z80 *cpu);
 static inline void DI(struct z80 *cpu);
 static inline void EI(struct z80 *cpu);
 static inline void IM_0(struct z80 *cpu);
-static inline void IM_1(struct z80 *cpu);
 static inline void IM_1(struct z80 *cpu);
 static inline void IM_2(struct z80 *cpu);
 static inline void ADD_HL_ss(struct z80 *cpu, uint16_t *ss);
@@ -419,12 +418,12 @@ void LD_dd_cnn(struct z80 *cpu, uint16_t *dd)
 	clock_consume(20);
 }
 
-void LD_IXY_cnn(struct z80 *cpu)
+void LD_IXY_cnn(struct z80 *cpu, uint16_t *reg)
 {
 	uint16_t address = memory_readb(cpu->bus_id, cpu->PC++);
 	address |= memory_readb(cpu->bus_id, cpu->PC++) << 8;
-	cpu->L = memory_readb(cpu->bus_id, address);
-	cpu->H = memory_readb(cpu->bus_id, address + 1);
+	*reg = memory_readb(cpu->bus_id, address);
+	*reg |= memory_readb(cpu->bus_id, address + 1) << 8;
 	clock_consume(20);
 }
 
@@ -3691,7 +3690,7 @@ void z80_opcode_DDFD(struct z80 *cpu, uint8_t prefix)
 		LD_IXY_nn(cpu, reg);
 		break;
 	case 0x22:
-		LD_cnn_dd(cpu, reg);
+		LD_cnn_IXY(cpu, reg);
 		break;
 	case 0x23:
 		INC_ss(reg);
@@ -3709,7 +3708,7 @@ void z80_opcode_DDFD(struct z80 *cpu, uint8_t prefix)
 		ADD_IXY_pp(cpu, reg, reg);
 		break;
 	case 0x2A:
-		LD_dd_cnn(cpu, reg);
+		LD_IXY_cnn(cpu, reg);
 		break;
 	case 0x2B:
 		DEC_IXY(reg);
@@ -3827,6 +3826,9 @@ void z80_opcode_DDFD(struct z80 *cpu, uint8_t prefix)
 		break;
 	case 0xE9:
 		JP_IXY(cpu, reg);
+		break;
+	case 0xF9:
+		LD_SP_IXY(cpu, reg);
 		break;
 	case 0xFD:
 		POP_IXY(cpu, reg);
@@ -3980,6 +3982,9 @@ void z80_opcode_ED(struct z80 *cpu)
 	case 0x45:
 		RETN(cpu);
 		break;
+	case 0x46:
+		IM_0(cpu);
+		break;
 	case 0x47:
 		LD_I_A(cpu);
 		break;
@@ -3997,6 +4002,9 @@ void z80_opcode_ED(struct z80 *cpu)
 		break;
 	case 0x4D:
 		RETI(cpu);
+		break;
+	case 0x4F:
+		LD_R_A(cpu);
 		break;
 	case 0x50:
 		IN_r_cC(cpu, &cpu->D);
@@ -4027,6 +4035,9 @@ void z80_opcode_ED(struct z80 *cpu)
 		break;
 	case 0x5B:
 		LD_dd_cnn(cpu, &cpu->DE);
+		break;
+	case 0x5E:
+		IM_2(cpu);
 		break;
 	case 0x5F:
 		LD_A_R(cpu);
@@ -4077,7 +4088,7 @@ void z80_opcode_ED(struct z80 *cpu)
 		OUTI(cpu);
 		break;
 	case 0xA8:
-		LDDR(cpu);
+		LDD(cpu);
 		break;
 	case 0xA9:
 		CPD(cpu);
@@ -4107,7 +4118,10 @@ void z80_opcode_ED(struct z80 *cpu)
 		CPDR(cpu);
 		break;
 	case 0xBA:
-		IND(cpu);
+		INDR(cpu);
+		break;
+	case 0xBB:
+		OTDR(cpu);
 		break;
 	default:
 		LOG_W("z80: unknown ED opcode (%02x)!\n", opcode);
