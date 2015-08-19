@@ -239,6 +239,7 @@ static void channel4_write(struct papu *papu, address_t address);
 static void papu_tick(struct papu *papu);
 static void seq_tick(struct papu *papu);
 static void length_counter_tick(struct papu *papu);
+static void vol_env_tick(struct papu *papu);
 static void square1_update(struct papu *papu);
 static void square2_update(struct papu *papu);
 static void wave_update(struct papu *papu);
@@ -885,6 +886,60 @@ void length_counter_tick(struct papu *papu)
 	if (handle_channel)
 		if (--papu->channel4.len_counter == 0)
 			papu->channel4.enabled = false;
+}
+
+void vol_env_tick(struct papu *papu)
+{
+	/* Handle channel 1 volume envelope */
+	if (papu->channel1.env_counter > 0) {
+		/* Decrement counter and handle envelope if it reached 0 */
+		if (--papu->channel1.env_counter == 0) {
+			/* Increment/decrement volume based on direction */
+			if (papu->regs.nr12.dir &&
+				(papu->channel1.volume < MAX_VOLUME))
+				papu->channel1.volume++;
+			else if (!papu->regs.nr12.dir &&
+				(papu->channel1.volume > 0))
+				papu->channel1.volume--;
+
+			/* Reload envelope counter */
+			papu->channel1.env_counter = papu->regs.nr12.num_sweep;
+		}
+	}
+
+	/* Handle channel 2 volume envelope */
+	if (papu->channel2.env_counter > 0) {
+		/* Decrement counter and handle envelope if it reached 0 */
+		if (--papu->channel2.env_counter == 0) {
+			/* Increment/decrement volume based on direction */
+			if (papu->regs.nr22.dir &&
+				(papu->channel2.volume < MAX_VOLUME))
+				papu->channel2.volume++;
+			else if (!papu->regs.nr22.dir &&
+				(papu->channel2.volume > 0))
+				papu->channel2.volume--;
+
+			/* Reload envelope counter */
+			papu->channel2.env_counter = papu->regs.nr22.num_sweep;
+		}
+	}
+
+	/* Handle channel 4 volume envelope */
+	if (papu->channel4.env_counter > 0) {
+		/* Decrement counter and handle envelope if it reached 0 */
+		if (--papu->channel4.env_counter == 0) {
+			/* Increment/decrement volume based on direction */
+			if (papu->regs.nr42.dir &&
+				(papu->channel4.volume < MAX_VOLUME))
+				papu->channel4.volume++;
+			else if (!papu->regs.nr42.dir &&
+				(papu->channel4.volume > 0))
+				papu->channel4.volume--;
+
+			/* Reload envelope counter */
+			papu->channel4.env_counter = papu->regs.nr42.num_sweep;
+		}
+	}
 }
 
 void seq_tick(struct papu *papu)
