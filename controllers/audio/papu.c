@@ -238,6 +238,7 @@ static void channel3_write(struct papu *papu, address_t address);
 static void channel4_write(struct papu *papu, address_t address);
 static void papu_tick(struct papu *papu);
 static void seq_tick(struct papu *papu);
+static void length_counter_tick(struct papu *papu);
 static void square1_update(struct papu *papu);
 static void square2_update(struct papu *papu);
 static void wave_update(struct papu *papu);
@@ -839,6 +840,51 @@ void papu_tick(struct papu *papu)
 
 	/* Always consume one cycle */
 	clock_consume(1);
+}
+
+void length_counter_tick(struct papu *papu)
+{
+	bool handle_channel;
+
+	/* Check if channel 1 length counter needs to be handled */
+	handle_channel = papu->channel1.enabled &&
+		papu->regs.nr14.counter_sel &&
+		(papu->channel1.len_counter > 0);
+
+	/* Decrement channel 1 counter and disable channel if needed */
+	if (handle_channel)
+		if (--papu->channel1.len_counter == 0)
+			papu->channel1.enabled = false;
+
+	/* Check if channel 2 length counter needs to be handled */
+	handle_channel = papu->channel2.enabled &&
+		papu->regs.nr24.counter_sel &&
+		(papu->channel2.len_counter > 0);
+
+	/* Decrement channel 2 counter and disable channel if needed */
+	if (handle_channel)
+		if (--papu->channel2.len_counter == 0)
+			papu->channel2.enabled = false;
+
+	/* Check if channel 3 length counter needs to be handled */
+	handle_channel = papu->channel3.enabled &&
+		papu->regs.nr34.counter_sel &&
+		(papu->channel3.len_counter > 0);
+
+	/* Decrement channel 3 counter and disable channel if needed */
+	if (handle_channel)
+		if (--papu->channel3.len_counter == 0)
+			papu->channel3.enabled = false;
+
+	/* Check if channel 4 length counter needs to be handled */
+	handle_channel = papu->channel4.enabled &&
+		papu->regs.nr44.counter_sel &&
+		(papu->channel4.len_counter > 0);
+
+	/* Decrement channel 4 counter and disable channel if needed */
+	if (handle_channel)
+		if (--papu->channel4.len_counter == 0)
+			papu->channel4.enabled = false;
 }
 
 void seq_tick(struct papu *papu)
