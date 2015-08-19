@@ -240,6 +240,7 @@ static void papu_tick(struct papu *papu);
 static void seq_tick(struct papu *papu);
 static void length_counter_tick(struct papu *papu);
 static void vol_env_tick(struct papu *papu);
+static void sweep_tick(struct papu *papu);
 static void square1_update(struct papu *papu);
 static void square2_update(struct papu *papu);
 static void wave_update(struct papu *papu);
@@ -939,6 +940,40 @@ void vol_env_tick(struct papu *papu)
 			/* Reload envelope counter */
 			papu->channel4.env_counter = papu->regs.nr42.num_sweep;
 		}
+	}
+}
+
+void sweep_tick(struct papu *papu)
+{
+	uint16_t d;
+
+	/* If the internal enabled flag is set and the sweep period is not zero,
+	a new frequency is calculated and the overflow check is performed. */
+	if (!papu->channel1.sweep_enabled || (papu->regs.nr10.time == 0))
+		return;
+
+	/* Decrement counter and return if it is non-zero */
+	if (--papu->channel1.sweep_counter > 0)
+		return;
+
+	/* Frequency calculation consists of taking the value in the frequency
+	shadow register, shifting it right by sweep shift, optionally negating
+	the value, and summing this with the frequency shadow register to
+	produce a new frequency. */
+	d = papu->channel1.sweep_freq >> papu->regs.nr10.num_shift;
+	papu->channel1.sweep_freq += papu->regs.nr10.inc_dec ? -d : d;
+
+	/* Write frequency back to channel registers */
+	papu->regs.nr13 = papu->channel1.sweep_freq & 0xFF;
+	papu->regs.nr14.freq_high = papu->channel1.sweep_freq >> 8;
+
+	/* Reload sweep timer */
+	papu->channel1.sweep_counter = papu->regs.nr10.time;
+
+	/* Disable channel if maximum frequency is reached */
+	if (papu->channel1.sweep_freq >= MAX_FREQ) {
+		papu->channel1.enabled = false;
+		papu->channel1.sweep_enabled = false;
 	}
 }
 
