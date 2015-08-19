@@ -219,10 +219,12 @@ struct papu {
 	struct channel2 channel2;
 	struct channel3 channel3;
 	struct channel4 channel4;
+	uint8_t seq_step;
 	uint8_t wave_ram[WAVE_RAM_SIZE];
 	struct region region;
 	struct region wave_region;
 	struct clock main_clock;
+	struct clock seq_clock;
 };
 
 static bool papu_init(struct controller_instance *instance);
@@ -235,6 +237,7 @@ static void channel2_write(struct papu *papu, address_t address);
 static void channel3_write(struct papu *papu, address_t address);
 static void channel4_write(struct papu *papu, address_t address);
 static void papu_tick(struct papu *papu);
+static void seq_tick(struct papu *papu);
 static void square1_update(struct papu *papu);
 static void square2_update(struct papu *papu);
 static void wave_update(struct papu *papu);
@@ -838,6 +841,47 @@ void papu_tick(struct papu *papu)
 	clock_consume(1);
 }
 
+void seq_tick(struct papu *papu)
+{
+	/* The frame sequencer generates low frequency clocks for the modulation
+	units. It is clocked by a 512 Hz timer.
+	Step  Length Ctr  Vol Env  Sweep
+	--------------------------------
+	0     Clock       -        -
+	1     -           -        -
+	2     Clock       -        Clock
+	3     -           -        -
+	4     Clock       -        -
+	5     -           -        -
+	6     Clock       -        Clock
+	7     -           Clock    -
+	--------------------------------
+	Rate  256 Hz      64 Hz    128 Hz */
+	switch (papu->seq_step) {
+	case 0:
+	case 4:
+		length_counter_tick(papu);
+		break;
+	case 2:
+	case 6:
+		length_counter_tick(papu);
+		sweep_tick(papu);
+		break;
+	case 7:
+		vol_env_tick(papu);
+		break;
+	default:
+		break;
+	}
+
+	/* Increment frame sequencer step and handle overflow */
+	if (++papu->seq_step == NUM_FRAME_SEQ_STEPS)
+		papu->seq_step = 0;
+
+	/* Always consume one cycle */
+	clock_consume(1);
+}
+
 bool papu_init(struct controller_instance *instance)
 {
 	struct papu *papu;
@@ -867,6 +911,13 @@ bool papu_init(struct controller_instance *instance)
 	papu->wave_region.mops = &ram_mops;
 	papu->wave_region.data = papu->wave_ram;
 	memory_region_add(&papu->wave_region);
+
+	/* Add frame sequencer clock */
+	papu->seq_clock.rate = FRAME_SEQ_RATE;
+	papu->seq_clock.data = papu;
+	papu->seq_clock.tick = (clock_tick_t)seq_tick;
+	papu->seq_clock.enabled = true;
+	clock_add(&papu->seq_clock);
 
 	/* Add main clock */
 	res = resource_get("clk",
