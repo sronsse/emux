@@ -109,10 +109,6 @@ static struct resource hram_area =
 static struct resource oam_area =
 	MEM("oam", BUS_ID, OAM_START, OAM_END);
 
-/* Wave RAM area */
-static struct resource wave_area =
-	MEM("wave", BUS_ID, WAVE_START, WAVE_END);
-
 /* LR35902 CPU */
 static struct resource cpu_resources[] = {
 	CLK("clk", GB_CLOCK_RATE),
@@ -149,6 +145,7 @@ static struct controller_instance gb_mapper_instance = {
 /* Sound controller */
 static struct resource papu_resources[] = {
 	MEM("mem", BUS_ID, SOUND_START, SOUND_END),
+	MEM("wave", BUS_ID, WAVE_START, WAVE_END),
 	CLK("clk", SOUND_CLOCK_RATE)
 };
 
@@ -251,12 +248,6 @@ bool gb_init(struct machine *machine)
 	gb_data->oam_region.mops = &ram_mops;
 	gb_data->oam_region.data = gb_data->oam;
 	memory_region_add(&gb_data->oam_region);
-
-	/* Add wave RAM region */
-	gb_data->wave_region.area = &wave_area;
-	gb_data->wave_region.mops = &ram_mops;
-	gb_data->wave_region.data = gb_data->wave;
-	memory_region_add(&gb_data->wave_region);
 
 	/* Set GB mapper controller machine data */
 	gb_mapper_mach_data.bootrom_path = bootrom_path;
