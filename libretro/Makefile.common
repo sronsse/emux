@@ -60,3 +60,7 @@ sms_SOURCES = \
 	$(CORE_DIR)/cpu/z80.c \
 	$(CORE_DIR)/mach/sms.c
 
+# Sony PlayStation sources
+psx_SOURCES = \
+	$(CORE_DIR)/mach/psx.c
+

@@ -95,7 +95,8 @@ EXTRA_DIST = Kconfig \
 	mach/configs/chip8_defconfig \
 	mach/configs/gb_defconfig \
 	mach/configs/nes_defconfig \
-	mach/configs/sms_defconfig
+	mach/configs/sms_defconfig \
+	mach/configs/psx_defconfig
 
 # Machines
 if CONFIG_MACH_CHIP8
@@ -106,6 +107,9 @@ emux_SOURCES += mach/gb.c
 endif
 if CONFIG_MACH_NES
 emux_SOURCES += mach/nes.c
+endif
+if CONFIG_MACH_PSX
+emux_SOURCES += mach/psx.c
 endif
 if CONFIG_MACH_SMS
 emux_SOURCES += mach/sms.c
