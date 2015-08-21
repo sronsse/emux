@@ -12,6 +12,12 @@ config CPU_LR35902
 	help
 		Enable LR35902 CPU
 
+config CPU_R3051
+	bool "R3051"
+	default y
+	help
+		Enable R3051 CPU
+
 config CPU_RP2A03
 	bool "RP2A03"
 	default y

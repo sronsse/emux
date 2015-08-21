@@ -142,6 +142,9 @@ endif
 if CONFIG_CPU_RP2A03
 emux_SOURCES += cpu/rp2a03.c
 endif
+if CONFIG_CPU_R3051
+emux_SOURCES += cpu/r3051.c
+endif
 if CONFIG_CPU_Z80
 emux_SOURCES += cpu/z80.c
 endif
