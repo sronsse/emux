@@ -58,8 +58,8 @@ struct resource {
 	union {
 		struct {
 			int bus_id;
-			uint16_t start;
-			uint16_t end;
+			uint32_t start;
+			uint32_t end;
 		} mem;
 		struct {
 			uint8_t start;

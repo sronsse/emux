@@ -289,6 +289,8 @@ void memory_region_remove(struct region *region)
 /* Define memory read/write functions */
 DEFINE_MEMORY_READ(b, uint8_t)
 DEFINE_MEMORY_READ(w, uint16_t)
+DEFINE_MEMORY_READ(l, uint32_t)
 DEFINE_MEMORY_WRITE(b, uint8_t)
 DEFINE_MEMORY_WRITE(w, uint16_t)
+DEFINE_MEMORY_WRITE(l, uint32_t)
 
