@@ -82,7 +82,7 @@ void update_reg(struct joypad *joypad)
 	joypad->reg.input_down_or_start = !joypad->keys[offset + 3];
 }
 
-uint8_t joypad_readb(struct joypad *joypad, uint16_t UNUSED(address))
+uint8_t joypad_readb(struct joypad *joypad, address_t UNUSED(address))
 {
 	union joypad_reg output;
 
@@ -93,7 +93,7 @@ uint8_t joypad_readb(struct joypad *joypad, uint16_t UNUSED(address))
 	return output.value;
 }
 
-void joypad_writeb(struct joypad *joypad, uint8_t b, uint16_t UNUSED(address))
+void joypad_writeb(struct joypad *joypad, uint8_t b, address_t UNUSED(address))
 {
 	union joypad_reg input;
 
