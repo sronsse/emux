@@ -9,14 +9,26 @@
 #define KB(x) (x * 1024)
 #define MB(x) (x * 1024 * 1024)
 
+#define DECLARE_MEMORY_READ(ext, type) \
+	type memory_read##ext(int bus_id, address_t address);
+#define DECLARE_MEMORY_WRITE(ext, type) \
+	void memory_write##ext(int bus_id, type data, address_t address);
+
+#define DECLARE_MEMORY_READ_OP(ext, type) \
+	typedef type (*read##ext##_t)(region_data_t *, address_t);
+#define DECLARE_MEMORY_WRITE_OP(ext, type) \
+	typedef void (*write##ext##_t)(region_data_t *, type, address_t);
+
 /* address_t size should match the maximum bus size of all supported machines */
 typedef uint16_t address_t;
 
 typedef void region_data_t;
-typedef uint8_t (*readb_t)(region_data_t *data, address_t address);
-typedef uint16_t (*readw_t)(region_data_t *data, address_t address);
-typedef void (*writeb_t)(region_data_t *data, uint8_t b, address_t address);
-typedef void (*writew_t)(region_data_t *data, uint16_t w, address_t address);
+
+/* Declare memory read/write operation function pointers */
+DECLARE_MEMORY_READ_OP(b, uint8_t)
+DECLARE_MEMORY_READ_OP(w, uint16_t)
+DECLARE_MEMORY_WRITE_OP(b, uint8_t)
+DECLARE_MEMORY_WRITE_OP(w, uint16_t)
 
 struct mops {
 	readb_t readb;
@@ -46,10 +58,12 @@ void memory_bus_remove(struct bus *bus);
 void memory_bus_remove_all();
 bool memory_region_add(struct region *region);
 void memory_region_remove(struct region *region);
-uint8_t memory_readb(int bus_id, address_t address);
-uint16_t memory_readw(int bus_id, address_t address);
-void memory_writeb(int bus_id, uint8_t b, address_t address);
-void memory_writew(int bus_id, uint16_t w, address_t address);
+
+/* Declare memory read/write functions */
+DECLARE_MEMORY_READ(b, uint8_t)
+DECLARE_MEMORY_READ(w, uint16_t)
+DECLARE_MEMORY_WRITE(b, uint8_t)
+DECLARE_MEMORY_WRITE(w, uint16_t)
 
 extern struct mops rom_mops;
 extern struct mops ram_mops;

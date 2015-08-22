@@ -7,6 +7,144 @@
 #include <memory.h>
 #include <util.h>
 
+#define DEFINE_MEMORY_READ(ext, type) \
+	type memory_read##ext(int bus_id, address_t address) \
+	{ \
+		struct bus *bus; \
+		struct region *r; \
+		struct resource *mirror; \
+		struct list_link *link; \
+		address_t a; \
+		int i; \
+	\
+		/* Get bus and return 0 on failure */ \
+		bus = get_bus(bus_id); \
+		if (!bus) { \
+			LOG_W("Bus not found (%s(%u, %08x))!\n", \
+				__func__, \
+				bus_id, \
+				address); \
+			return 0; \
+		} \
+	\
+		/* Parse regions */ \
+		link = bus->regions; \
+		while ((r = list_get_next(&link))) { \
+			/* Skip if region if operation is not supported */ \
+			if (!r->mops->read##ext) \
+				continue; \
+	\
+			/* Call operation if address is within area */ \
+			if ((address >= r->area->data.mem.start) && \
+				(address <= r->area->data.mem.end)) { \
+				a = address - r->area->data.mem.start; \
+				return r->mops->read##ext(r->data, a); \
+			} \
+	\
+			/* Call operation if address is within a mirror */ \
+			for (i = 0; i < r->area->num_children; i++) { \
+				mirror = &r->area->children[i]; \
+				if ((address >= mirror->data.mem.start) && \
+					(address <= mirror->data.mem.end)) { \
+					a = address - mirror->data.mem.start; \
+					return r->mops->read##ext(r->data, a); \
+				} \
+			} \
+		} \
+	\
+		/* Return 0 in case of read failure */ \
+		LOG_W("Region not found (%s(%u, %08x))!\n", \
+			__func__, \
+			bus_id, \
+			address); \
+		return 0; \
+	}
+
+#define DEFINE_MEMORY_WRITE(ext, type) \
+	void memory_write##ext(int bus_id, type data, address_t address) \
+	{ \
+		struct bus *bus; \
+		struct region *r; \
+		struct resource *mirror; \
+		struct list_link *link; \
+		struct region **regions; \
+		address_t *addresses; \
+		address_t a; \
+		int num; \
+		int i; \
+	\
+		/* Get bus and return on failure */ \
+		bus = get_bus(bus_id); \
+		if (!bus) { \
+			LOG_W("Bus not found (%s(%u, %08x))!\n", \
+				__func__, \
+				bus_id, \
+				address); \
+			return; \
+		} \
+	\
+		/* Parse regions */ \
+		link = bus->regions; \
+		regions = NULL; \
+		addresses = NULL; \
+		num = 0; \
+		while ((r = list_get_next(&link))) { \
+			/* Skip if region if operation is not supported */ \
+			if (!r->mops->write##ext) \
+				continue; \
+	\
+			/* Add region and adapted address if needed */ \
+			if ((address >= r->area->data.mem.start) && \
+				(address <= r->area->data.mem.end)) { \
+				a = address - r->area->data.mem.start; \
+				num++; \
+				regions = realloc(regions, \
+					num * sizeof(struct region *)); \
+				addresses = realloc(addresses, \
+					num * sizeof(address_t)); \
+				regions[num - 1] = r; \
+				addresses[num - 1] = a; \
+			} \
+	\
+			/* Parse mirrors */ \
+			for (i = 0; i < r->area->num_children; i++) { \
+				mirror = &r->area->children[i]; \
+	\
+				/* Skip if address is not within mirror */ \
+				if (!((address >= mirror->data.mem.start) && \
+					(address <= mirror->data.mem.end))) \
+					continue; \
+	\
+				/* Add region and adapted address */ \
+				a = address - mirror->data.mem.start; \
+				num++; \
+				regions = realloc(regions, \
+					num * sizeof(struct region *)); \
+				addresses = realloc(addresses, \
+					num * sizeof(address_t)); \
+				regions[num - 1] = r; \
+				addresses[num - 1] = a; \
+			} \
+		} \
+	\
+		/* Call write operations */ \
+		for (i = 0; i < num; i++) \
+			regions[i]->mops->write##ext(regions[i]->data, \
+				data, \
+				addresses[i]); \
+	\
+		/* Warn on write failure */ \
+		if (num == 0) \
+			LOG_W("Region not found (%s(%u, %08x))!\n", \
+				__func__, \
+				bus_id, \
+				address); \
+	\
+		/* Free arrays */ \
+		free(regions); \
+		free(addresses); \
+	}
+
 static uint8_t rom_readb(uint8_t *rom, address_t address);
 static uint16_t rom_readw(uint8_t *rom, address_t address);
 static uint8_t ram_readb(uint8_t *ram, address_t address);
@@ -14,9 +152,6 @@ static uint16_t ram_readw(uint8_t *ram, address_t address);
 static void ram_writeb(uint8_t *ram, uint8_t b, address_t address);
 static void ram_writew(uint8_t *ram, uint16_t w, address_t address);
 static struct bus *get_bus(int bus_id);
-static void insert_region(struct bus *b, struct region *r, struct resource *a);
-static void remove_region(struct bus *b, struct region *r, struct resource *a);
-static bool fixup_address(struct region *region, address_t *address);
 
 static struct list_link *busses;
 
@@ -68,16 +203,13 @@ void ram_writew(uint8_t *ram, uint16_t w, address_t address)
 
 struct bus *get_bus(int bus_id)
 {
-	struct list_link *bus_link = busses;
+	struct list_link *link = busses;
 	struct bus *bus;
 
 	/* Find bus with match bus ID */
-	while (bus_link) {
-		bus = bus_link->data;
+	while ((bus = list_get_next(&link)))
 		if (bus->id == bus_id)
 			return bus;
-		bus_link = bus_link->next;
-	}
 
 	/* No bus was found */
 	return NULL;
@@ -85,8 +217,6 @@ struct bus *get_bus(int bus_id)
 
 bool memory_bus_add(struct bus *bus)
 {
-	int size;
-
 	/* Verify bus ID is not already present */
 	if (get_bus(bus->id)) {
 		LOG_D("Bus %u was already added!\n", bus->id);
@@ -95,15 +225,6 @@ bool memory_bus_add(struct bus *bus)
 
 	/* Initialize bus */
 	bus->regions = NULL;
-	size = BIT(bus->width) * sizeof(struct list_link *);
-	bus->readb_map = malloc(size);
-	bus->readw_map = malloc(size);
-	bus->writeb_map = malloc(size);
-	bus->writew_map = malloc(size);
-	memset(bus->readb_map, 0, size);
-	memset(bus->readw_map, 0, size);
-	memset(bus->writeb_map, 0, size);
-	memset(bus->writew_map, 0, size);
 
 	/* Add bus to list */
 	list_insert(&busses, bus);
@@ -113,24 +234,6 @@ bool memory_bus_add(struct bus *bus)
 
 void memory_bus_remove(struct bus *bus)
 {
-	int size;
-	int i;
-
-	/* Free map lists */
-	size = BIT(bus->width);
-	for (i = 0; i < size; i++) {
-		list_remove_all(&bus->readb_map[i]);
-		list_remove_all(&bus->readw_map[i]);
-		list_remove_all(&bus->writeb_map[i]);
-		list_remove_all(&bus->writew_map[i]);
-	}
-
-	/* Free maps */
-	free(bus->readb_map);
-	free(bus->readw_map);
-	free(bus->writeb_map);
-	free(bus->writew_map);
-
 	/* Remove regions */
 	list_remove_all(&bus->regions);
 
@@ -147,45 +250,10 @@ void memory_bus_remove_all()
 		memory_bus_remove(bus);
 }
 
-void insert_region(struct bus *b, struct region *r, struct resource *a)
-{
-	int start = a->data.mem.start;
-	int end = a->data.mem.end;
-	int i;
-
-	/* Insert region into bus maps */
-	for (i = start; i <= end; i++) {
-		if (r->mops->readb)
-			list_insert_before(&b->readb_map[i], r);
-		if (r->mops->readw)
-			list_insert_before(&b->readw_map[i], r);
-		if (r->mops->writeb)
-			list_insert_before(&b->writeb_map[i], r);
-		if (r->mops->writew)
-			list_insert_before(&b->writew_map[i], r);
-	}
-}
-
-void remove_region(struct bus *b, struct region *r, struct resource *a)
-{
-	int start = a->data.mem.start;
-	int end = a->data.mem.end;
-	int i;
-
-	/* Remove region from bus maps */
-	for (i = start; i <= end; i++) {
-		list_remove(&b->readb_map[i], r);
-		list_remove(&b->readw_map[i], r);
-		list_remove(&b->writeb_map[i], r);
-		list_remove(&b->writew_map[i], r);
-	}
-}
-
 bool memory_region_add(struct region *region)
 {
 	struct bus *bus;
 	int bus_id;
-	int i;
 
 	/* Get bus based on area and return if not found */
 	bus_id = region->area->data.mem.bus_id;
@@ -195,13 +263,8 @@ bool memory_region_add(struct region *region)
 		return false;
 	}
 
-	/* Insert region */
-	list_insert(&bus->regions, region);
-
-	/* Fill bus maps for region area and its mirrors */
-	insert_region(bus, region, region->area);
-	for (i = 0; i < region->area->num_children; i++)
-		insert_region(bus, region, &region->area->children[i]);
+	/* Insert region before others (it will take precedence on read ops) */
+	list_insert_before(&bus->regions, region);
 
 	return true;
 }
@@ -210,7 +273,6 @@ void memory_region_remove(struct region *region)
 {
 	struct bus *bus = NULL;
 	int bus_id;
-	int i;
 
 	/* Get bus based on area and return if not found */
 	bus_id = region->area->data.mem.bus_id;
@@ -220,196 +282,13 @@ void memory_region_remove(struct region *region)
 		return;
 	}
 
-	/* Remove region from bus maps */
-	remove_region(bus, region, region->area);
-	for (i = 0; i < region->area->num_children; i++)
-		remove_region(bus, region, &region->area->children[i]);
-
 	/* Remove region from list */
 	list_remove(&bus->regions, region);
 }
 
-bool fixup_address(struct region *region, address_t *address)
-{
-	address_t start;
-	address_t end;
-	int i;
-
-	/* Check main area first */
-	start = region->area->data.mem.start;
-	end = region->area->data.mem.end;
-	if ((*address >= start) && (*address <= end)) {
-		*address -= start;
-		return true;
-	}
-
-	/* Check mirrors next */
-	for (i = 0; i < region->area->num_children; i++) {
-		start = region->area->children[i].data.mem.start;
-		end = region->area->children[i].data.mem.end;
-		if ((*address >= start) && (*address <= end)) {
-			*address -= start;
-			return true;
-		}
-	}
-
-	/* Address could not be fixed up */
-	return false;
-}
-
-uint8_t memory_readb(int bus_id, address_t address)
-{
-	struct bus *bus;
-	struct region *region;
-	struct list_link *map;
-
-	/* Get bus */
-	bus = get_bus(bus_id);
-	if (!bus) {
-		LOG_W("Bus %u does not exist!\n", bus_id);
-		return 0;
-	}
-
-	/* Get map */
-	map = bus->readb_map[address];
-	if (!map) {
-		LOG_W("Map not found (readb %u, %04x)!\n", bus_id, address);
-		return 0;
-	}
-
-	/* Get region */
-	region = map->data;
-	if (!region) {
-		LOG_W("Region not found (readb %u, %04x)!\n", bus_id, address);
-		return 0;
-	}
-
-	/* Adapt address */
-	if (!fixup_address(region, &address)) {
-		LOG_E("Address %04x fixup (bus %u) failed!\n", address, bus_id);
-		return 0;
-	}
-
-	/* Call memory operation */
-	return region->mops->readb(region->data, address);
-}
-
-uint16_t memory_readw(int bus_id, address_t address)
-{
-	struct bus *bus;
-	struct region *region;
-	struct list_link *map;
-
-	/* Get bus */
-	bus = get_bus(bus_id);
-	if (!bus) {
-		LOG_W("Bus %u does not exist!\n", bus_id);
-		return 0;
-	}
-
-	/* Get map */
-	map = bus->readw_map[address];
-	if (!map) {
-		LOG_W("Map not found (readw %u, %04x)!\n", bus_id, address);
-		return 0;
-	}
-
-	/* Get region */
-	region = map->data;
-	if (!region) {
-		LOG_W("Region not found (readw %u, %04x)!\n", bus_id, address);
-		return 0;
-	}
-
-	/* Adapt address */
-	if (!fixup_address(region, &address)) {
-		LOG_E("Address %04x fixup (bus %u) failed!\n", address, bus_id);
-		return 0;
-	}
-
-	/* Call memory operation */
-	return region->mops->readw(region->data, address);
-}
-
-void memory_writeb(int bus_id, uint8_t b, address_t address)
-{
-	struct bus *bus;
-	struct region *region;
-	struct list_link *map;
-	struct list_link *link;
-	address_t a;
-
-	/* Get bus */
-	bus = get_bus(bus_id);
-	if (!bus) {
-		LOG_W("Bus %u does not exist!\n", bus_id);
-		return;
-	}
-
-	/* Get map */
-	map = bus->writeb_map[address];
-	if (!map) {
-		LOG_W("Map not found (writeb %u, %04x)!\n", bus_id, address);
-		return;
-	}
-
-	/* Cycle regions */
-	link = map;
-	while (link) {
-		/* Get region */
-		region = link->data;
-		link = link->next;
-		if (!region) {
-			LOG_W("Region not found (writeb %u, %04x)!\n", bus_id, address);
-			continue;
-		}
-
-		/* Adapt address */
-		a = address;
-		if (!fixup_address(region, &a)) {
-			LOG_E("Address %04x fixup (bus %u) failed!\n", a, bus_id);
-			continue;
-		}
-
-		/* Call memory operation */
-		region->mops->writeb(region->data, b, a);
-	}
-}
-
-void memory_writew(int bus_id, uint16_t w, address_t address)
-{
-	struct bus *bus;
-	struct region *region;
-	struct list_link *map;
-
-	/* Get bus */
-	bus = get_bus(bus_id);
-	if (!bus) {
-		LOG_W("Bus %u does not exist!\n", bus_id);
-		return;
-	}
-
-	/* Get map */
-	map = bus->writew_map[address];
-	if (!map) {
-		LOG_W("Map not found (writew %u, %04x)!\n", bus_id, address);
-		return;
-	}
-
-	/* Get region */
-	region = map->data;
-	if (!region) {
-		LOG_W("Region not found (writew %u, %04x)!\n", bus_id, address);
-		return;
-	}
-
-	/* Adapt address */
-	if (!fixup_address(region, &address)) {
-		LOG_E("Address %04x fixup (bus %u) failed!\n", address, bus_id);
-		return;
-	}
-
-	/* Call memory operation */
-	region->mops->writew(region->data, w, address);
-}
+/* Define memory read/write functions */
+DEFINE_MEMORY_READ(b, uint8_t)
+DEFINE_MEMORY_READ(w, uint16_t)
+DEFINE_MEMORY_WRITE(b, uint8_t)
+DEFINE_MEMORY_WRITE(w, uint16_t)
 
