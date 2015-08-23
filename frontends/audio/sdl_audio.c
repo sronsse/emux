@@ -75,8 +75,9 @@ void push(struct audio_data *data, uint8_t *buffer, int len)
 
 	/* Handle overrun */
 	if (data->count + len > data->buffer_size) {
-		len = data->buffer_size - data->count;
 		LOG_D("Audio overrun!\n");
+		len = data->buffer_size - data->count;
+		len1 = len;
 	}
 
 	/* Handle wrapping */
@@ -111,9 +112,9 @@ void pull(struct audio_data *data, void *buffer, int len)
 
 	/* Handle underrun */
 	if (data->count < len) {
-		SDL_UnlockAudio();
 		LOG_D("Audio underrun!\n");
-		return;
+		len = data->count;
+		len1 = len;
 	}
 
 	/* Handle wrapping */
