@@ -19,7 +19,19 @@ void key_event(caca_event_t *e)
 	down = (e->type == CACA_EVENT_KEY_PRESS);
 	event.device = DEVICE_KEYBOARD;
 	event.type = down ? EVENT_BUTTON_DOWN : EVENT_BUTTON_UP;
-	event.code = caca_get_event_key_ch(e);
+
+	/* Fill event code (left and right arrows do not match by default) */
+	switch (caca_get_event_key_ch(e)) {
+	case CACA_KEY_LEFT:
+		event.code = KEY_LEFT;
+		break;
+	case CACA_KEY_RIGHT:
+		event.code = KEY_RIGHT;
+		break;
+	default:
+		event.code = caca_get_event_key_ch(e);
+		break;
+	}
 
 	/* Report event */
 	input_report(&event);
