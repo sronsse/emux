@@ -7,6 +7,8 @@
 #include <log.h>
 #include <util.h>
 
+#define AUDIO_LATENCY 50
+
 typedef void (*sdl_callback)(void *userdata, Uint8 *stream, int len);
 
 struct resample_data {
@@ -213,8 +215,11 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 		return false;
 	}
 
-	/* Compute buffer size (holding one second) */
-	audio_data->buffer_size = specs->freq * specs->channels * fmt_size;
+	/* Compute buffer size (based on desired specs and latency) */
+	audio_data->buffer_size = specs->sampling_rate;
+	audio_data->buffer_size *= specs->channels * fmt_size;
+	audio_data->buffer_size *= AUDIO_LATENCY / 1000.0f;
+	audio_data->buffer_size *= 2;
 	LOG_D("Computed audio buffer size: %ub\n", audio_data->buffer_size);
 
 	/* Initialize audio data */
