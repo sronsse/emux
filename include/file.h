@@ -5,9 +5,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define FLAG_READ	0x01
-#define FLAG_WRITE	0x02
-
 enum path_type {
 	PATH_DATA,
 	PATH_SYSTEM,
