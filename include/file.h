@@ -8,7 +8,8 @@
 enum path_type {
 	PATH_DATA,
 	PATH_SYSTEM,
-	PATH_CONFIG
+	PATH_CONFIG,
+	PATH_SAVE
 };
 
 typedef FILE *file_handle_t;

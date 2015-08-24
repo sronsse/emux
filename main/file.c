@@ -159,6 +159,10 @@ void get_full_path(char *dst, int len, enum path_type type, char *path)
 		dir = env_get_config_path();
 		snprintf(dst, len, "%s/%s", dir, path);
 		break;
+	case PATH_SAVE:
+		dir = env_get_save_path();
+		snprintf(dst, len, "%s/%s", dir, path);
+		break;
 	case PATH_DATA:
 	default:
 		snprintf(dst, len, "%s", path);
