@@ -169,7 +169,7 @@ bool sdl_init(struct input_frontend *fe, window_t *UNUSED(window))
 	/* Open joystick handles */
 	num = SDL_NumJoysticks();
 	for (i = 0; i < num; i++) {
-		joy_data = malloc(sizeof(struct joy_data));
+		joy_data = calloc(1, sizeof(struct joy_data));
 		joy_data->joystick = SDL_JoystickOpen(i);
 		joy_data->id = SDL_JoystickInstanceID(joy_data->joystick);
 		joy_data->hat = SDL_HAT_CENTERED;

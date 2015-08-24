@@ -70,7 +70,7 @@ bool sega_mapper_init(struct controller_instance *instance)
 	file_handle_t file;
 
 	/* Allocate SEGA mapper structure */
-	instance->priv_data = malloc(sizeof(struct sega_mapper));
+	instance->priv_data = calloc(1, sizeof(struct sega_mapper));
 	sega_mapper = instance->priv_data;
 
 	/* Get cart region */

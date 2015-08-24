@@ -683,7 +683,7 @@ bool vdp_init(struct controller_instance *instance)
 	float fps;
 
 	/* Allocate VDP structure */
-	instance->priv_data = malloc(sizeof(struct vdp));
+	instance->priv_data = calloc(1, sizeof(struct vdp));
 	vdp = instance->priv_data;
 
 	/* Save bus ID for later use */

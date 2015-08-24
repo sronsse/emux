@@ -146,7 +146,7 @@ bool sms_mapper_init(struct controller_instance *instance)
 	struct resource *res;
 
 	/* Allocate SMS mapper structure */
-	instance->priv_data = malloc(sizeof(struct sms_mapper));
+	instance->priv_data = calloc(1, sizeof(struct sms_mapper));
 	sms_mapper = instance->priv_data;
 
 	/* Get mach data from instance */

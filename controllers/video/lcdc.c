@@ -598,7 +598,7 @@ bool lcdc_init(struct controller_instance *instance)
 		return false;
 
 	/* Allocate LCDC structure */
-	instance->priv_data = malloc(sizeof(struct lcdc));
+	instance->priv_data = calloc(1, sizeof(struct lcdc));
 	lcdc = instance->priv_data;
 
 	/* Add LCDC memory region */

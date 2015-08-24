@@ -110,7 +110,7 @@ bool nrom_init(struct controller_instance *instance)
 	struct resource *area;
 
 	/* Allocate NROM structure */
-	instance->priv_data = malloc(sizeof(struct nrom));
+	instance->priv_data = calloc(1, sizeof(struct nrom));
 	nrom = instance->priv_data;
 
 	/* Map cart header */

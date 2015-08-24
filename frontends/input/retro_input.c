@@ -36,13 +36,12 @@ void ret_load(struct input_frontend *fe, struct input_config *cfg)
 	struct input_data *data;
 
 	/* Allocate input data structure and append it to states list */
-	data = malloc(sizeof(struct input_data));
+	data = calloc(1, sizeof(struct input_data));
 	list_insert(&retro_data.input_states, data);
 
 	/* Initialize input data */
 	data->config = cfg;
-	data->states = malloc(cfg->num_descs * sizeof(int16_t));
-	memset(data->states, 0, cfg->num_descs * sizeof(int16_t));
+	data->states = calloc(cfg->num_descs, sizeof(int16_t));
 }
 
 void ret_unload(struct input_frontend *fe, struct input_config *cfg)

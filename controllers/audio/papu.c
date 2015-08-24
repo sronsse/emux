@@ -1025,7 +1025,7 @@ bool papu_init(struct controller_instance *instance)
 	struct resource *res;
 
 	/* Allocate PAPU structure */
-	instance->priv_data = malloc(sizeof(struct papu));
+	instance->priv_data = calloc(1, sizeof(struct papu));
 	papu = instance->priv_data;
 
 	/* Add PAPU memory region */

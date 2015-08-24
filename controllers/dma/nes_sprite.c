@@ -49,7 +49,7 @@ bool nes_sprite_init(struct controller_instance *instance)
 	struct resource *area;
 
 	/* Allocate nes_sprite structure */
-	instance->priv_data = malloc(sizeof(struct nes_sprite));
+	instance->priv_data = calloc(1, sizeof(struct nes_sprite));
 	nes_sprite = instance->priv_data;
 
 	/* Set up nes_sprite memory region */

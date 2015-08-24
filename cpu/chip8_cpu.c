@@ -621,7 +621,7 @@ bool chip8_init(struct cpu_instance *instance)
 	struct input_config *input_config;
 
 	/* Allocate chip8 structure and set private data */
-	chip8 = malloc(sizeof(struct chip8));
+	chip8 = calloc(1, sizeof(struct chip8));
 	instance->priv_data = chip8;
 
 	/* Initialize audio frontend */
@@ -654,7 +654,7 @@ bool chip8_init(struct cpu_instance *instance)
 
 	/* Initialize audio data */
 	chip8->audio_samples = SAMPLING_FREQ / COUNTERS_CLOCK_RATE;
-	chip8->audio_buffer = malloc(chip8->audio_samples * sizeof(int16_t));
+	chip8->audio_buffer = calloc(chip8->audio_samples, sizeof(int16_t));
 
 	/* Save bus ID for later use */
 	chip8->bus_id = instance->bus_id;

@@ -63,7 +63,7 @@ bool chip8_init(struct machine *machine)
 	char *rom_path;
 
 	/* Create machine data structure */
-	chip8_data = malloc(sizeof(struct chip8_data));
+	chip8_data = calloc(1, sizeof(struct chip8_data));
 
 	/* Open ROM file */
 	rom_path = env_get_data_path();

@@ -151,7 +151,7 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 	}
 
 	/* Allocate audio data */
-	audio_data = malloc(sizeof(struct audio_data));
+	audio_data = calloc(1, sizeof(struct audio_data));
 	fe->priv_data = audio_data;
 
 	/* Compute buffer lengths based on input and output frequencies */
@@ -224,7 +224,7 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 	LOG_D("Computed audio buffer size: %ub\n", audio_data->buffer_size);
 
 	/* Initialize audio data */
-	audio_data->buffer = malloc(audio_data->buffer_size);
+	audio_data->buffer = calloc(audio_data->buffer_size, sizeof(uint8_t));
 	audio_data->format = specs->format;
 	audio_data->fmt_size = fmt_size;
 	audio_data->num_channels = specs->channels;

@@ -1070,7 +1070,7 @@ bool ppu_init(struct controller_instance *instance)
 		return false;
 
 	/* Allocate PPU structure */
-	instance->priv_data = malloc(sizeof(struct ppu));
+	instance->priv_data = calloc(1, sizeof(struct ppu));
 	ppu = instance->priv_data;
 
 	/* Add PPU memory region */

@@ -146,7 +146,7 @@ bool nes_ctrl_init(struct controller_instance *instance)
 	struct input_config *input_config;
 
 	/* Allocate nes_ctrl structure */
-	instance->priv_data = malloc(sizeof(struct nes_ctrl));
+	instance->priv_data = calloc(1, sizeof(struct nes_ctrl));
 	nes_ctrl = instance->priv_data;
 
 	/* Set up nes_ctrl memory region */

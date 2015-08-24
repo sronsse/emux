@@ -740,7 +740,6 @@ void input_report(struct input_event *event)
 void input_register(struct input_config *config, bool restore)
 {
 	struct input_desc *descs;
-	int size;
 	int i;
 
 	/* Leave already if frontend is not initialized */
@@ -751,20 +750,22 @@ void input_register(struct input_config *config, bool restore)
 	/* Restore configuration if requested */
 	if (restore) {
 		/* Copy original config descriptors */
-		size = config->num_descs * sizeof(struct input_desc);
-		descs = malloc(size);
-		memcpy(descs, config->descs, size);
+		descs = malloc(config->num_descs * sizeof(struct input_desc));
+		memcpy(descs,
+			config->descs,
+			config->num_descs * sizeof(struct input_desc));
 
 		/* Load config and restore/save it in case of failure */
 		if (!input_load(config)) {
-			memcpy(config->descs, descs, size);
+			memcpy(config->descs,
+				descs,
+				config->num_descs * sizeof(struct input_desc));
 			input_save(config);
 		}
 	}
 #else
 	(void)restore;
 	(void)descs;
-	(void)size;
 #endif
 
 	/* Print configuration */

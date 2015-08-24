@@ -138,8 +138,7 @@ void init_pixels(struct video_frontend *fe)
 	int location;
 
 	/* Initialize pixels */
-	gl->pixels = malloc(gl->width * gl->height * 3 * sizeof(uint8_t));
-	memset(gl->pixels, 0, gl->width * gl->height * 3 * sizeof(uint8_t));
+	gl->pixels = calloc(gl->width * gl->height * 3, sizeof(uint8_t));
 
 	/* Generate and bind texture */
 	glGenTextures(1, &gl->texture);
@@ -206,7 +205,7 @@ window_t *gl_init(struct video_frontend *fe, struct video_specs *vs)
 	}
 
 	/* Create frontend private structure */
-	gl = malloc(sizeof(struct gl));
+	gl = calloc(1, sizeof(struct gl));
 	gl->width = w;
 	gl->height = h;
 	gl->scale = s;

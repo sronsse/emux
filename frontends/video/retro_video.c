@@ -67,8 +67,7 @@ window_t *ret_init(struct video_frontend *UNUSED(fe), struct video_specs *vs)
 	}
 
 	/* Initialize pixels */
-	retro_data.pixels = malloc(vs->width * vs->height * sizeof(uint32_t));
-	memset(retro_data.pixels, 0, vs->width * vs->height * sizeof(uint32_t));
+	retro_data.pixels = calloc(vs->width * vs->height, sizeof(uint32_t));
 
 	/* Save dimensions and FPS */
 	retro_data.width = vs->width;

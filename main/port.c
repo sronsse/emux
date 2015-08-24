@@ -45,16 +45,12 @@ void remove_region(struct port_region *r, struct resource *a)
 
 bool port_region_add(struct port_region *region)
 {
-	int size;
 	int i;
 
 	/* Initialize maps if needed */
 	if (!regions) {
-		size = NUM_PORTS * sizeof(struct list_link *);
-		read_map = malloc(size);
-		write_map = malloc(size);
-		memset(read_map, 0, size);
-		memset(write_map, 0, size);
+		read_map = calloc(NUM_PORTS, sizeof(struct list_link *));
+		write_map = calloc(NUM_PORTS, sizeof(struct list_link *));
 	}
 
 	/* Insert region */

@@ -218,7 +218,7 @@ bool gb_init(struct machine *machine)
 	struct gb_data *gb_data;
 
 	/* Create machine data structure */
-	gb_data = malloc(sizeof(struct gb_data));
+	gb_data = calloc(1, sizeof(struct gb_data));
 
 	/* Add 16-bit memory bus */
 	gb_data->bus.id = BUS_ID;

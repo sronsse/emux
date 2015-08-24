@@ -150,7 +150,7 @@ bool sms_init(struct machine *machine)
 	struct sms_data *data;
 
 	/* Create machine data structure */
-	data = malloc(sizeof(struct sms_data));
+	data = calloc(1, sizeof(struct sms_data));
 	machine->priv_data = data;
 
 	/* Add 16-bit memory bus */

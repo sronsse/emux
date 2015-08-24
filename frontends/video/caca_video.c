@@ -56,15 +56,14 @@ window_t *caca_init(struct video_frontend *fe, struct video_specs *vs)
 	caca_refresh_display(dp);
 
 	/* Create private data */
-	data = malloc(sizeof(struct caca_data));
+	data = calloc(1, sizeof(struct caca_data));
 	data->dp = dp;
 	data->width = w;
 	data->height = h;
 	fe->priv_data = data;
 
 	/* Initialize pixels */
-	data->pixels = malloc(w * h * sizeof(uint32_t));
-	memset(data->pixels, 0, w * h * sizeof(uint32_t));
+	data->pixels = calloc(w * h, sizeof(uint32_t));
 
 	/* Initialize dither */
 	pitch = (BPP / 8) * w;

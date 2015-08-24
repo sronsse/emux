@@ -100,7 +100,7 @@ window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 	}
 
 	/* Create and fill private data */
-	data = malloc(sizeof(struct sdl_data));
+	data = calloc(1, sizeof(struct sdl_data));
 	data->screen = screen;
 	data->renderer = renderer;
 	data->texture = texture;

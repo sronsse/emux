@@ -2244,7 +2244,7 @@ bool rp2a03_init(struct cpu_instance *instance)
 	struct resource *res;
 
 	/* Allocate rp2a03 structure and set private data */
-	rp2a03 = malloc(sizeof(struct rp2a03));
+	rp2a03 = calloc(1, sizeof(struct rp2a03));
 	instance->priv_data = rp2a03;
 
 	/* Save bus ID */

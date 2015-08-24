@@ -4136,7 +4136,7 @@ bool z80_init(struct cpu_instance *instance)
 	struct resource *res;
 
 	/* Allocate z80 structure and set private data */
-	cpu = malloc(sizeof(struct z80));
+	cpu = calloc(1, sizeof(struct z80));
 	instance->priv_data = cpu;
 
 	/* Save bus ID */

@@ -117,7 +117,7 @@ bool sms_ctrl_init(struct controller_instance *instance)
 	struct resource *area;
 
 	/* Allocate sms_ctrl structure */
-	instance->priv_data = malloc(sizeof(struct sms_ctrl));
+	instance->priv_data = calloc(1, sizeof(struct sms_ctrl));
 	sms_ctrl = instance->priv_data;
 
 	/* Set up control port region */

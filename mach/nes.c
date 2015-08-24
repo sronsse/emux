@@ -159,7 +159,7 @@ bool nes_init(struct machine *machine)
 	struct nes_data *nes_data;
 
 	/* Create machine data structure */
-	nes_data = malloc(sizeof(struct nes_data));
+	nes_data = calloc(1, sizeof(struct nes_data));
 
 	/* Set mapper path */
 	nes_mapper_mach_data.path = env_get_data_path();

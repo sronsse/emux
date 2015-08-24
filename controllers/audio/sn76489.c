@@ -310,7 +310,7 @@ bool sn76489_init(struct controller_instance *instance)
 	struct resource *res;
 
 	/* Allocate SN76489 structure */
-	instance->priv_data = malloc(sizeof(struct sn76489));
+	instance->priv_data = calloc(1, sizeof(struct sn76489));
 	sn76489 = instance->priv_data;
 
 	/* Set up port region */

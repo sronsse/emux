@@ -119,7 +119,7 @@ bool joypad_init(struct controller_instance *instance)
 	struct resource *res;
 
 	/* Allocate joypad structure */
-	instance->priv_data = malloc(sizeof(struct joypad));
+	instance->priv_data = calloc(1, sizeof(struct joypad));
 	joypad = instance->priv_data;
 
 	/* Initialize input configuration */

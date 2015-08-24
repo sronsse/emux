@@ -143,7 +143,7 @@ void add_mapper(struct controller_instance *instance, uint8_t number)
 	struct gb_mapper *gb_mapper = instance->priv_data;
 	struct controller_instance *mbc_instance;
 
-	mbc_instance = malloc(sizeof(struct controller_instance));
+	mbc_instance = calloc(1, sizeof(struct controller_instance));
 	mbc_instance->controller_name = mbcs[number];
 	mbc_instance->bus_id = instance->bus_id;
 	mbc_instance->num_resources = instance->num_resources;
@@ -163,7 +163,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	uint8_t number;
 
 	/* Allocate GB mapper structure */
-	instance->priv_data = malloc(sizeof(struct gb_mapper));
+	instance->priv_data = calloc(1, sizeof(struct gb_mapper));
 	gb_mapper = instance->priv_data;
 
 	/* Get mach data from instance */

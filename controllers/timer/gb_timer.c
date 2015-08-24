@@ -127,7 +127,7 @@ bool timer_init(struct controller_instance *instance)
 	struct resource *res;
 
 	/* Allocate timer structure */
-	instance->priv_data = malloc(sizeof(struct timer));
+	instance->priv_data = calloc(1, sizeof(struct timer));
 	timer = instance->priv_data;
 
 	/* Set up memory region */

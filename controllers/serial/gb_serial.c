@@ -97,7 +97,7 @@ bool serial_init(struct controller_instance *instance)
 	struct resource *res;
 
 	/* Allocate serial structure */
-	instance->priv_data = malloc(sizeof(struct serial));
+	instance->priv_data = calloc(1, sizeof(struct serial));
 	serial = instance->priv_data;
 
 	/* Set up memory region */

@@ -19,7 +19,7 @@ bool rom_init(struct controller_instance *instance)
 	struct resource *area;
 
 	/* Allocate ROM structure */
-	instance->priv_data = malloc(sizeof(struct rom_data));
+	instance->priv_data = calloc(1, sizeof(struct rom_data));
 	rom_data = instance->priv_data;
 
 	/* Map second ROM bank (skip ROM0) */

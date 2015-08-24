@@ -2819,7 +2819,7 @@ bool lr35902_init(struct cpu_instance *instance)
 	struct resource *res;
 
 	/* Allocate lr35902 structure and set private data */
-	cpu = malloc(sizeof(struct lr35902));
+	cpu = calloc(1, sizeof(struct lr35902));
 	instance->priv_data = cpu;
 
 	/* Save bus ID */

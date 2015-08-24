@@ -7,7 +7,7 @@ void list_insert(struct list_link **list, void *data)
 	struct list_link *tail;
 
 	/* Create new link */
-	link = malloc(sizeof(struct list_link));
+	link = calloc(1, sizeof(struct list_link));
 	link->data = data;
 	link->next = NULL;
 
@@ -35,7 +35,7 @@ void list_insert_before(struct list_link **list, void *data)
 	}
 
 	/* Create new link duplicating head */
-	link = malloc(sizeof(struct list_link));
+	link = calloc(1, sizeof(struct list_link));
 	link->data = (*list)->data;
 	link->next = (*list)->next;
 

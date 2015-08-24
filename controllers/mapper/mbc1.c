@@ -163,7 +163,7 @@ bool mbc1_init(struct controller_instance *instance)
 	struct resource *area;
 
 	/* Allocate MBC1 structure */
-	instance->priv_data = malloc(sizeof(struct mbc1));
+	instance->priv_data = calloc(1, sizeof(struct mbc1));
 	mbc1 = instance->priv_data;
 
 	/* Map cart header */
@@ -197,7 +197,7 @@ bool mbc1_init(struct controller_instance *instance)
 	/* Map RAM if needed */
 	if (mbc1->ram_size != 0) {
 		/* Allocate RAM */
-		mbc1->ram = malloc(mbc1->ram_size);
+		mbc1->ram = calloc(mbc1->ram_size, sizeof(uint8_t));
 
 		/* Add RAM region */
 		area = resource_get("extram",
