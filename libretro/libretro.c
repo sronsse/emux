@@ -26,6 +26,7 @@ void retro_init(void)
 {
 	char *system_dir;
 	char *config_dir;
+	char *save_dir;
 	struct retro_log_callback log_callback;
 
 	/* Get system directory from frontend */
@@ -36,14 +37,18 @@ void retro_init(void)
 	retro_environment_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY,
 		&config_dir);
 
+	/* Get save directory from frontend */
+	retro_environment_cb(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &save_dir);
+
 	/* Override log callback if supported by frontend */
 	if (retro_environment_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE,
 		&log_callback))
 		log_cb = (log_print_t)log_callback.log;
 
-	/* Set system/config directories */
+	/* Set system/config/save directories */
 	cmdline_set_param("system-dir", NULL, system_dir);
 	cmdline_set_param("config-dir", NULL, config_dir);
+	cmdline_set_param("save-dir", NULL, save_dir);
 
 	/* Set machine to be run */
 	cmdline_set_param("machine", NULL, MACHINE);
