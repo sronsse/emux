@@ -147,24 +147,30 @@
 
 static uint8_t rom_readb(uint8_t *rom, address_t address);
 static uint16_t rom_readw(uint8_t *rom, address_t address);
+static uint32_t rom_readl(uint8_t *rom, address_t address);
 static uint8_t ram_readb(uint8_t *ram, address_t address);
 static uint16_t ram_readw(uint8_t *ram, address_t address);
+static uint32_t ram_readl(uint8_t *ram, address_t address);
 static void ram_writeb(uint8_t *ram, uint8_t b, address_t address);
 static void ram_writew(uint8_t *ram, uint16_t w, address_t address);
+static void ram_writel(uint8_t *ram, uint32_t l, address_t address);
 static struct bus *get_bus(int bus_id);
 
 static struct list_link *busses;
 
 struct mops rom_mops = {
 	.readb = (readb_t)rom_readb,
-	.readw = (readw_t)rom_readw
+	.readw = (readw_t)rom_readw,
+	.readl = (readl_t)rom_readl
 };
 
 struct mops ram_mops = {
 	.readb = (readb_t)ram_readb,
 	.readw = (readw_t)ram_readw,
+	.readl = (readl_t)ram_readl,
 	.writeb = (writeb_t)ram_writeb,
-	.writew = (writew_t)ram_writew
+	.writew = (writew_t)ram_writew,
+	.writel = (writel_t)ram_writel
 };
 
 uint8_t rom_readb(uint8_t *rom, address_t address)
@@ -178,6 +184,15 @@ uint16_t rom_readw(uint8_t *rom, address_t address)
 	return (*(mem + 1) << 8) | *mem;
 }
 
+uint32_t rom_readl(uint8_t *ram, address_t address)
+{
+	uint8_t *mem = ram + address;
+	return (*(mem + 3) << 24) |
+		(*(mem + 2) << 16) |
+		(*(mem + 1) << 8) |
+		*mem;
+}
+
 uint8_t ram_readb(uint8_t *ram, address_t address)
 {
 	return ram[address];
@@ -187,6 +202,15 @@ uint16_t ram_readw(uint8_t *ram, address_t address)
 {
 	uint8_t *mem = ram + address;
 	return (*(mem + 1) << 8) | *mem;
+}
+
+uint32_t ram_readl(uint8_t *ram, address_t address)
+{
+	uint8_t *mem = ram + address;
+	return (*(mem + 3) << 24) |
+		(*(mem + 2) << 16) |
+		(*(mem + 1) << 8) |
+		*mem;
 }
 
 void ram_writeb(uint8_t *ram, uint8_t b, address_t address)
@@ -199,6 +223,15 @@ void ram_writew(uint8_t *ram, uint16_t w, address_t address)
 	uint8_t *mem = ram + address;
 	*mem++ = w;
 	*mem = w >> 8;
+}
+
+void ram_writel(uint8_t *ram, uint32_t l, address_t address)
+{
+	uint8_t *mem = ram + address;
+	*mem++ = l;
+	*mem++ = l >> 8;
+	*mem++ = l >> 16;
+	*mem = l >> 24;
 }
 
 struct bus *get_bus(int bus_id)
