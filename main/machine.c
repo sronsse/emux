@@ -27,8 +27,8 @@ static char *machine_name;
 PARAM(machine_name, string, "machine", NULL, "Selects machine to emulate")
 static bool no_sync;
 PARAM(no_sync, bool, "no-sync", NULL, "Disables emulation syncing")
-static unsigned int frames;
-PARAM(frames, int, "frames", NULL, "Sets number of frames to emulate")
+static unsigned int cycles;
+PARAM(cycles, int, "cycles", NULL, "Sets number of machine cycles to emulate")
 
 struct list_link *machines;
 static struct machine *machine;
@@ -150,8 +150,8 @@ void machine_run()
 		/* Tick registered clocks */
 		clock_tick_all(!no_sync);
 
-		/* Stop machine if frame count is reached */
-		if (video_updated() && (frames > 0) && (--frames == 0))
+		/* Stop machine if cycle count is reached */
+		if ((cycles > 0) && (--cycles == 0))
 			machine->running = false;
 	}
 

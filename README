@@ -103,7 +103,7 @@ RUNNING EMUX
   list of the available options:
   --audio=string        Selects audio frontend
   --config-dir=string   Path to config directory
-  --frames=int          Sets number of frames to emulate
+  --cycles=int          Sets number of machine cycles to emulate
   --help                Display this help and exit
   --log-level=int       Specifies log level (0 to 3)
   --machine=string      Selects machine to emulate
