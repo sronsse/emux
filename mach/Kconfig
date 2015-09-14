@@ -47,6 +47,14 @@ config MACH_NES
 config MACH_PSX
 	bool "psx (Sony PlayStation)"
 	select MACH
+	select CPU_R3051
+	select CONTROLLER_AUDIO_SPU
+	select CONTROLLER_CDROM_PSX
+	select CONTROLLER_DMA_PSX
+	select CONTROLLER_INPUT_PSX
+	select CONTROLLER_MEDIA_MDEC
+	select CONTROLLER_TIMER_PSX
+	select CONTROLLER_VIDEO_GPU
 	default y
 	help
 		Enable PSX (Sony PlayStation) support

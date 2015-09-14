@@ -62,5 +62,14 @@ sms_SOURCES = \
 
 # Sony PlayStation sources
 psx_SOURCES = \
+	$(CORE_DIR)/controllers/audio/spu.c \
+	$(CORE_DIR)/controllers/cdrom/psx_cdrom.c \
+	$(CORE_DIR)/controllers/dma/psx_dma.c \
+	$(CORE_DIR)/controllers/input/psx_controller.c \
+	$(CORE_DIR)/controllers/input/psx_dualshock.c \
+	$(CORE_DIR)/controllers/media/mdec.c \
+	$(CORE_DIR)/controllers/timer/psx_timer.c \
+	$(CORE_DIR)/controllers/video/gpu.c \
+	$(CORE_DIR)/cpu/r3051.c \
 	$(CORE_DIR)/mach/psx.c
 
