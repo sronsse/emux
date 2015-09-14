@@ -6,11 +6,45 @@
 #include <memory.h>
 #include <resource.h>
 
-#define NUM_REGISTERS		32
-#define NUM_COP0_REGISTERS	64
-#define NUM_COP2_DATA_REGISTERS	32
-#define NUM_COP2_CTRL_REGISTERS	32
-#define INITIAL_PC		0xBFC00000
+#define NUM_REGISTERS			32
+#define NUM_COP0_REGISTERS		64
+#define NUM_COP2_DATA_REGISTERS		32
+#define NUM_COP2_CTRL_REGISTERS		32
+#define INITIAL_PC			0xBFC00000
+#define NUM_CACHE_LINES			256
+#define NUM_INSTRUCTIONS_PER_CACHE_LINE	4
+
+#define KUSEG_START			0x00000000
+#define KUSEG_END			(KUSEG_START + MB(2048) - 1)
+#define KSEG0_START			0x80000000
+#define KSEG0_END			(KSEG0_START + MB(512) - 1)
+#define KSEG1_START			0xA0000000
+#define KSEG1_END			(KSEG1_START + MB(512) - 1)
+#define KSEG2_START			0xC0000000
+#define KSEG2_END			(KSEG2_START + MB(1024) - 1)
+
+#define WITHIN_REGION(a, region) ((a >= region##_START) && (a <= region##_END))
+#define PHYSICAL_ADDRESS(a) (bitops_getl(&a, 0, 29))
+
+union address {
+	uint32_t raw;
+	struct {
+		uint32_t word_alignment:2;
+		uint32_t index:2;
+		uint32_t cache_line:8;
+		uint32_t tag:19;
+	};
+};
+
+struct cached_instruction {
+	uint32_t value;
+	bool valid;
+};
+
+struct cache_line {
+	uint32_t tag;
+	struct cached_instruction instructions[NUM_INSTRUCTIONS_PER_CACHE_LINE];
+};
 
 union cache_control {
 	uint32_t raw;
@@ -353,6 +387,7 @@ struct r3051 {
 	union cop0 cop0;
 	union cop2 cop2;
 	union cache_control cache_ctrl;
+	struct cache_line instruction_cache[NUM_CACHE_LINES];
 	int bus_id;
 	struct clock clock;
 	struct region cache_ctrl_region;
@@ -367,13 +402,44 @@ static void r3051_tick(struct r3051 *cpu);
 #define DEFINE_MEM_READ(ext, type) \
 	static type mem_read##ext(struct r3051 *cpu, address_t a) \
 	{ \
+		/* Translate to physical address (strip leading 3 bits) */ \
+		if (!WITHIN_REGION(a, KSEG2)) \
+			a = PHYSICAL_ADDRESS(a); \
+	\
+		/* Call regular memory operation */ \
 		return memory_read##ext(cpu->bus_id, a); \
 	}
 
 #define DEFINE_MEM_WRITE(ext, type) \
 	static void mem_write##ext(struct r3051 *cpu, type data, address_t a) \
 	{ \
-		memory_write##ext(cpu->bus_id, data, a); \
+		union address address; \
+		struct cache_line *line; \
+		int i; \
+	\
+		/* Translate to physical address (strip leading 3 bits) */ \
+		if (!WITHIN_REGION(a, KSEG2)) \
+			a = PHYSICAL_ADDRESS(a); \
+	\
+		/* Call regular memory operation if cache is not isolated */ \
+		if (!cpu->cop0.stat.IsC) { \
+			memory_write##ext(cpu->bus_id, data, a); \
+			return; \
+		} \
+	\
+		/* Get requested cache line */ \
+		address.raw = a; \
+		line = &cpu->instruction_cache[address.cache_line]; \
+	\
+		/* Invalidate instruction cache if TAG TEST mode is enabled */ \
+		if (cpu->cache_ctrl.TAG) { \
+			for (i = 0; i < NUM_INSTRUCTIONS_PER_CACHE_LINE; i++) \
+				line->instructions[i].valid = false; \
+			return; \
+		} \
+	\
+		/* Fill instruction cache with input data */ \
+		line->instructions[address.index].value = data; \
 	}
 
 DEFINE_MEM_READ(b, uint8_t)
@@ -385,9 +451,62 @@ DEFINE_MEM_WRITE(l, uint32_t)
 
 void r3051_fetch(struct r3051 *cpu)
 {
-	/* Fetch instruction */
-	cpu->instruction.raw = mem_readl(cpu, cpu->PC);
+	bool cache_access;
+	union address address;
+	struct cache_line *line;
+	bool valid_instruction;
+	uint32_t a;
+	int i;
+
+	/* Set address to fetch and translate it */
+	a = PHYSICAL_ADDRESS(cpu->PC);
+
+	/* Check if cache is enabled or needed (KSEG1 access is uncached) */
+	cache_access = cpu->cache_ctrl.IS1;
+	cache_access &= !WITHIN_REGION(cpu->PC, KSEG1);
+
+	/* Fetch instruction and return if no cache access is needed */
+	if (!cache_access) {
+		cpu->instruction.raw = memory_readl(cpu->bus_id, a);
+		cpu->PC += 4;
+		clock_consume(4);
+		return;
+	}
+
+	/* Get requested cache line */
+	address.raw = a;
+	line = &cpu->instruction_cache[address.cache_line];
+
+	/* Check if instruction within cache is valid */
+	valid_instruction = (line->tag == address.tag);
+	valid_instruction &= line->instructions[address.index].valid;
+
+	/* Handle cache hit */
+	if (valid_instruction) {
+		cpu->instruction.raw = line->instructions[address.index].value;
+		cpu->PC += 4;
+		return;
+	}
+
+	/* Invalidate instructions prior to requested index */
+	for (i = 0; i < address.index; i++)
+		line->instructions[i].valid = false;
+
+	/* Fill cache by fetching instructions from requested index */
+	for (i = address.index; i < NUM_INSTRUCTIONS_PER_CACHE_LINE; i++) {
+		line->instructions[i].value = memory_readl(cpu->bus_id, a);
+		line->instructions[i].valid = true;
+		a += 4;
+		clock_consume(1);
+	}
+
+	/* Update cache line tag */
+	line->tag = address.tag;
+
+	/* Fill instruction from cache (which is now valid) */
+	cpu->instruction.raw = line->instructions[address.index].value;
 	cpu->PC += 4;
+	clock_consume(3);
 }
 
 void r3051_tick(struct r3051 *cpu)
