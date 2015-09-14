@@ -90,13 +90,39 @@ struct r3051 {
 static bool r3051_init(struct cpu_instance *instance);
 static void r3051_reset(struct cpu_instance *instance);
 static void r3051_deinit(struct cpu_instance *instance);
+static void r3051_fetch(struct r3051 *cpu);
 static void r3051_tick(struct r3051 *cpu);
+
+#define DEFINE_MEM_READ(ext, type) \
+	static type mem_read##ext(struct r3051 *cpu, address_t a) \
+	{ \
+		return memory_read##ext(cpu->bus_id, a); \
+	}
+
+#define DEFINE_MEM_WRITE(ext, type) \
+	static void mem_write##ext(struct r3051 *cpu, type data, address_t a) \
+	{ \
+		memory_write##ext(cpu->bus_id, data, a); \
+	}
+
+DEFINE_MEM_READ(b, uint8_t)
+DEFINE_MEM_WRITE(b, uint8_t)
+DEFINE_MEM_READ(w, uint16_t)
+DEFINE_MEM_WRITE(w, uint16_t)
+DEFINE_MEM_READ(l, uint32_t)
+DEFINE_MEM_WRITE(l, uint32_t)
+
+void r3051_fetch(struct r3051 *cpu)
+{
+	/* Fetch instruction */
+	cpu->instruction.raw = mem_readl(cpu, cpu->PC);
+	cpu->PC += 4;
+}
 
 void r3051_tick(struct r3051 *cpu)
 {
 	/* Fetch instruction */
-	cpu->instruction.raw = memory_readl(cpu->bus_id, cpu->PC);
-	cpu->PC += 4;
+	r3051_fetch(cpu);
 
 	/* Execute instruction */
 	switch (cpu->instruction.opcode) {
