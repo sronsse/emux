@@ -7,6 +7,29 @@
 
 #define INITIAL_PC	0xBFC00000
 
+union cache_control {
+	uint32_t raw;
+	struct {
+		uint32_t LOCK:1;	/* Lock Mode */
+		uint32_t INV:1;		/* Invalidate Mode */
+		uint32_t TAG:1;		/* Tag Test Mode */
+		uint32_t RAM:1;		/* Scratchpad RAM */
+		uint32_t DBLKSZ:2;	/* D-Cache Refill Size */
+		uint32_t reserved1:1;
+		uint32_t DS:1;		/* Enable D-Cache */
+		uint32_t IBLKSZ:2;	/* I-Cache Refill Size */
+		uint32_t IS0:1;		/* Enable I-Cache Set 0 */
+		uint32_t IS1:1;		/* Enable I-Cache Set 1 */
+		uint32_t INTP:1;	/* Interrupt Polarity */
+		uint32_t RDPRI:1;	/* Enable Read Priority */
+		uint32_t NOPAD:1;	/* No Wait State */
+		uint32_t BGNT:1;	/* Enable Bus Grant */
+		uint32_t LDSCH:1;	/* Enable Load Scheduling */
+		uint32_t NOSTR:1;	/* No Streaming */
+		uint32_t reserved2:14;
+	};
+};
+
 /* I-Type (Immediate) instruction */
 struct i_type {
 	uint32_t immediate:16;
@@ -83,8 +106,10 @@ union instruction {
 struct r3051 {
 	union instruction instruction;
 	uint32_t PC;
+	union cache_control cache_ctrl;
 	int bus_id;
 	struct clock clock;
+	struct region cache_ctrl_region;
 };
 
 static bool r3051_init(struct cpu_instance *instance);
@@ -156,6 +181,16 @@ bool r3051_init(struct cpu_instance *instance)
 	cpu->clock.data = cpu;
 	cpu->clock.tick = (clock_tick_t)r3051_tick;
 	clock_add(&cpu->clock);
+
+	/* Add cache control region */
+	res = resource_get("cache_control",
+		RESOURCE_MEM,
+		instance->resources,
+		instance->num_resources);
+	cpu->cache_ctrl_region.area = res;
+	cpu->cache_ctrl_region.mops = &ram_mops;
+	cpu->cache_ctrl_region.data = &cpu->cache_ctrl.raw;
+	memory_region_add(&cpu->cache_ctrl_region);
 
 	return true;
 }
