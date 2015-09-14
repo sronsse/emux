@@ -7,6 +7,7 @@
 #include <resource.h>
 
 #define NUM_REGISTERS		32
+#define NUM_COP0_REGISTERS	64
 #define INITIAL_PC		0xBFC00000
 
 union cache_control {
@@ -105,6 +106,68 @@ union instruction {
 	struct cop2_instr cop2;
 };
 
+union cop0_stat {
+	uint32_t raw;
+	struct {
+		uint32_t IEc:1;		/* Interrupt Enable (current) */
+		uint32_t KUc:1;		/* Kernel-User Mode (current) */
+		uint32_t IEp:1;		/* Interrupt Enable (previous) */
+		uint32_t KUp:1;		/* Kernel-User Mode (previous) */
+		uint32_t IEo:1;		/* Interrupt Enable (old) */
+		uint32_t KUo:1;		/* Kernel-User Mode (old) */
+		uint32_t reserved1:2;
+		uint32_t Sw:2;		/* Software Interrupt Mask */
+		uint32_t Intr:6;	/* Hardware Interrupt Mask */
+		uint32_t IsC:1;		/* Isolate Cache */
+		uint32_t reserved2:1;
+		uint32_t PZ:1;		/* Parity Zero */
+		uint32_t reserved3:1;
+		uint32_t PE:1;		/* Parity Error */
+		uint32_t TS:1;		/* TLB Shutdown */
+		uint32_t BEV:1;		/* Bootstrap Exception Vectors */
+		uint32_t reserved4:5;
+		uint32_t Cu:4;		/* Coprocessor Usability */
+	};
+};
+
+union cop0_cause {
+	uint32_t raw;
+	struct {
+		uint32_t reserved1:2;
+		uint32_t ExcCode:5;	/* Exception Code */
+		uint32_t reserved2:1;
+		uint32_t Sw:2;		/* Software Interrupts */
+		uint32_t IP:6;		/* Interrupt Pending */
+		uint32_t reserved3:12;
+		uint32_t CE:2;		/* Coprocessor Error */
+		uint32_t BT:1;		/* Branch Taken */
+		uint32_t BD:1;		/* Branch Delay */
+	};
+};
+
+union cop0 {
+	uint32_t R[NUM_COP0_REGISTERS];
+	struct {
+		uint32_t r0;
+		uint32_t r1;
+		uint32_t r2;
+		uint32_t BPC;		/* Breakpoint Program Counter */
+		uint32_t r4;
+		uint32_t BDA;		/* Breakpoint Data Address */
+		uint32_t TAR;		/* Target Address */
+		uint32_t DCIC;		/* Debug and Cache Invalidate Control */
+		uint32_t BadA;		/* Bad Address */
+		uint32_t BDAM;		/* Breakpoint Data Address Mask */
+		uint32_t r10;
+		uint32_t BPCM;		/* Breakpoint Program Counter Mask */
+		union cop0_stat stat;	/* Status */
+		union cop0_cause cause;	/* Cause */
+		uint32_t EPC;		/* Exception Program Counter */
+		uint32_t PRId;		/* Processor Revision Identifier */
+		uint32_t reserved[32];
+	};
+};
+
 struct r3051 {
 	union {
 		uint32_t R[NUM_REGISTERS];
@@ -147,6 +210,7 @@ struct r3051 {
 	uint32_t LO;
 	uint32_t PC;
 	union instruction instruction;
+	union cop0 cop0;
 	union cache_control cache_ctrl;
 	int bus_id;
 	struct clock clock;
@@ -243,6 +307,7 @@ void r3051_reset(struct cpu_instance *instance)
 	/* Intialize processor data */
 	cpu->PC = INITIAL_PC;
 	memset(cpu->R, 0, NUM_REGISTERS * sizeof(uint32_t));
+	memset(cpu->cop0.R, 0, NUM_COP0_REGISTERS * sizeof(uint32_t));
 
 	/* Enable clock */
 	cpu->clock.enabled = true;
