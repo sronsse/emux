@@ -1,11 +1,13 @@
 #include <stdlib.h>
+#include <string.h>
 #include <clock.h>
 #include <cpu.h>
 #include <log.h>
 #include <memory.h>
 #include <resource.h>
 
-#define INITIAL_PC	0xBFC00000
+#define NUM_REGISTERS		32
+#define INITIAL_PC		0xBFC00000
 
 union cache_control {
 	uint32_t raw;
@@ -104,8 +106,47 @@ union instruction {
 };
 
 struct r3051 {
-	union instruction instruction;
+	union {
+		uint32_t R[NUM_REGISTERS];
+		struct {
+			uint32_t zr;
+			uint32_t at;
+			uint32_t v0;
+			uint32_t v1;
+			uint32_t a0;
+			uint32_t a1;
+			uint32_t a2;
+			uint32_t a3;
+			uint32_t t0;
+			uint32_t t1;
+			uint32_t t2;
+			uint32_t t3;
+			uint32_t t4;
+			uint32_t t5;
+			uint32_t t6;
+			uint32_t t7;
+			uint32_t s0;
+			uint32_t s1;
+			uint32_t s2;
+			uint32_t s3;
+			uint32_t s4;
+			uint32_t s5;
+			uint32_t s6;
+			uint32_t s7;
+			uint32_t t8;
+			uint32_t t9;
+			uint32_t k0;
+			uint32_t k1;
+			uint32_t gp;
+			uint32_t sp;
+			uint32_t fp;
+			uint32_t ra;
+		};
+	};
+	uint32_t HI;
+	uint32_t LO;
 	uint32_t PC;
+	union instruction instruction;
 	union cache_control cache_ctrl;
 	int bus_id;
 	struct clock clock;
@@ -201,6 +242,7 @@ void r3051_reset(struct cpu_instance *instance)
 
 	/* Intialize processor data */
 	cpu->PC = INITIAL_PC;
+	memset(cpu->R, 0, NUM_REGISTERS * sizeof(uint32_t));
 
 	/* Enable clock */
 	cpu->clock.enabled = true;
