@@ -17,6 +17,8 @@ DECLARE_BITOPS_GET(b, uint8_t)
 DECLARE_BITOPS_SET(b, uint8_t)
 DECLARE_BITOPS_GET(w, uint16_t)
 DECLARE_BITOPS_SET(w, uint16_t)
+DECLARE_BITOPS_GET(l, uint32_t)
+DECLARE_BITOPS_SET(l, uint32_t)
 
 int bitops_reverse(int i, int length);
 int bitops_ffs(int i);
