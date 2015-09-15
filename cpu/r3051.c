@@ -11,6 +11,8 @@
 #define NUM_COP2_DATA_REGISTERS		32
 #define NUM_COP2_CTRL_REGISTERS		32
 #define INITIAL_PC			0xBFC00000
+#define EXCEPTION_ADDR_0		0x80000080
+#define EXCEPTION_ADDR_1		0xBFC00180
 #define NUM_CACHE_LINES			256
 #define NUM_INSTRUCTIONS_PER_CACHE_LINE	4
 
@@ -140,6 +142,25 @@ union instruction {
 	struct bcond bcond;
 	struct cop_instr cop;
 	struct cop2_instr cop2;
+};
+
+enum exception {
+	EXCEPTION_Int,	/* External Interrupt */
+	EXCEPTION_Res1,
+	EXCEPTION_Res2,
+	EXCEPTION_Res3,
+	EXCEPTION_AdEL,	/* Address Error Exception (load instruction) */
+	EXCEPTION_AdES,	/* Address Error Exception (store instruction) */
+	EXCEPTION_IBE,	/* Bus Error Exception (for an instruction fetch) */
+	EXCEPTION_DBE,	/* Bus Error Exception (for a data load or store) */
+	EXCEPTION_Sys,	/* SYSCALL Exception */
+	EXCEPTION_Bp,	/* Breakpoint Exception */
+	EXCEPTION_RI,	/* Reserved Instruction Exception */
+	EXCEPTION_CpU,	/* Coprocessor Unusable Exception */
+	EXCEPTION_Ovf,	/* Arithmetic Overflow Exception */
+	EXCEPTION_ResD,
+	EXCEPTION_ResE,
+	EXCEPTION_ResF
 };
 
 union cop0_stat {
@@ -396,6 +417,7 @@ struct r3051 {
 	uint32_t HI;
 	uint32_t LO;
 	uint32_t PC;
+	uint32_t current_PC;
 	struct branch_delay branch_delay;
 	struct load_delay load_delay;
 	union instruction instruction;
@@ -416,6 +438,7 @@ static void r3051_branch(struct r3051 *cpu, uint32_t PC);
 static void r3051_load(struct r3051 *cpu, uint8_t reg, uint32_t data);
 static void r3051_set(struct r3051 *cpu, uint8_t reg, uint32_t data);
 static void r3051_tick(struct r3051 *cpu);
+static void r3051_raise_exception(struct r3051 *cpu, enum exception e);
 
 #define DEFINE_MEM_READ(ext, type) \
 	static type mem_read##ext(struct r3051 *cpu, address_t a) \
@@ -568,6 +591,9 @@ void r3051_set(struct r3051 *cpu, uint8_t reg, uint32_t data)
 
 void r3051_tick(struct r3051 *cpu)
 {
+	/* Save current PC */
+	cpu->current_PC = cpu->PC;
+
 	/* Fetch instruction */
 	r3051_fetch(cpu);
 
@@ -604,6 +630,25 @@ void r3051_tick(struct r3051 *cpu)
 
 	/* Always consume one cycle */
 	clock_consume(1);
+}
+
+void r3051_raise_exception(struct r3051 *cpu, enum exception e)
+{
+	/* Save exception code and branch delay flag */
+	cpu->cop0.cause.ExcCode = e;
+	cpu->cop0.cause.BD = cpu->branch_delay.pending;
+
+	/* Set exception PC (decrementing it if within a branch delay) */
+	cpu->cop0.EPC = cpu->current_PC;
+	if (cpu->branch_delay.pending)
+		cpu->cop0.EPC -= 4;
+
+	/* Update PC based on BEV flag */
+	cpu->PC = cpu->cop0.stat.BEV ? EXCEPTION_ADDR_1 : EXCEPTION_ADDR_0;
+
+	/* Reset any pending branch delay */
+	cpu->branch_delay.delay = false;
+	cpu->branch_delay.pending = false;
 }
 
 bool r3051_init(struct cpu_instance *instance)
