@@ -348,6 +348,13 @@ struct branch_delay {
 	bool pending;
 };
 
+struct load_delay {
+	uint8_t reg;
+	uint32_t data;
+	bool delay;
+	bool pending;
+};
+
 struct r3051 {
 	union {
 		uint32_t R[NUM_REGISTERS];
@@ -390,6 +397,7 @@ struct r3051 {
 	uint32_t LO;
 	uint32_t PC;
 	struct branch_delay branch_delay;
+	struct load_delay load_delay;
 	union instruction instruction;
 	union cop0 cop0;
 	union cop2 cop2;
@@ -405,6 +413,8 @@ static void r3051_reset(struct cpu_instance *instance);
 static void r3051_deinit(struct cpu_instance *instance);
 static void r3051_fetch(struct r3051 *cpu);
 static void r3051_branch(struct r3051 *cpu, uint32_t PC);
+static void r3051_load(struct r3051 *cpu, uint8_t reg, uint32_t data);
+static void r3051_set(struct r3051 *cpu, uint8_t reg, uint32_t data);
 static void r3051_tick(struct r3051 *cpu);
 
 #define DEFINE_MEM_READ(ext, type) \
@@ -528,6 +538,34 @@ void r3051_branch(struct r3051 *cpu, uint32_t PC)
 	cpu->branch_delay.pending = true;
 }
 
+void r3051_load(struct r3051 *cpu, uint8_t reg, uint32_t data)
+{
+	/* Discard pending load if same register is being loaded */
+	if (cpu->load_delay.delay && (reg == cpu->load_delay.reg))
+		cpu->load_delay.delay = false;
+
+	/* Handle any pending load immediately */
+	if (cpu->load_delay.delay) {
+		cpu->R[cpu->load_delay.reg] = cpu->load_delay.data;
+		cpu->load_delay.delay = false;
+	}
+
+	/* Set load delay register/data pair and pending flag */
+	cpu->load_delay.reg = reg;
+	cpu->load_delay.data = data;
+	cpu->load_delay.pending = true;
+}
+
+void r3051_set(struct r3051 *cpu, uint8_t reg, uint32_t data)
+{
+	/* Discard pending load if same register is being set */
+	if (cpu->load_delay.delay && (reg == cpu->load_delay.reg))
+		cpu->load_delay.delay = false;
+
+	/* Update requested register */
+	cpu->R[reg] = data;
+}
+
 void r3051_tick(struct r3051 *cpu)
 {
 	/* Fetch instruction */
@@ -537,6 +575,12 @@ void r3051_tick(struct r3051 *cpu)
 	if (cpu->branch_delay.pending) {
 		cpu->branch_delay.delay = true;
 		cpu->branch_delay.pending = false;
+	}
+
+	/* Handle pending load delay (load was made in previous cycle) */
+	if (cpu->load_delay.pending) {
+		cpu->load_delay.delay = true;
+		cpu->load_delay.pending = false;
 	}
 
 	/* Execute instruction */
@@ -550,6 +594,12 @@ void r3051_tick(struct r3051 *cpu)
 	if (cpu->branch_delay.delay) {
 		cpu->PC = cpu->branch_delay.PC;
 		cpu->branch_delay.delay = false;
+	}
+
+	/* Handle load delay (register now needs to be updated) */
+	if (cpu->load_delay.delay) {
+		cpu->R[cpu->load_delay.reg] = cpu->load_delay.data;
+		cpu->load_delay.delay = false;
 	}
 
 	/* Always consume one cycle */
@@ -603,6 +653,8 @@ void r3051_reset(struct cpu_instance *instance)
 	memset(cpu->cop2.CR, 0, NUM_COP2_CTRL_REGISTERS * sizeof(uint32_t));
 	cpu->branch_delay.delay = false;
 	cpu->branch_delay.pending = false;
+	cpu->load_delay.delay = false;
+	cpu->load_delay.pending = false;
 
 	/* Enable clock */
 	cpu->clock.enabled = true;
