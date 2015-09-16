@@ -1,5 +1,11 @@
 menu "Video"
 
+config CONTROLLER_VIDEO_GPU
+	bool "PSX GPU"
+	default y
+	help
+		Enable PlayStation GPU
+
 config CONTROLLER_VIDEO_LCDC
 	bool "GB LCDC"
 	default y
