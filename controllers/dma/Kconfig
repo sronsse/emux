@@ -6,5 +6,11 @@ config CONTROLLER_DMA_NES
 	help
 		Enable NES sprite DMA operations
 
+config CONTROLLER_DMA_PSX
+	bool "PSX DMA controller"
+	default y
+	help
+		Enable PSX DMA controller
+
 endmenu
 

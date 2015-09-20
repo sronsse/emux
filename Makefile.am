@@ -162,6 +162,9 @@ endif
 if CONFIG_CONTROLLER_DMA_NES
 emux_SOURCES += controllers/dma/nes_sprite.c
 endif
+if CONFIG_CONTROLLER_DMA_PSX
+emux_SOURCES += controllers/dma/psx_dma.c
+endif
 if CONFIG_CONTROLLER_INPUT_GB
 emux_SOURCES += controllers/input/gb_joypad.c
 endif
