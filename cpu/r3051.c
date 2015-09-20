@@ -16,6 +16,9 @@
 #define NUM_CACHE_LINES			256
 #define NUM_INSTRUCTIONS_PER_CACHE_LINE	4
 
+#define I_STAT				0x00
+#define I_MASK				0x04
+
 #define KUSEG_START			0x00000000
 #define KUSEG_END			(KUSEG_START + MB(2048) - 1)
 #define KSEG0_START			0x80000000
@@ -423,22 +426,108 @@ struct r3051 {
 	union instruction instruction;
 	union cop0 cop0;
 	union cop2 cop2;
+	uint32_t i_stat;
+	uint32_t i_mask;
 	union cache_control cache_ctrl;
 	struct cache_line instruction_cache[NUM_CACHE_LINES];
 	int bus_id;
 	struct clock clock;
+	struct region int_ctrl_region;
 	struct region cache_ctrl_region;
 };
 
 static bool r3051_init(struct cpu_instance *instance);
 static void r3051_reset(struct cpu_instance *instance);
+static void r3051_interrupt(struct cpu_instance *instance, int irq);
 static void r3051_deinit(struct cpu_instance *instance);
+static uint16_t r3051_int_ctrl_readw(struct r3051 *cpu, uint32_t a);
+static uint32_t r3051_int_ctrl_readl(struct r3051 *cpu, uint32_t a);
+static void r3051_int_ctrl_writew(struct r3051 *cpu, uint16_t w, uint32_t a);
+static void r3051_int_ctrl_writel(struct r3051 *cpu, uint32_t l, uint32_t a);
 static void r3051_fetch(struct r3051 *cpu);
+static void r3051_handle_interrupts(struct r3051 *cpu);
 static void r3051_branch(struct r3051 *cpu, uint32_t PC);
 static void r3051_load(struct r3051 *cpu, uint8_t reg, uint32_t data);
 static void r3051_set(struct r3051 *cpu, uint8_t reg, uint32_t data);
 static void r3051_tick(struct r3051 *cpu);
 static void r3051_raise_exception(struct r3051 *cpu, enum exception e);
+
+static struct mops int_ctrl_mops = {
+	.readw = (readw_t)r3051_int_ctrl_readw,
+	.readl = (readl_t)r3051_int_ctrl_readl,
+	.writew = (writew_t)r3051_int_ctrl_writew,
+	.writel = (writel_t)r3051_int_ctrl_writel
+};
+
+uint16_t r3051_int_ctrl_readw(struct r3051 *cpu, uint32_t a)
+{
+	uint16_t w = 0;
+
+	/* Read requested register */
+	switch (a) {
+	case I_STAT:
+		w = cpu->i_stat;
+		break;
+	case I_MASK:
+		w = cpu->i_mask;
+		break;
+	}
+
+	return w;
+}
+
+uint32_t r3051_int_ctrl_readl(struct r3051 *cpu, uint32_t a)
+{
+	uint32_t l = 0;
+
+	/* Read requested register */
+	switch (a) {
+	case I_STAT:
+		l = cpu->i_stat;
+		break;
+	case I_MASK:
+		l = cpu->i_mask;
+		break;
+	}
+
+	return l;
+}
+
+void r3051_int_ctrl_writew(struct r3051 *cpu, uint16_t w, uint32_t a)
+{
+	/* Write requested register */
+	switch (a) {
+	case I_STAT:
+		/* Acknowledge interrupt */
+		cpu->i_stat &= w;
+		break;
+	case I_MASK:
+		cpu->i_mask = w;
+		break;
+	}
+
+	/* Update interrupt pending flag in cop0 cause register */
+	if (cpu->cop0.cause.IP)
+		cpu->cop0.cause.IP = ((cpu->i_stat & cpu->i_mask) != 0);
+}
+
+void r3051_int_ctrl_writel(struct r3051 *cpu, uint32_t l, uint32_t a)
+{
+	/* Write requested register */
+	switch (a) {
+	case I_STAT:
+		/* Acknowledge interrupt */
+		cpu->i_stat &= l;
+		break;
+	case I_MASK:
+		cpu->i_mask = l;
+		break;
+	}
+
+	/* Update interrupt pending flag in cop0 cause register */
+	if (cpu->cop0.cause.IP)
+		cpu->cop0.cause.IP = ((cpu->i_stat & cpu->i_mask) != 0);
+}
 
 #define DEFINE_MEM_READ(ext, type) \
 	static type mem_read##ext(struct r3051 *cpu, address_t a) \
@@ -550,6 +639,20 @@ void r3051_fetch(struct r3051 *cpu)
 	clock_consume(3);
 }
 
+void r3051_handle_interrupts(struct r3051 *cpu)
+{
+	/* Return if no interrupt is pending */
+	if (cpu->cop0.cause.IP == 0)
+		return;
+
+	/* Return if interrupts are globally disabled */
+	if (!cpu->cop0.stat.IEc || !cpu->cop0.stat.Intr)
+		return;
+
+	/* Raise exception */
+	r3051_raise_exception(cpu, EXCEPTION_Int);
+}
+
 void r3051_branch(struct r3051 *cpu, uint32_t PC)
 {
 	/* Discard branch if one is pending already */
@@ -593,6 +696,9 @@ void r3051_tick(struct r3051 *cpu)
 {
 	/* Save current PC */
 	cpu->current_PC = cpu->PC;
+
+	/* Check for interrupt requests */
+	r3051_handle_interrupts(cpu);
 
 	/* Fetch instruction */
 	r3051_fetch(cpu);
@@ -643,6 +749,14 @@ void r3051_raise_exception(struct r3051 *cpu, enum exception e)
 	if (cpu->branch_delay.pending)
 		cpu->cop0.EPC -= 4;
 
+	/* Shift interrupt enable/kernel-user mode bits */
+	cpu->cop0.stat.IEo = cpu->cop0.stat.IEp;
+	cpu->cop0.stat.KUo = cpu->cop0.stat.KUp;
+	cpu->cop0.stat.IEp = cpu->cop0.stat.IEc;
+	cpu->cop0.stat.KUp = cpu->cop0.stat.KUc;
+	cpu->cop0.stat.IEc = 0;
+	cpu->cop0.stat.KUc = 0;
+
 	/* Update PC based on BEV flag */
 	cpu->PC = cpu->cop0.stat.BEV ? EXCEPTION_ADDR_1 : EXCEPTION_ADDR_0;
 
@@ -673,6 +787,16 @@ bool r3051_init(struct cpu_instance *instance)
 	cpu->clock.tick = (clock_tick_t)r3051_tick;
 	clock_add(&cpu->clock);
 
+	/* Add interrupt control region */
+	res = resource_get("int_control",
+		RESOURCE_MEM,
+		instance->resources,
+		instance->num_resources);
+	cpu->int_ctrl_region.area = res;
+	cpu->int_ctrl_region.mops = &int_ctrl_mops;
+	cpu->int_ctrl_region.data = cpu;
+	memory_region_add(&cpu->int_ctrl_region);
+
 	/* Add cache control region */
 	res = resource_get("cache_control",
 		RESOURCE_MEM,
@@ -696,6 +820,8 @@ void r3051_reset(struct cpu_instance *instance)
 	memset(cpu->cop0.R, 0, NUM_COP0_REGISTERS * sizeof(uint32_t));
 	memset(cpu->cop2.DR, 0, NUM_COP2_DATA_REGISTERS * sizeof(uint32_t));
 	memset(cpu->cop2.CR, 0, NUM_COP2_CTRL_REGISTERS * sizeof(uint32_t));
+	cpu->i_stat = 0;
+	cpu->i_mask = 0;
 	cpu->branch_delay.delay = false;
 	cpu->branch_delay.pending = false;
 	cpu->load_delay.delay = false;
@@ -703,6 +829,17 @@ void r3051_reset(struct cpu_instance *instance)
 
 	/* Enable clock */
 	cpu->clock.enabled = true;
+}
+
+void r3051_interrupt(struct cpu_instance *instance, int irq)
+{
+	struct r3051 *cpu = instance->priv_data;
+
+	/* Update interrupt status register */
+	cpu->i_stat |= (1 << irq);
+
+	/* Update interrupt pending flag in cop0 cause register */
+	cpu->cop0.cause.IP = ((cpu->i_stat & cpu->i_mask) != 0);
 }
 
 void r3051_deinit(struct cpu_instance *instance)
@@ -713,6 +850,7 @@ void r3051_deinit(struct cpu_instance *instance)
 CPU_START(r3051)
 	.init = r3051_init,
 	.reset = r3051_reset,
+	.interrupt = r3051_interrupt,
 	.deinit = r3051_deinit
 CPU_END
 
