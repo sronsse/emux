@@ -91,7 +91,8 @@ void clock_tick_all(bool handle_delay)
 		current_clock = clocks[i];
 
 		/* Only execute clock action if there are no remaining cycles */
-		if (current_clock->num_remaining_cycles == 0)
+		if (current_clock->enabled &&
+			(current_clock->num_remaining_cycles == 0))
 			current_clock->tick(current_clock->data);
 	}
 
@@ -101,7 +102,8 @@ void clock_tick_all(bool handle_delay)
 	/* Find minimum number of remaining cycles */
 	num_remaining_cycles = clocks[0]->num_remaining_cycles;
 	for (i = 1; i < num_clocks; i++)
-		if (clocks[i]->num_remaining_cycles < num_remaining_cycles)
+		if ((clocks[i]->num_remaining_cycles < num_remaining_cycles) &&
+			clocks[i]->enabled)
 			num_remaining_cycles = clocks[i]->num_remaining_cycles;
 
 	/* Sanity check (clocks should consume cycles at all times) */
