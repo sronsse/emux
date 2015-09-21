@@ -16,7 +16,7 @@
 #define SCX			3
 #define LY			4
 #define LYC			5
-#define DMA			6
+#define DMA_REG			6
 #define BGP			7
 #define OBP0			8
 #define OBP1			9
@@ -164,7 +164,7 @@ static lcdc_event_t lcdc_events[] = {
 uint8_t lcdc_readb(struct lcdc *lcdc, address_t address)
 {
 	switch (address) {
-	case DMA:
+	case DMA_REG:
 		/* DMA register is write-only */
 		return 0;
 	default:
@@ -185,7 +185,7 @@ void lcdc_writeb(struct lcdc *lcdc, uint8_t b, address_t address)
 	case LY:
 		/* Register is read-only */
 		break;
-	case DMA:
+	case DMA_REG:
 		/* Handle DMA (data byte represents upper 8 bits of source) */
 		source_addr = b << 8;
 		for (i = 0; i < DMA_TRANSFER_SIZE; i++) {
