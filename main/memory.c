@@ -145,6 +145,41 @@
 		free(addresses); \
 	}
 
+#define DEFINE_DMA_READ(ext, type) \
+	type dma_read##ext(int channel) \
+	{ \
+		struct dma_channel *ch; \
+		struct list_link *link = dma_channels; \
+	\
+		/* Find matching DMA channel and call read operation */ \
+		while ((ch = list_get_next(&link))) \
+			if ((ch->res->data.dma.channel == channel) && \
+				ch->ops->read##ext) \
+				return ch->ops->read##ext(ch->data); \
+	\
+		/* Return 0 in case of read failure */ \
+		LOG_W("DMA channel not found (%s(%u))!\n", __func__, channel); \
+		return 0; \
+	}
+
+#define DEFINE_DMA_WRITE(ext, type) \
+	void dma_write##ext(int channel, type data) \
+	{ \
+		struct dma_channel *ch; \
+		struct list_link *link = dma_channels; \
+	\
+		/* Find matching DMA channel and call write operation */ \
+		while ((ch = list_get_next(&link))) \
+			if ((ch->res->data.dma.channel == channel) && \
+				ch->ops->write##ext) { \
+				ch->ops->write##ext(ch->data, data); \
+				return; \
+			} \
+	\
+		/* Warn in case of read failure */ \
+		LOG_W("DMA channel not found (%s(%u))!\n", __func__, channel); \
+	}
+
 static uint8_t rom_readb(uint8_t *rom, address_t address);
 static uint16_t rom_readw(uint8_t *rom, address_t address);
 static uint32_t rom_readl(uint8_t *rom, address_t address);
@@ -157,6 +192,7 @@ static void ram_writel(uint8_t *ram, uint32_t l, address_t address);
 static struct bus *get_bus(int bus_id);
 
 static struct list_link *busses;
+static struct list_link *dma_channels;
 
 struct mops rom_mops = {
 	.readb = (readb_t)rom_readb,
@@ -326,4 +362,30 @@ DEFINE_MEMORY_READ(l, uint32_t)
 DEFINE_MEMORY_WRITE(b, uint8_t)
 DEFINE_MEMORY_WRITE(w, uint16_t)
 DEFINE_MEMORY_WRITE(l, uint32_t)
+
+void dma_channel_add(struct dma_channel *channel)
+{
+	/* Add DMA channel to list */
+	list_insert(&dma_channels, channel);
+}
+
+void dma_channel_remove(struct dma_channel *channel)
+{
+	/* Remove DMA channel from list */
+	list_remove(&dma_channels, channel);
+}
+
+void dma_channel_remove_all()
+{
+	/* Remove all DMA channels from list */
+	list_remove_all(&dma_channels);
+}
+
+/* Define DMA read/write functions */
+DEFINE_DMA_READ(b, uint8_t)
+DEFINE_DMA_READ(w, uint16_t)
+DEFINE_DMA_READ(l, uint32_t)
+DEFINE_DMA_WRITE(b, uint8_t)
+DEFINE_DMA_WRITE(w, uint16_t)
+DEFINE_DMA_WRITE(l, uint32_t)
 

@@ -18,6 +18,15 @@
 #define MEM(_name, _bus_id, _start, _end) \
 	MEMX(_name, _bus_id, _start, _end, NULL, 0)
 
+#define DMA(_name, _channel) \
+	{ \
+		.name = _name, \
+		.data.dma = { \
+			.channel = _channel, \
+		}, \
+		.type = RESOURCE_DMA \
+	}
+
 #define PORTX(_name, _start, _end, _children, _num_children) \
 	{ \
 		.name = _name, \
@@ -48,6 +57,7 @@
 
 enum resource_type {
 	RESOURCE_MEM,
+	RESOURCE_DMA,
 	RESOURCE_PORT,
 	RESOURCE_IRQ,
 	RESOURCE_CLK
@@ -61,6 +71,9 @@ struct resource {
 			uint32_t start;
 			uint32_t end;
 		} mem;
+		struct {
+			int channel;
+		} dma;
 		struct {
 			uint8_t start;
 			uint8_t end;
