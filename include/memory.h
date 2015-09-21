@@ -50,10 +50,6 @@ struct region {
 struct bus {
 	int id;
 	int width;
-	struct list_link **readb_map;
-	struct list_link **readw_map;
-	struct list_link **writeb_map;
-	struct list_link **writew_map;
 	struct list_link *regions;
 };
 
