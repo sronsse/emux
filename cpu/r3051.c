@@ -3667,6 +3667,9 @@ void r3051_tick(struct r3051 *cpu)
 		cpu->load_delay.delay = false;
 	}
 
+	/* Reset r0 to 0 in case it was modified */
+	cpu->zr = 0;
+
 	/* Always consume one cycle */
 	clock_consume(1);
 }
