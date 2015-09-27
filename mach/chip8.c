@@ -26,7 +26,6 @@ static void chip8_deinit(struct machine *machine);
 struct chip8_data {
 	file_handle_t rom_file;
 	uint8_t ram[RAM_SIZE];
-	struct bus bus;
 	struct region ram_region;
 };
 
@@ -73,11 +72,6 @@ bool chip8_init(struct machine *machine)
 		LOG_E("Could not open ROM from \"%s\"!\n", rom_path);
 		return false;
 	}
-
-	/* Add 16-bit memory bus */
-	chip8_data->bus.id = CPU_BUS_ID;
-	chip8_data->bus.width = 16;
-	memory_bus_add(&chip8_data->bus);
 
 	/* Add RAM region */
 	chip8_data->ram_region.area = &ram_area;

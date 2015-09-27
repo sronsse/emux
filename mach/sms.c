@@ -54,7 +54,6 @@
 
 struct sms_data {
 	uint8_t ram[RAM_SIZE];
-	struct bus bus;
 	struct region ram_region;
 };
 
@@ -152,11 +151,6 @@ bool sms_init(struct machine *machine)
 	/* Create machine data structure */
 	data = calloc(1, sizeof(struct sms_data));
 	machine->priv_data = data;
-
-	/* Add 16-bit memory bus */
-	data->bus.id = CPU_BUS_ID;
-	data->bus.width = 16;
-	memory_bus_add(&data->bus);
 
 	/* Set mapper mach data */
 	sms_mapper_mach_data.bios_path = bios_path;

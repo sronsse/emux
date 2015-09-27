@@ -15,10 +15,11 @@ static uint32_t ram_readl(uint8_t *ram, address_t address);
 static void ram_writeb(uint8_t *ram, uint8_t b, address_t address);
 static void ram_writew(uint8_t *ram, uint16_t w, address_t address);
 static void ram_writel(uint8_t *ram, uint32_t l, address_t address);
-static struct bus *get_bus(int bus_id);
 
-struct list_link *busses;
-struct list_link *dma_channels;
+struct region **regions;
+int num_regions;
+struct dma_channel **dma_channels;
+int num_dma_channels;
 
 struct mops rom_mops = {
 	.readb = (readb_t)rom_readb,
@@ -96,106 +97,90 @@ void ram_writel(uint8_t *ram, uint32_t l, address_t address)
 	*mem = l >> 24;
 }
 
-struct bus *get_bus(int bus_id)
+void memory_region_add(struct region *region)
 {
-	struct list_link *link = busses;
-	struct bus *bus;
+	/* Grow memory regions array */
+	regions = realloc(regions, ++num_regions * sizeof(struct region *));
 
-	/* Find bus with match bus ID */
-	while ((bus = list_get_next(&link)))
-		if (bus->id == bus_id)
-			return bus;
-
-	/* No bus was found */
-	return NULL;
-}
-
-bool memory_bus_add(struct bus *bus)
-{
-	/* Verify bus ID is not already present */
-	if (get_bus(bus->id)) {
-		LOG_D("Bus %u was already added!\n", bus->id);
-		return false;
-	}
-
-	/* Initialize bus */
-	bus->regions = NULL;
-
-	/* Add bus to list */
-	list_insert(&busses, bus);
-
-	return true;
-}
-
-void memory_bus_remove(struct bus *bus)
-{
-	/* Remove regions */
-	list_remove_all(&bus->regions);
-
-	/* Remove bus from list */
-	list_remove(&busses, bus);
-}
-
-void memory_bus_remove_all()
-{
-	struct list_link *link = busses;
-	struct bus *bus;
-
-	while ((bus = list_get_next(&link)))
-		memory_bus_remove(bus);
-}
-
-bool memory_region_add(struct region *region)
-{
-	struct bus *bus;
-	int bus_id;
-
-	/* Get bus based on area and return if not found */
-	bus_id = region->area->data.mem.bus_id;
-	bus = get_bus(bus_id);
-	if (!bus) {
-		LOG_D("Bus %u was not found!\n", bus_id);
-		return false;
-	}
+	/* Shift regions */
+	memmove(&regions[1],
+		regions,
+		(num_regions - 1) * sizeof(struct region *));
 
 	/* Insert region before others (it will take precedence on read ops) */
-	list_insert_before(&bus->regions, region);
-
-	return true;
+	regions[0] = region;
 }
 
 void memory_region_remove(struct region *region)
 {
-	struct bus *bus = NULL;
-	int bus_id;
+	int i;
 
-	/* Get bus based on area and return if not found */
-	bus_id = region->area->data.mem.bus_id;
-	bus = get_bus(bus_id);
-	if (!bus) {
-		LOG_D("Bus %u was not found!\n", bus_id);
+	/* Remove last region if needed */
+	if ((num_regions > 0) && (region == regions[num_regions - 1])) {
+		regions = realloc(regions,
+			--num_regions * sizeof(struct region *));
 		return;
 	}
 
-	/* Remove region from list */
-	list_remove(&bus->regions, region);
+	/* Find and remove region */
+	for (i = 0; i < num_regions - 1; i++)
+		if (regions[i] == region) {
+			memmove(&regions[i],
+				&regions[i + 1],
+				(num_regions - i) * sizeof(struct region *));
+			regions = realloc(regions,
+				--num_regions * sizeof(struct region *));
+		}
+}
+
+void memory_region_remove_all()
+{
+	/* Free all regions */
+	free(regions);
 }
 
 void dma_channel_add(struct dma_channel *channel)
 {
-	/* Add DMA channel to list */
-	list_insert(&dma_channels, channel);
+	/* Grow DMA channels array */
+	dma_channels = realloc(dma_channels,
+		++num_dma_channels * sizeof(struct dma_channel *));
+
+	/* Shift channels */
+	memmove(&dma_channels[1],
+		dma_channels,
+		(num_dma_channels - 1) * sizeof(struct dma_channel *));
+
+	/* Insert channel before others (it will take precedence on read ops) */
+	dma_channels[0] = channel;
 }
 
 void dma_channel_remove(struct dma_channel *channel)
 {
-	/* Remove DMA channel from list */
-	list_remove(&dma_channels, channel);
+	int i;
+
+	/* Remove last channel if needed */
+	if ((num_dma_channels > 0) && (dma_channels[num_dma_channels - 1])) {
+		dma_channels = realloc(dma_channels,
+			--num_dma_channels * sizeof(struct dma_channel *));
+		return;
+	}
+
+	/* Find and remove channel */
+	for (i = 0; i < num_dma_channels - 1; i++)
+		if (dma_channels[i] == channel) {
+			memmove(&dma_channels[i],
+				dma_channels[i + 1],
+				(num_dma_channels - i) *
+					sizeof(struct dma_channel *));
+			dma_channels = realloc(dma_channels,
+				--num_dma_channels *
+					sizeof(struct dma_channel *));
+		}
 }
 
 void dma_channel_remove_all()
 {
-	/* Remove all DMA channels from list */
-	list_remove_all(&dma_channels);
+	/* Free all channels */
+	free(dma_channels);
 }
 

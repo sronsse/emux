@@ -63,8 +63,6 @@
 struct nes_data {
 	uint8_t wram[WRAM_SIZE];
 	uint8_t vram[VRAM_SIZE];
-	struct bus cpu_bus;
-	struct bus ppu_bus;
 	struct region wram_region;
 };
 
@@ -163,16 +161,6 @@ bool nes_init(struct machine *machine)
 
 	/* Set mapper path */
 	nes_mapper_mach_data.path = env_get_data_path();
-
-	/* Add CPU bus */
-	nes_data->cpu_bus.id = CPU_BUS_ID;
-	nes_data->cpu_bus.width = 16;
-	memory_bus_add(&nes_data->cpu_bus);
-
-	/* Add PPU bus */
-	nes_data->ppu_bus.id = PPU_BUS_ID;
-	nes_data->ppu_bus.width = 16;
-	memory_bus_add(&nes_data->ppu_bus);
 
 	/* Add WRAM region */
 	nes_data->wram_region.area = &wram_area;

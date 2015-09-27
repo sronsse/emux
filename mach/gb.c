@@ -75,7 +75,6 @@ struct gb_data {
 	uint8_t hram[HRAM_SIZE];
 	uint8_t oam[OAM_SIZE];
 	uint8_t wave[WAVE_SIZE];
-	struct bus bus;
 	struct region vram_region;
 	struct region wram_region;
 	struct region hram_region;
@@ -219,11 +218,6 @@ bool gb_init(struct machine *machine)
 
 	/* Create machine data structure */
 	gb_data = calloc(1, sizeof(struct gb_data));
-
-	/* Add 16-bit memory bus */
-	gb_data->bus.id = BUS_ID;
-	gb_data->bus.width = 16;
-	memory_bus_add(&gb_data->bus);
 
 	/* Add VRAM region */
 	gb_data->vram_region.area = &vram_area;
