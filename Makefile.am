@@ -31,7 +31,6 @@ emux_SOURCES = include/audio.h \
 	main/env.c \
 	main/file.c \
 	main/input.c \
-	main/list.c \
 	main/log.c \
 	main/machine.c \
 	main/main.c \

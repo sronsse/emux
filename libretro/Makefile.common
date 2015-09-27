@@ -12,7 +12,6 @@ COMMON_SOURCES = \
 	$(CORE_DIR)/main/file.c \
 	$(CORE_DIR)/main/input.c \
 	$(CORE_DIR)/main/log.c \
-	$(CORE_DIR)/main/list.c \
 	$(CORE_DIR)/main/machine.c \
 	$(CORE_DIR)/main/memory.c \
 	$(CORE_DIR)/main/port.c \
