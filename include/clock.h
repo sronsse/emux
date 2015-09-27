@@ -19,10 +19,17 @@ struct clock {
 void clock_add(struct clock *clock);
 void clock_reset();
 void clock_tick_all(bool handle_delay);
-void clock_consume(int num_cycles);
 void clock_remove_all();
 uint64_t gcd(uint64_t a, uint64_t b);
 uint64_t lcm(uint64_t a, uint64_t b);
+
+extern struct clock *current_clock;
+
+static inline void clock_consume(int num_cycles)
+{
+	/* Increase number of remaining clock cycles by desired amount */
+	current_clock->num_remaining_cycles += num_cycles * current_clock->div;
+}
 
 #endif
 

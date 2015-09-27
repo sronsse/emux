@@ -16,7 +16,7 @@ static uint64_t machine_clock_rate;
 static uint64_t current_cycle;
 static unsigned int mach_delay;
 static struct timeval start_time;
-static struct clock *current_clock;
+struct clock *current_clock;
 
 uint64_t gcd(uint64_t a, uint64_t b)
 {
@@ -138,12 +138,6 @@ void clock_tick_all(bool handle_delay)
 			gettimeofday(&start_time, NULL);
 		current_cycle -= machine_clock_rate;
 	}
-}
-
-void clock_consume(int num_cycles)
-{
-	/* Increase number of remaining clock cycles by desired amount */
-	current_clock->num_remaining_cycles += num_cycles * current_clock->div;
 }
 
 void clock_remove_all()
