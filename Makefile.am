@@ -24,7 +24,6 @@ emux_SOURCES = include/audio.h \
 	include/util.h \
 	include/video.h \
 	main/audio.c \
-	main/bitops.c \
 	main/clock.c \
 	main/cmdline.c \
 	main/controller.c \
