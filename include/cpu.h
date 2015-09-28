@@ -28,6 +28,7 @@ struct cpu {
 	bool (*init)(struct cpu_instance *instance);
 	void (*reset)(struct cpu_instance *instance);
 	void (*interrupt)(struct cpu_instance *instance, int irq);
+	void (*halt)(struct cpu_instance *instance, bool halt);
 	void (*deinit)(struct cpu_instance *instance);
 };
 
@@ -44,6 +45,7 @@ struct cpu_instance {
 bool cpu_add(struct cpu_instance *instance);
 void cpu_reset_all();
 void cpu_interrupt(int irq);
+void cpu_halt(bool halt);
 void cpu_remove_all();
 
 extern struct list_link *cpus;

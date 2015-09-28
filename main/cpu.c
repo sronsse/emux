@@ -49,6 +49,17 @@ void cpu_interrupt(int irq)
 		instance->cpu->interrupt(instance, irq);
 }
 
+void cpu_halt(bool halt)
+{
+	struct cpu_instance *instance;
+	struct list_link *link = cpu_instances;
+
+	/* Halt first CPU only */
+	instance = list_get_next(&link);
+	if (instance->cpu && instance->cpu->halt)
+		instance->cpu->halt(instance, halt);
+}
+
 void cpu_remove_all()
 {
 	struct list_link *link = cpu_instances;
