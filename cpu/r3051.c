@@ -445,6 +445,7 @@ struct r3051 {
 static bool r3051_init(struct cpu_instance *instance);
 static void r3051_reset(struct cpu_instance *instance);
 static void r3051_interrupt(struct cpu_instance *instance, int irq);
+static void r3051_halt(struct cpu_instance *instance, bool halt);
 static void r3051_deinit(struct cpu_instance *instance);
 static uint16_t r3051_int_ctrl_readw(struct r3051 *cpu, uint32_t a);
 static uint32_t r3051_int_ctrl_readl(struct r3051 *cpu, uint32_t a);
@@ -4078,6 +4079,14 @@ void r3051_interrupt(struct cpu_instance *instance, int irq)
 	cpu->cop0.cause.IP = ((cpu->i_stat & cpu->i_mask) != 0);
 }
 
+void r3051_halt(struct cpu_instance *instance, bool halt)
+{
+	struct r3051 *cpu = instance->priv_data;
+
+	/* Enable/disable clocked based on external halt request */
+	cpu->clock.enabled = !halt;
+}
+
 void r3051_deinit(struct cpu_instance *instance)
 {
 	free(instance->priv_data);
@@ -4087,6 +4096,7 @@ CPU_START(r3051)
 	.init = r3051_init,
 	.reset = r3051_reset,
 	.interrupt = r3051_interrupt,
+	.halt = r3051_halt,
 	.deinit = r3051_deinit
 CPU_END
 
