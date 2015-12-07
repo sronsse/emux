@@ -166,6 +166,7 @@ static void psx_dma_end_transfer(struct psx_dma *psx_dma, int ch);
 static void psx_dma_mode_0(struct psx_dma *psx_dma, int ch);
 static void psx_dma_mode_1(struct psx_dma *psx_dma, int ch);
 static void psx_dma_mode_2(struct psx_dma *psx_dma, int ch);
+static void psx_dma_ch6_quirk(struct psx_dma *psx_dma);
 
 static struct mops psx_dma_mops = {
 	.readl = (readl_t)psx_dma_readl,
@@ -278,6 +279,43 @@ void psx_dma_end_transfer(struct psx_dma *psx_dma, int ch)
 		cpu_interrupt(psx_dma->irq);
 }
 
+void psx_dma_ch6_quirk(struct psx_dma *psx_dma)
+{
+	address_t address;
+	uint32_t word;
+	int num_words;
+	int dir;
+	int i;
+
+	/* Set initial DMA address */
+	address = psx_dma->registers.madr6.address;
+
+	/* Set step direction */
+	dir = (psx_dma->registers.chcr6.mem_address_step == STEP_FORWARD) ?
+		1 : -1;
+
+	/* Get number of words (0 = 0x10000 words) */
+	num_words = psx_dma->registers.bcr6.num_words;
+	if (num_words == 0)
+		num_words = 0x10000;
+
+	/* Transfer words (computed from destination address and step) */
+	for (i = 0; i < num_words - 1; i++) {
+		word = address + dir * sizeof(uint32_t);
+		memory_writel(psx_dma->bus_id, word, address);
+		address = word;
+	}
+
+	/* Finalize list */
+	memory_writel(psx_dma->bus_id, CH6_END_OF_LIST_HEADER, address);
+
+	/* Consume one clock per word */
+	clock_consume(num_words);
+
+	/* Flag channel as inactive */
+	psx_dma->channels[6].active = false;
+}
+
 void psx_dma_mode_0(struct psx_dma *psx_dma, int ch)
 {
 	struct madr *madr;
@@ -287,6 +325,12 @@ void psx_dma_mode_0(struct psx_dma *psx_dma, int ch)
 	uint32_t word;
 	int num_words;
 	int i;
+
+	/* Handle special channel 6 scenario */
+	if (ch == 6) {
+		psx_dma_ch6_quirk(psx_dma);
+		return;
+	}
 
 	/* Set initial DMA address */
 	madr = (struct madr *)&psx_dma->registers.raw[MADR(ch)];
