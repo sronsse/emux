@@ -3,9 +3,16 @@
 #include <string.h>
 #include <bitops.h>
 #include <clock.h>
+#include <cpu.h>
 #include <controller.h>
+#include <event.h>
 #include <memory.h>
 #include <util.h>
+#include <video.h>
+
+#define SCREEN_WIDTH	640
+#define SCREEN_HEIGHT	480
+#define FPS		60.0f
 
 #define GP0		0x00
 #define GP1		0x04
@@ -510,12 +517,17 @@ struct gpu {
 	bool x_flip;
 	bool y_flip;
 	bool tex_disable;
+	bool odd;
+	uint16_t h;
+	uint16_t v;
 	struct read_buffer read_buffer;
 	struct poly_line_data poly_line_data;
 	struct copy_data copy_data;
 	struct fifo fifo;
 	struct region region;
 	struct dma_channel dma_channel;
+	struct clock clock;
+	int vblk_irq;
 };
 
 static bool gpu_init(struct controller_instance *instance);
@@ -528,6 +540,8 @@ static void gpu_dma_writel(struct gpu *gpu, uint32_t l);
 static void gpu_process_fifo(struct gpu *gpu);
 static void gpu_gp0_cmd(struct gpu *gpu, union cmd cmd);
 static void gpu_gp1_cmd(struct gpu *gpu, union cmd cmd);
+static void gpu_inc_counters(struct gpu *gpu, int num_cycles);
+static void gpu_tick(struct gpu *gpu);
 
 static void draw_pixel(struct gpu *gpu, struct pixel *pixel);
 static void draw_line(struct gpu *gpu, struct line *line);
@@ -3634,14 +3648,220 @@ void gpu_gp1_cmd(struct gpu *gpu, union cmd cmd)
 	}
 }
 
+void gpu_inc_counters(struct gpu *gpu, int num_cycles)
+{
+	int prev_h;
+	int num_cycles_per_scanline;
+	int num_scanlines;
+	bool mode_480;
+	bool vblk;
+
+	/* Get number of cycles per scanline based on video mode:
+	0 = 3413 (NTSC / 60Hz), 1 = 3406 (PAL / 50Hz) */
+	num_cycles_per_scanline = (gpu->stat.video_mode == 0) ? 3413 : 3406;
+
+	/* Get number of scanline based on video mode:
+	0 = 263 (NTSC / 60Hz), 1 = 314 (PAL / 50Hz) */
+	num_scanlines = (gpu->stat.video_mode == 0) ? 263 : 314;
+
+	/* Save current H counter */
+	prev_h = gpu->h;
+
+	/* Increment H counter */
+	gpu->h += num_cycles;
+
+	/* Fire HBLANK start event if needed */
+	if ((prev_h < gpu->display_area_dest_x1) &&
+		(gpu->h >= gpu->display_area_dest_x1))
+		event_fire("hblank_start");
+
+	/* Fire HBLANK end event if needed */
+	if ((prev_h < gpu->display_area_dest_x2) &&
+		(gpu->h >= gpu->display_area_dest_x2))
+		event_fire("hblank_end");
+
+	/* Handle H counter reset */
+	if (gpu->h >= num_cycles_per_scanline) {
+		/* Set 480-lines mode flag */
+		mode_480 = (gpu->stat.vertical_res == 1);
+		mode_480 &= (gpu->stat.vertical_interlace == 1);
+
+		/* Reset H counter */
+		gpu->h -= num_cycles_per_scanline;
+
+		/* Increment V counter */
+		gpu->v++;
+
+		/* In 240-lines mode, the odd/even bit changes per scanline. */
+		if (!mode_480)
+			gpu->odd = (gpu->v & 1);
+
+		/* Handle VBLANK start */
+		if (gpu->v == gpu->display_area_dest_y2) {
+			/* Fire VBLANK start event */
+			event_fire("vblank_start");
+
+			/* Generate VBLANK IRQ */
+			cpu_interrupt(gpu->vblk_irq);
+
+			/* Update screen contents */
+			video_unlock();
+			video_update();
+			video_lock();
+
+			/* In 480-lines mode, the odd/even flag changes per
+			frame. */
+			if (mode_480)
+				gpu->odd = !gpu->odd;
+		}
+
+		/* Fire VBLANK end event if needed */
+		if (gpu->v == gpu->display_area_dest_y1)
+			event_fire("vblank_end");
+
+		/* Update status odd/even flag based on saved global flag. The
+		odd/even bit is always zero during VBLANK. */
+		vblk = (gpu->v < gpu->display_area_dest_y1);
+		vblk |= (gpu->v >= gpu->display_area_dest_y2);
+		gpu->stat.odd = vblk ? 0 : gpu->odd;
+
+		/* Reset V counter if needed */
+		if (gpu->v == num_scanlines)
+			gpu->v = 0;
+	}
+
+	/* Fire dot clock event */
+	event_fire("dot_clk");
+}
+
+void gpu_tick(struct gpu *gpu)
+{
+	uint16_t data;
+	uint32_t offset;
+	uint16_t src_x;
+	uint16_t src_y;
+	int size_x;
+	int size_y;
+	int x;
+	int y;
+	int w;
+	int h;
+	int num_cycles;
+	bool mode_480;
+	struct color c;
+
+	/* Get current screen size */
+	video_get_size(&w, &h);
+
+	/* Get number of cycles to consume based on horizontal resolution:
+	PSX.256-pix Dotclock =  5.322240MHz (44100Hz * 300h * 11 / 7 / 10)
+	PSX.320-pix Dotclock =  6.652800MHz (44100Hz * 300h * 11 / 7 / 8)
+	PSX.368-pix Dotclock =  7.603200MHz (44100Hz * 300h * 11 / 7 / 7)
+	PSX.512-pix Dotclock = 10.644480MHz (44100Hz * 300h * 11 / 7 / 5)
+	PSX.640-pix Dotclock = 13.305600MHz (44100Hz * 300h * 11 / 7 / 4) */
+	switch (w) {
+	case 256:
+		num_cycles = 10;
+		break;
+	case 320:
+		num_cycles = 8;
+		break;
+	case 368:
+		num_cycles = 7;
+		break;
+	case 512:
+		num_cycles = 5;
+		break;
+	case 640:
+	default:
+		num_cycles = 4;
+		break;
+	}
+
+	/* Check if display is enabled */
+	if (!gpu->stat.display_disable) {
+		/* Get 480-lines mode flag */
+		mode_480 = (gpu->stat.vertical_res == 1);
+		mode_480 &= (gpu->stat.vertical_interlace == 1);
+
+		/* Get display area size */
+		size_x = gpu->display_area_dest_x2 - gpu->display_area_dest_x1;
+		size_y = gpu->display_area_dest_y2 - gpu->display_area_dest_y1;
+
+		/* Adapt horizontal size: the number of displayed pixels per
+		line is "(((X2 - X1) / cycles_per_pix) + 2) AND NOT 3" (ie. the
+		hardware is rounding the width up/down to a multiple of 4
+		pixels). */
+		size_x = ((size_x / num_cycles) + 2) & ~3;
+
+		/* Adapt vertical size based on 480-lines mode */
+		if (mode_480)
+			size_y *= 2;
+
+		/* Clamp dimensions if needed */
+		if (size_x > w)
+			size_x = w;
+		if (size_y > h)
+			size_y = h;
+
+		/* Compute destination X/Y coordinates */
+		x = (gpu->h - gpu->display_area_dest_x1) / num_cycles;
+		y = gpu->v - gpu->display_area_dest_y1;
+
+		/* Adapt Y coord based on 480-lines mode and odd/even state */
+		if (mode_480) {
+			y *= 2;
+			y += gpu->stat.odd ? 1 : 0;
+		}
+
+		/* Draw pixel if within screen bounds */
+		if ((x >= 0) && (x < size_x) && (y >= 0) && (y < size_y)) {
+			/* Compute source X/Y coordinates */
+			src_x = x + gpu->display_area_src_x * 0;
+			src_y = y + gpu->display_area_src_y * 0;
+
+			/* Get pixel offset within frame buffer */
+			offset = (src_x + (src_y * FB_W)) * sizeof(uint16_t);
+
+			/* Get frame buffer data */
+			data = gpu->vram[offset] << 8;
+			data |= gpu->vram[offset + 1];
+
+			/* Extract color components */
+			c.r = bitops_getw(&data, 0, 5) << 3;
+			c.g = bitops_getw(&data, 5, 5) << 3;
+			c.b = bitops_getw(&data, 10, 5) << 3;
+
+			/* Draw pixel on screen */
+			video_set_pixel(x, y, c);
+		}
+	}
+
+	/* Increment counters */
+	gpu_inc_counters(gpu, num_cycles);
+
+	/* Consume cycles */
+	clock_consume(num_cycles);
+}
+
 bool gpu_init(struct controller_instance *instance)
 {
 	struct gpu *gpu;
 	struct resource *res;
+	struct video_specs video_specs;
 
 	/* Allocate GPU structure */
 	instance->priv_data = calloc(1, sizeof(struct gpu));
 	gpu = instance->priv_data;
+
+	/* Initialize video frontend */
+	video_specs.width = SCREEN_WIDTH;
+	video_specs.height = SCREEN_HEIGHT;
+	video_specs.fps = FPS;
+	if (!video_init(&video_specs)) {
+		free(gpu);
+		return false;
+	}
 
 	/* Add GPU memory region */
 	res = resource_get("mem",
@@ -3662,6 +3882,23 @@ bool gpu_init(struct controller_instance *instance)
 	gpu->dma_channel.ops = &gpu_dma_ops;
 	gpu->dma_channel.data = gpu;
 	dma_channel_add(&gpu->dma_channel);
+
+	/* Add GPU clock */
+	res = resource_get("clk",
+		RESOURCE_CLK,
+		instance->resources,
+		instance->num_resources);
+	gpu->clock.rate = res->data.clk;
+	gpu->clock.data = gpu;
+	gpu->clock.tick = (clock_tick_t)gpu_tick;
+	clock_add(&gpu->clock);
+
+	/* Get VBLANK IRQ */
+	res = resource_get("vblk_irq",
+		RESOURCE_IRQ,
+		instance->resources,
+		instance->num_resources);
+	gpu->vblk_irq = res->data.irq;
 
 	return true;
 }
@@ -3695,6 +3932,9 @@ void gpu_reset(struct controller_instance *instance)
 	gpu->fifo.cmd_in_progress = false;
 	gpu->poly_line_data.step = 0;
 	gpu->tex_disable = false;
+	gpu->odd = false;
+	gpu->h = 0;
+	gpu->v = 0;
 
 	/* Enable clock */
 	gpu->clock.enabled = true;
@@ -3702,6 +3942,7 @@ void gpu_reset(struct controller_instance *instance)
 
 void gpu_deinit(struct controller_instance *instance)
 {
+	video_deinit();
 	free(instance->priv_data);
 }
 
