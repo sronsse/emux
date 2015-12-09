@@ -26,6 +26,13 @@
 #define TEX_8BIT	1
 #define TEX_15BIT	2
 
+#define GPU_TYPE	2
+
+#define DMA_DIR_OFF		0
+#define DMA_DIR_FIFO_STATUS	1
+#define DMA_DIR_CPU_TO_GP0	2
+#define DMA_DIR_GPUREAD_TO_CPU	3
+
 struct render_data {
 	uint8_t tex_page_x;
 	uint8_t tex_page_y;
@@ -342,6 +349,62 @@ struct cmd_mask_bit_setting {
 	uint32_t opcode:8;
 };
 
+struct cmd_display_enable {
+	uint32_t display_on_off:1;
+	uint32_t unused:23;
+	uint32_t opcode:8;
+};
+
+struct cmd_dma_dir {
+	uint32_t dir:2;
+	uint32_t unused:22;
+	uint32_t opcode:8;
+};
+
+struct cmd_start_of_display_area {
+	uint32_t x:10;
+	uint32_t y:9;
+	uint32_t unused:5;
+	uint32_t opcode:8;
+};
+
+struct cmd_horizontal_display_range {
+	uint32_t x1:12;
+	uint32_t x2:12;
+	uint32_t opcode:8;
+};
+
+struct cmd_vertical_display_range {
+	uint32_t y1:10;
+	uint32_t y2:10;
+	uint32_t unused:4;
+	uint32_t opcode:8;
+};
+
+struct cmd_display_mode {
+	uint32_t horizontal_res_1:2;
+	uint32_t vertical_res:1;
+	uint32_t video_mode:1;
+	uint32_t color_depth:1;
+	uint32_t vertical_interlace:1;
+	uint32_t horizontal_res_2:1;
+	uint32_t reverse:1;
+	uint32_t unused:16;
+	uint32_t opcode:8;
+};
+
+struct cmd_texture_disable {
+	uint32_t disable:1;
+	uint32_t unused:23;
+	uint32_t opcode:8;
+};
+
+struct cmd_get_gpu_info {
+	uint32_t info:4;
+	uint32_t unused:20;
+	uint32_t opcode:8;
+};
+
 union cmd {
 	uint32_t raw;
 	struct {
@@ -353,6 +416,14 @@ union cmd {
 	struct cmd_set_drawing_area set_drawing_area;
 	struct cmd_set_drawing_offset set_drawing_offset;
 	struct cmd_mask_bit_setting mask_bit_setting;
+	struct cmd_display_enable display_enable;
+	struct cmd_dma_dir dma_dir;
+	struct cmd_start_of_display_area start_of_display_area;
+	struct cmd_horizontal_display_range horizontal_display_range;
+	struct cmd_vertical_display_range vertical_display_range;
+	struct cmd_display_mode display_mode;
+	struct cmd_texture_disable texture_disable;
+	struct cmd_get_gpu_info get_gpu_info;
 };
 
 struct poly_line_data {
@@ -504,6 +575,18 @@ static inline void cmd_set_drawing_area_tl(struct gpu *gpu, union cmd cmd);
 static inline void cmd_set_drawing_area_br(struct gpu *gpu, union cmd cmd);
 static inline void cmd_set_drawing_offset(struct gpu *gpu, union cmd cmd);
 static inline void cmd_mask_bit_setting(struct gpu *gpu, union cmd cmd);
+
+static inline void cmd_reset_gpu(struct gpu *gpu);
+static inline void cmd_reset_cmd_buffer(struct gpu *gpu);
+static inline void cmd_ack_interrupt(struct gpu *gpu);
+static inline void cmd_display_enable(struct gpu *gpu, union cmd cmd);
+static inline void cmd_dma_dir(struct gpu *gpu, union cmd cmd);
+static inline void cmd_start_of_display_area(struct gpu *gpu, union cmd cmd);
+static inline void cmd_horizontal_display_range(struct gpu *gpu, union cmd cmd);
+static inline void cmd_vertical_display_range(struct gpu *gpu, union cmd cmd);
+static inline void cmd_display_mode(struct gpu *gpu, union cmd cmd);
+static inline void cmd_texture_disable(struct gpu *gpu, union cmd cmd);
+static inline void cmd_get_gpu_info(struct gpu *gpu, union cmd cmd);
 
 static struct mops gpu_mops = {
 	.readl = (readl_t)gpu_readl,
@@ -2629,6 +2712,278 @@ void cmd_mask_bit_setting(struct gpu *gpu, union cmd cmd)
 	gpu->stat.draw_pixels = cmd.mask_bit_setting.check_before_draw;
 }
 
+/* GP1(00h) - Reset GPU */
+void cmd_reset_gpu(struct gpu *gpu)
+{
+	union cmd cmd;
+
+	/* Reset status register */
+	gpu->stat.raw = 0;
+	gpu->stat.reserved = 1;
+	gpu->stat.ready_recv_cmd = 1;
+	gpu->stat.ready_recv_dma = 1;
+
+	/* Resets the GPU to the following values:
+	GP1(01h)      clear fifo
+	GP1(02h)      ack irq (0)
+	GP1(03h)      display off (1)
+	GP1(04h)      dma off (0)
+	GP1(05h)      display address (0)
+	GP1(06h)      display x1, x2 (x1 = 200h, x2 = 200h + 256 * 10)
+	GP1(07h)      display y1, y2 (y1 = 010h, y2 = 010h + 240)
+	GP1(08h)      display mode 320x200 NTSC (0)
+	GP0(E1h..E6h) rendering attributes (0) */
+
+	/* Clear FIFO */
+	cmd_reset_cmd_buffer(gpu);
+
+	/* Acknowledge interrupt */
+	cmd_ack_interrupt(gpu);
+
+	/* Disable display */
+	cmd.raw = 0;
+	cmd.display_enable.display_on_off = 1;
+	cmd_display_enable(gpu, cmd);
+
+	/* Reset DMA direction (off) */
+	cmd.raw = 0;
+	cmd_dma_dir(gpu, cmd);
+
+	/* Reset display address */
+	cmd.raw = 0;
+	cmd_start_of_display_area(gpu, cmd);
+
+	/* Reset horizontal display range */
+	cmd.raw = 0;
+	cmd.horizontal_display_range.x1 = 0x200;
+	cmd.horizontal_display_range.x2 = 0x200 + 256 * 10;
+	cmd_horizontal_display_range(gpu, cmd);
+
+	/* Reset vertical display range */
+	cmd.raw = 0;
+	cmd.vertical_display_range.y1 = 0x010;
+	cmd.vertical_display_range.y2 = 0x010 + 240;
+	cmd_vertical_display_range(gpu, cmd);
+
+	/* Reset display mode */
+	cmd.raw = 0;
+	cmd_display_mode(gpu, cmd);
+
+	/* Reset rendering attributes */
+	cmd.raw = 0;
+	cmd_draw_mode_setting(gpu, cmd);
+	cmd_tex_window_setting(gpu, cmd);
+	cmd_set_drawing_area_tl(gpu, cmd);
+	cmd_set_drawing_area_br(gpu, cmd);
+	cmd_set_drawing_offset(gpu, cmd);
+	cmd_mask_bit_setting(gpu, cmd);
+}
+
+/* GP1(01h) - Reset Command Buffer */
+void cmd_reset_cmd_buffer(struct gpu *gpu)
+{
+	/* Reset command buffer */
+	gpu->fifo.pos = 0;
+	gpu->fifo.num = 0;
+	gpu->fifo.cmd_in_progress = false;
+}
+
+/* GP1(02h) - Acknowledge GPU Interrupt (IRQ1) */
+void cmd_ack_interrupt(struct gpu *gpu)
+{
+	/* Acknowledge IRQ flag in status register */
+	gpu->stat.irq = 0;
+}
+
+/* GP1(03h) - Display Enable */
+void cmd_display_enable(struct gpu *gpu, union cmd cmd)
+{
+	/* Enable/disable display */
+	gpu->stat.display_disable = cmd.display_enable.display_on_off;
+}
+
+/* GP1(04h) - DMA Direction / Data Request */
+void cmd_dma_dir(struct gpu *gpu, union cmd cmd)
+{
+	/* Save DMA direction */
+	gpu->stat.dma_dir = cmd.dma_dir.dir;
+
+	/* Update status register (DMA / Data Request meaning depends on
+	GP1(04h) DMA Direction:
+		When GP1(04h) = 0 ---> Always zero (0)
+		When GP1(04h) = 1 ---> FIFO State  (0 = Full, 1 = Not Full)
+		When GP1(04h) = 2 ---> Same as GPUSTAT.28
+		When GP1(04h) = 3 ---> Same as GPUSTAT.27 */
+	switch (gpu->stat.dma_dir) {
+	case DMA_DIR_OFF:
+		gpu->stat.dma_data_req = 0;
+		break;
+	case DMA_DIR_FIFO_STATUS:
+		gpu->stat.dma_data_req = !fifo_full(&gpu->fifo);
+		break;
+	case DMA_DIR_CPU_TO_GP0:
+		gpu->stat.dma_data_req = gpu->stat.ready_recv_dma;
+		break;
+	case DMA_DIR_GPUREAD_TO_CPU:
+		gpu->stat.dma_data_req = gpu->stat.ready_send_vram;
+		break;
+	}
+}
+
+/* GP1(05h) - Start of Display area (in VRAM) */
+void cmd_start_of_display_area(struct gpu *gpu, union cmd cmd)
+{
+	/* Save display area origin */
+	gpu->display_area_src_x = cmd.start_of_display_area.x;
+	gpu->display_area_src_y = cmd.start_of_display_area.y;
+}
+
+/* GP1(06h) - Horizontal Display range (on Screen) */
+void cmd_horizontal_display_range(struct gpu *gpu, union cmd cmd)
+{
+	/* Save horizontal display range */
+	gpu->display_area_dest_x1 = cmd.horizontal_display_range.x1;
+	gpu->display_area_dest_x2 = cmd.horizontal_display_range.x2;
+}
+
+/* GP1(07h) - Vertical Display range (on Screen) */
+void cmd_vertical_display_range(struct gpu *gpu, union cmd cmd)
+{
+	/* Save horizontal display range */
+	gpu->display_area_dest_y1 = cmd.vertical_display_range.y1;
+	gpu->display_area_dest_y2 = cmd.vertical_display_range.y2;
+}
+
+/* GP1(08h) - Display mode */
+void cmd_display_mode(struct gpu *gpu, union cmd cmd)
+{
+	int prev_w;
+	int prev_h;
+	int w;
+	int h;
+
+	/* Get current screen size */
+	video_get_size(&prev_w, &prev_h);
+
+	/* Save parameters */
+	gpu->stat.horizontal_res_1 = cmd.display_mode.horizontal_res_1;
+	gpu->stat.vertical_res = cmd.display_mode.vertical_res;
+	gpu->stat.video_mode = cmd.display_mode.video_mode;
+	gpu->stat.color_depth = cmd.display_mode.color_depth;
+	gpu->stat.vertical_interlace = cmd.display_mode.vertical_interlace;
+	gpu->stat.horizontal_res_2 = cmd.display_mode.horizontal_res_2;
+	gpu->stat.reverse = cmd.display_mode.reverse;
+
+	/* Set horizontal resolution based on the following parameters:
+	Horizontal Resolution 1 (0 = 256, 1 = 320, 2 = 512, 3 = 640)
+	Horizontal Resolution 2 (0 = 256/320/512/640, 1 = 368) */
+	if (gpu->stat.horizontal_res_2 == 0)
+		switch (gpu->stat.horizontal_res_1) {
+		case 0:
+			w = 256;
+			break;
+		case 1:
+			w = 320;
+			break;
+		case 2:
+			w = 512;
+			break;
+		case 3:
+			w = 640;
+			break;
+		}
+	else
+		w = 368;
+
+	/* Set vertical resolution based on the following parameter:
+	Vertical Resolution (0 = 240, 1 = 480, when Vertical Interlace = 1)
+	Vertical Interlace (0 = Off, 1 = On) */
+	if (gpu->stat.vertical_interlace == 1)
+		switch (gpu->stat.vertical_res) {
+		case 0:
+			h = 240;
+			break;
+		case 1:
+			h = 480;
+			break;
+		}
+	else
+		h = 240;
+
+	/* Update screen resolution if requested */
+	if ((w != prev_w) || (h != prev_h))
+		video_set_size(w, h);
+}
+
+/* GP1(09h) - Texture Disable */
+void cmd_texture_disable(struct gpu *gpu, union cmd cmd)
+{
+	/* Save texture disable flag */
+	gpu->tex_disable = cmd.texture_disable.disable;
+}
+
+/* GP1(10h) - Get GPU Info
+   GP1(11h..1Fh) - Mirrors of GP1(10h), Get GPU Info */
+void cmd_get_gpu_info(struct gpu *gpu, union cmd cmd)
+{
+	union cmd result;
+
+	/* Save command for GPUREAD access */
+	gpu->read_buffer.cmd = 0x10;
+
+	/* Fill GPUREAD buffer based on requested information */
+	result.raw = 0;
+	switch (cmd.get_gpu_info.info) {
+	case 0x02:
+		/* Read texture window setting (GP0(E2h)) */
+		result.tex_window_setting.mask_x = gpu->tex_window_mask_x;
+		result.tex_window_setting.mask_y = gpu->tex_window_mask_y;
+		result.tex_window_setting.offset_x = gpu->tex_window_offset_x;
+		result.tex_window_setting.offset_y = gpu->tex_window_offset_y;
+		gpu->read_buffer.data = result.raw;
+		break;
+	case 0x03:
+		/* Read draw area top left (GP0(E3h)) */
+		result.set_drawing_area.x_coord = gpu->drawing_area_x1;
+		result.set_drawing_area.y_coord = gpu->drawing_area_y1;
+		gpu->read_buffer.data = result.raw;
+		break;
+	case 0x04:
+		/* Read draw area bottom right (GP0(E4h)) */
+		result.set_drawing_area.x_coord = gpu->drawing_area_x2;
+		result.set_drawing_area.y_coord = gpu->drawing_area_y2;
+		gpu->read_buffer.data = result.raw;
+		break;
+	case 0x05:
+		/* Read draw offset (GP0(E5h)) */
+		result.set_drawing_offset.x_offset = gpu->drawing_offset_x;
+		result.set_drawing_offset.y_offset = gpu->drawing_offset_y;
+		gpu->read_buffer.data = result.raw;
+		break;
+	case 0x07:
+		/* Read GPU type */
+		gpu->read_buffer.data = GPU_TYPE;
+		break;
+	case 0x08:
+		/* Unknown (returns 00000000h) */
+		gpu->read_buffer.data = 0;
+		break;
+	case 0x00:
+	case 0x01:
+	case 0x06:
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x0D:
+	case 0x0E:
+	case 0x0F:
+	default:
+		/* Returns nothing (old value in GPUREAD remains unchanged) */
+		break;
+	}
+}
+
 bool fifo_empty(struct fifo *fifo)
 {
 	/* Return whether FIFO is empty or not */
@@ -3149,12 +3504,64 @@ void gpu_gp0_cmd(struct gpu *gpu, union cmd cmd)
 
 	/* Process FIFO commands */
 	gpu_process_fifo(gpu);
+
+	/* Update DMA / Data Request status bit if needed */
+	if (gpu->stat.dma_dir == DMA_DIR_FIFO_STATUS)
+		gpu->stat.dma_data_req = !fifo_full(&gpu->fifo);
 }
 
-void gpu_gp1_cmd(struct gpu *UNUSED(gpu), union cmd cmd)
+void gpu_gp1_cmd(struct gpu *gpu, union cmd cmd)
 {
 	/* Execute command */
 	switch (cmd.opcode) {
+	case 0x00:
+		cmd_reset_gpu(gpu);
+		break;
+	case 0x01:
+		cmd_reset_cmd_buffer(gpu);
+		break;
+	case 0x02:
+		cmd_ack_interrupt(gpu);
+		break;
+	case 0x03:
+		cmd_display_enable(gpu, cmd);
+		break;
+	case 0x04:
+		cmd_dma_dir(gpu, cmd);
+		break;
+	case 0x05:
+		cmd_start_of_display_area(gpu, cmd);
+		break;
+	case 0x06:
+		cmd_horizontal_display_range(gpu, cmd);
+		break;
+	case 0x07:
+		cmd_vertical_display_range(gpu, cmd);
+		break;
+	case 0x08:
+		cmd_display_mode(gpu, cmd);
+		break;
+	case 0x09:
+		cmd_texture_disable(gpu, cmd);
+		break;
+	case 0x10:
+	case 0x11:
+	case 0x12:
+	case 0x13:
+	case 0x14:
+	case 0x15:
+	case 0x16:
+	case 0x17:
+	case 0x18:
+	case 0x19:
+	case 0x1A:
+	case 0x1B:
+	case 0x1C:
+	case 0x1D:
+	case 0x1E:
+	case 0x1F:
+		cmd_get_gpu_info(gpu, cmd);
+		break;
 	default:
 		LOG_W("Unhandled GP1 opcode (%02x)!\n", cmd.opcode);
 		break;
