@@ -4007,6 +4007,9 @@ void gpu_reset(struct controller_instance *instance)
 	gpu->h = 0;
 	gpu->v = 0;
 
+	/* Issue reset command */
+	cmd_reset_gpu(gpu);
+
 	/* Enable clock */
 	gpu->clock.enabled = true;
 }
