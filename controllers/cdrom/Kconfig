@@ -1,0 +1,15 @@
+menu "CD-ROM"
+
+config CONTROLLER_CDROM
+	bool
+	default n
+
+config CONTROLLER_CDROM_PSX
+	bool "PSX CD-ROM controller"
+	select CONTROLLER_CDROM
+	default y
+	help
+		Enable PSX CD-ROM support
+
+endmenu
+
