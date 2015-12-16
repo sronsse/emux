@@ -133,7 +133,7 @@ extern struct mops ram_mops;
 		} \
 	\
 		/* Return 0 in case of read failure */ \
-		LOG_W("Region not found (%s(%u, %08x))!\n", \
+		LOG_W("Region not found in %s(%u, 0x%08x)!\n", \
 			__func__, \
 			bus_id, \
 			address); \
@@ -192,10 +192,12 @@ extern struct mops ram_mops;
 	\
 		/* Warn on write failure */ \
 		if (num == 0) \
-			LOG_W("Region not found (%s(%u, %08x))!\n", \
+			LOG_W("Region not found in %s(%u, 0x%08x, 0x%0*x)!\n", \
 				__func__, \
 				bus_id, \
-				addr); \
+				addr, \
+				sizeof(type) * 2, \
+				data); \
 	}
 
 #define DEFINE_DMA_READ(ext, type) \
@@ -213,7 +215,9 @@ extern struct mops ram_mops;
 		} \
 	\
 		/* Return 0 in case of read failure */ \
-		LOG_W("DMA channel not found (%s(%u))!\n", __func__, channel); \
+		LOG_W("DMA channel not found in %s(%u))!\n", \
+			__func__, \
+			channel); \
 		return 0; \
 	}
 
@@ -234,7 +238,11 @@ extern struct mops ram_mops;
 		} \
 	\
 		/* Warn in case of read failure */ \
-		LOG_W("DMA channel not found (%s(%u))!\n", __func__, channel); \
+		LOG_W("DMA channel not found in %s(%u, 0x%0*x)!\n", \
+			__func__, \
+			channel, \
+			sizeof(type) * 2, \
+			data); \
 	}
 
 /* Define memory read/write functions */
