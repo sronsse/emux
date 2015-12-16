@@ -139,6 +139,9 @@ endif
 if CONFIG_CONTROLLER_MAPPER_MBC1
 emux_SOURCES += controllers/mapper/mbc1.c
 endif
+if CONFIG_CONTROLLER_MAPPER_MBC2
+emux_SOURCES += controllers/mapper/mbc2.c
+endif
 if CONFIG_CONTROLLER_MAPPER_NES
 emux_SOURCES += controllers/mapper/nes_mapper.c
 emux_SOURCES += include/controllers/mapper/nes_mapper.h

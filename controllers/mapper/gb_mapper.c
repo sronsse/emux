@@ -30,7 +30,10 @@ static char *mbcs[] = {
 	"rom",	/* ROM ONLY */
 	"mbc1",	/* MBC1 */
 	"mbc1",	/* MBC1 + RAM */
-	"mbc1"	/* MBC1 + RAM + BATTERY */
+	"mbc1",	/* MBC1 + RAM + BATTERY */
+	"rom",	/* UNKNOWN */
+	"mbc2",	/* MBC2 */
+	"mbc2", /* MBC2 + BATTERY */
 };
 
 static struct mops lock_mops = {
