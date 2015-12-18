@@ -3047,15 +3047,71 @@ bool fifo_dequeue(struct fifo *fifo, uint32_t *data, int size)
 
 uint32_t gpu_readl(struct gpu *gpu, address_t address)
 {
+	struct read_buffer *read_buffer = &gpu->read_buffer;
+	struct copy_data *copy_data = &read_buffer->copy_data;
+	uint32_t data;
+	uint32_t offset;
+	uint16_t half_word;
+	int i;
+
 	/* Handle read */
 	switch (address) {
 	case GPUREAD:
-		return 0;
+		switch (read_buffer->cmd) {
+		case 0xC0:
+			/* Handle GP0(C0h) VRAM to CPU copy */
+			data = 0;
+			for (i = 0; i < 2; i++) {
+				/* Compute destination offset in frame buffer */
+				offset = copy_data->x % FB_W;
+				offset += (copy_data->y % FB_H) * FB_W;
+				offset *= sizeof(uint16_t);
+
+				/* Get half word from frame buffer */
+				half_word = gpu->vram[offset] << 8;
+				half_word |= gpu->vram[offset + 1];
+
+				/* Set appropriate data half word */
+				bitops_setl(&data, i * 16, 16, half_word);
+
+				/* Update X coordinate */
+				copy_data->x++;
+
+				/* Decrement count */
+				if (gpu->fifo.cmd_half_word_count > 0)
+					gpu->fifo.cmd_half_word_count--;
+
+				/* Handle completion */
+				if (gpu->fifo.cmd_half_word_count == 0) {
+					/* Reset saved command */
+					read_buffer->cmd = 0;
+
+					/* Skip bound check */
+					continue;
+				}
+
+				/* Update coordinates (handling bounds) */
+				if (copy_data->x == copy_data->max_x) {
+					copy_data->x = copy_data->min_x;
+					copy_data->y++;
+				}
+			}
+			break;
+		default:
+			/* Get data from read buffer */
+			data = read_buffer->data;
+			break;
+		}
+		break;
 	case GPUSTAT:
 	default:
-		/* Return status register */
-		return gpu->stat.raw;
+		/* Get status register */
+		data = gpu->stat.raw;
+		break;
 	}
+
+	/* Return filled data */
+	return data;
 }
 
 void gpu_writel(struct gpu *gpu, uint32_t l, address_t address)
