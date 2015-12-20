@@ -237,12 +237,18 @@ static struct dma_ops gpu_dma_ops = {
 
 void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 {
+	struct render_data *render_data = pixel->render_data;
 	uint16_t data;
 	uint16_t bg;
 	uint32_t pixel_off;
+	uint32_t clut_off;
+	uint32_t tex_off;
+	uint8_t index;
 	int16_t r;
 	int16_t g;
 	int16_t b;
+	uint8_t u;
+	uint8_t v;
 
 	/* Add drawing offset to pixel coordinates */
 	pixel->x += gpu->drawing_offset_x;
@@ -277,6 +283,84 @@ void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 	g = pixel->c.g;
 	b = pixel->c.b;
 	data = 0;
+
+	/* Check if texture data needs to be sampled */
+	if (render_data->textured && !gpu->stat.tex_disable) {
+		/* Adapt texture coordinates based on texture window as such:
+		(Texcoord AND (NOT (Mask * 8))) OR ((Offset AND Mask) * 8) */
+		u = pixel->u & ~(gpu->tex_window_mask_x * 8);
+		u |= (gpu->tex_window_offset_x & gpu->tex_window_mask_x) * 8;
+		v = pixel->v & ~(gpu->tex_window_mask_y * 8);
+		v |= (gpu->tex_window_offset_y & gpu->tex_window_mask_y) * 8;
+
+		/* Set palette offset (unused for 15-bit textures) */
+		clut_off = render_data->clut_x * 16;
+		clut_off += render_data->clut_y * FB_W;
+		clut_off *= sizeof(uint16_t);
+
+		/* Set texel offset based on texture page and V coordinate */
+		tex_off = render_data->tex_page_x * 64;
+		tex_off += (render_data->tex_page_y * 256 + v) * FB_W;
+		tex_off *= sizeof(uint16_t);
+
+		/* Set final texel offset based on texture bits per pixel */
+		switch (render_data->tex_page_colors) {
+		case TEX_4BIT:
+			/* Update offset (each texel is 4-bit wide) */
+			tex_off += (u / 4) * sizeof(uint16_t);
+
+			/* Set palette index (get appropriate nibble) */
+			data = gpu->vram[tex_off] << 8;
+			data |= gpu->vram[tex_off + 1];
+			index = bitops_getw(&data, (u % 4) * 4, 4);
+
+			/* Compute final texture offset */
+			tex_off = clut_off + index * sizeof(uint16_t);
+			break;
+		case TEX_8BIT:
+			/* Update offset (each texel is 8-bit wide) */
+			tex_off += (u / 2) * sizeof(uint16_t);
+
+			/* Set palette index (get appropriate byte) */
+			data = gpu->vram[tex_off] << 8;
+			data |= gpu->vram[tex_off + 1];
+			index = bitops_getw(&data, (u % 2) * 8, 8);
+
+			/* Compute final texture offset */
+			tex_off = clut_off + index * sizeof(uint16_t);
+			break;
+		case TEX_15BIT:
+		default:
+			/* Update offset (each texel is 16-bit wide) */
+			tex_off += u * sizeof(uint16_t);
+			break;
+		}
+
+		/* Get final texel data and discard pixel if texel is 0 */
+		data = (gpu->vram[tex_off] << 8) | gpu->vram[tex_off + 1];
+		if (data == 0)
+			return;
+
+		/* Extract texel color components */
+		r = bitops_getw(&data, 0, 5) << 3;
+		g = bitops_getw(&data, 5, 5) << 3;
+		b = bitops_getw(&data, 10, 5) << 3;
+
+		/* Blend color if needed (8bit values of 0x80 are brightest and
+		values 0x81..0xFF are "brighter than bright" allowing to make
+		textures about twice brighter than they are) */
+		if (!render_data->raw) {
+			/* Blend pixel */
+			r = (r * pixel->c.r) / 0x80;
+			g = (g * pixel->c.g) / 0x80;
+			b = (b * pixel->c.b) / 0x80;
+
+			/* Clamp result */
+			r = (r >= 0x00) ? ((r <= 0xFF) ? r : 0xFF) : 0x00;
+			g = (g >= 0x00) ? ((g <= 0xFF) ? g : 0xFF) : 0x00;
+			b = (b >= 0x00) ? ((b <= 0xFF) ? b : 0xFF) : 0x00;
+		}
+	}
 
 	/* Convert pixel from 24-bit to 15-bit */
 	r >>= 3;
