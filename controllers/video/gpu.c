@@ -238,6 +238,7 @@ static struct dma_ops gpu_dma_ops = {
 void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 {
 	struct render_data *render_data = pixel->render_data;
+	struct color dest;
 	uint16_t data;
 	uint16_t bg;
 	uint32_t pixel_off;
@@ -249,6 +250,7 @@ void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 	int16_t b;
 	uint8_t u;
 	uint8_t v;
+	bool opaque;
 
 	/* Add drawing offset to pixel coordinates */
 	pixel->x += gpu->drawing_offset_x;
@@ -283,6 +285,9 @@ void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 	g = pixel->c.g;
 	b = pixel->c.b;
 	data = 0;
+
+	/* Set opaque flag based on render data */
+	opaque = render_data->opaque;
 
 	/* Check if texture data needs to be sampled */
 	if (render_data->textured && !gpu->stat.tex_disable) {
@@ -341,6 +346,10 @@ void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 		if (data == 0)
 			return;
 
+		/* Update opaque state based on texel STP bit if needed */
+		if (!opaque)
+			opaque = !bitops_getw(&data, 15, 1);
+
 		/* Extract texel color components */
 		r = bitops_getw(&data, 0, 5) << 3;
 		g = bitops_getw(&data, 5, 5) << 3;
@@ -366,6 +375,44 @@ void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 	r >>= 3;
 	g >>= 3;
 	b >>= 3;
+
+	/* Check if semi-transparency mode is requested */
+	if (!opaque) {
+		/* Extract color components from existing data */
+		dest.r = bitops_getw(&bg, 0, 5);
+		dest.g = bitops_getw(&bg, 5, 5);
+		dest.b = bitops_getw(&bg, 10, 5);
+
+		/* Handle semi-transparency operation */
+		switch (render_data->semi_transparency) {
+		case STP_HALF:
+			r = (dest.r + r) / 2;
+			g = (dest.g + g) / 2;
+			b = (dest.b + b) / 2;
+			break;
+		case STP_ADD:
+			r += dest.r;
+			g += dest.g;
+			b += dest.b;
+			break;
+		case STP_SUB:
+			r = dest.r - r;
+			g = dest.g - g;
+			b = dest.b - b;
+			break;
+		case STP_QUARTER:
+		default:
+			r = dest.r + (r / 4);
+			g = dest.g + (g / 4);
+			b = dest.b + (b / 4);
+			break;
+		}
+
+		/* Clamp result */
+		r = (r >= 0x00) ? ((r <= 0x1F) ? r : 0x1F) : 0x00;
+		g = (g >= 0x00) ? ((g <= 0x1F) ? g : 0x1F) : 0x00;
+		b = (b >= 0x00) ? ((b <= 0x1F) ? b : 0x1F) : 0x00;
+	}
 
 	/* Fill color components */
 	bitops_setw(&data, 0, 5, r);
