@@ -235,6 +235,13 @@ static struct dma_ops gpu_dma_ops = {
 	.writel = (dma_writel_t)gpu_dma_writel
 };
 
+static int8_t dither_pattern[] = {
+	-4, 0, -3, 1,
+	2, -2, 3, -1,
+	-3, 1, -4, 0,
+	3, -1, 2, -2
+};
+
 void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 {
 	struct render_data *render_data = pixel->render_data;
@@ -250,6 +257,9 @@ void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 	int16_t b;
 	uint8_t u;
 	uint8_t v;
+	int8_t dither;
+	int dither_x;
+	int dither_y;
 	bool opaque;
 
 	/* Add drawing offset to pixel coordinates */
@@ -369,6 +379,24 @@ void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 			g = (g >= 0x00) ? ((g <= 0xFF) ? g : 0xFF) : 0x00;
 			b = (b >= 0x00) ? ((b <= 0xFF) ? b : 0xFF) : 0x00;
 		}
+	}
+
+	/* Handle dithering if requested */
+	if (render_data->dithering) {
+		/* Get dither value from 4x4 dither pattern */
+		dither_x = pixel->x & 0x03;
+		dither_y = pixel->y & 0x03;
+		dither = dither_pattern[dither_x + dither_y * 4];
+
+		/* Set color components */
+		r += dither;
+		g += dither;
+		b += dither;
+
+		/* Clamp result */
+		r = (r >= 0x00) ? ((r <= 0xFF) ? r : 0xFF) : 0x00;
+		g = (g >= 0x00) ? ((g <= 0xFF) ? g : 0xFF) : 0x00;
+		b = (b >= 0x00) ? ((b <= 0xFF) ? b : 0xFF) : 0x00;
 	}
 
 	/* Convert pixel from 24-bit to 15-bit */
