@@ -453,6 +453,7 @@ static void r3051_set(struct r3051 *cpu, uint8_t reg, uint32_t data);
 static void r3051_tick(struct r3051 *cpu);
 static void r3051_opcode_SPECIAL(struct r3051 *cpu);
 static void r3051_opcode_BCOND(struct r3051 *cpu);
+static void r3051_opcode_COP0(struct r3051 *cpu);
 static void r3051_raise_exception(struct r3051 *cpu, enum exception e);
 
 static inline void LB(struct r3051 *cpu);
@@ -513,6 +514,10 @@ static inline void BLTZAL(struct r3051 *cpu);
 static inline void BGEZAL(struct r3051 *cpu);
 static inline void SYSCALL(struct r3051 *cpu);
 static inline void BREAK(struct r3051 *cpu);
+
+static inline void MFC0(struct r3051 *cpu);
+static inline void MTC0(struct r3051 *cpu);
+static inline void RFE(struct r3051 *cpu);
 
 static struct mops int_ctrl_mops = {
 	.readw = (readw_t)r3051_int_ctrl_readw,
@@ -1345,6 +1350,29 @@ void BREAK(struct r3051 *cpu)
 	r3051_raise_exception(cpu, EXCEPTION_Bp);
 }
 
+void MFC0(struct r3051 *cpu)
+{
+	uint32_t l;
+	l = cpu->cop0.R[cpu->instruction.r_type.rd];
+	r3051_load(cpu, cpu->instruction.r_type.rt, l);
+}
+
+void MTC0(struct r3051 *cpu)
+{
+	uint32_t l;
+	l = cpu->R[cpu->instruction.r_type.rt];
+	cpu->cop0.R[cpu->instruction.r_type.rd] = l;
+}
+
+void RFE(struct r3051 *cpu)
+{
+	/* Shift interrupt enable/kernel-user mode bits back */
+	cpu->cop0.stat.IEc = cpu->cop0.stat.IEp;
+	cpu->cop0.stat.KUc = cpu->cop0.stat.KUp;
+	cpu->cop0.stat.IEp = cpu->cop0.stat.IEo;
+	cpu->cop0.stat.KUp = cpu->cop0.stat.KUo;
+}
+
 void r3051_fetch(struct r3051 *cpu)
 {
 	bool cache_access;
@@ -1534,6 +1562,9 @@ void r3051_tick(struct r3051 *cpu)
 		break;
 	case 0x0F:
 		LUI(cpu);
+		break;
+	case 0x10:
+		r3051_opcode_COP0(cpu);
 		break;
 	case 0x20:
 		LB(cpu);
@@ -1734,6 +1765,26 @@ void r3051_opcode_BCOND(struct r3051 *cpu)
 	default:
 		LOG_W("Unknown BCOND opcode (%02x)!\n",
 			cpu->instruction.bcond.opcode);
+		break;
+	}
+}
+
+void r3051_opcode_COP0(struct r3051 *cpu)
+{
+	/* Execute COP0 instruction */
+	switch (cpu->instruction.cop.opcode) {
+	case 0x00:
+		MFC0(cpu);
+		break;
+	case 0x04:
+		MTC0(cpu);
+		break;
+	case 0x10:
+		RFE(cpu);
+		break;
+	default:
+		LOG_W("Unknown COP0 opcode (%02x)!\n",
+			cpu->instruction.cop.opcode);
 		break;
 	}
 }
