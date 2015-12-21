@@ -8,6 +8,8 @@
 
 #define NUM_REGISTERS		32
 #define NUM_COP0_REGISTERS	64
+#define NUM_COP2_DATA_REGISTERS	32
+#define NUM_COP2_CTRL_REGISTERS	32
 #define INITIAL_PC		0xBFC00000
 
 union cache_control {
@@ -168,6 +170,144 @@ union cop0 {
 	};
 };
 
+union cop2_vec16 {
+	int16_t data[3];
+	struct {
+		int16_t X;
+		int16_t Y;
+		int16_t Z;
+		uint16_t unused;
+	};
+};
+
+union cop2_vec32 {
+	int32_t data[3];
+	struct {
+		int32_t X;
+		int32_t Y;
+		int32_t Z;
+	};
+	struct {
+		uint32_t R;
+		uint32_t G;
+		uint32_t B;
+	};
+};
+
+union cop2_matrix {
+	int16_t data[3][3];
+	struct {
+		int16_t _11;
+		int16_t _12;
+		int16_t _13;
+		int16_t _21;
+		int16_t _22;
+		int16_t _23;
+		int16_t _31;
+		int16_t _32;
+		int16_t _33;
+		uint16_t reserved;
+	};
+};
+
+union cop2_rgbc {
+	uint8_t data[4];
+	struct {
+		uint8_t R;
+		uint8_t G;
+		uint8_t B;
+		uint8_t C;
+	};
+};
+
+struct cop2_ir {
+	int16_t data;
+	uint16_t reserved;
+};
+
+union cop2_sxy {
+	int16_t data[2];
+	struct {
+		int16_t X;
+		int16_t Y;
+	};
+};
+
+struct cop2_sz {
+	uint16_t Z;
+	uint16_t reserved;
+};
+
+union cop2_flag {
+	uint32_t raw;
+	struct {
+		uint32_t unused:12;
+		uint32_t ir0_sat:1;
+		uint32_t sy2_sat:1;
+		uint32_t sx2_sat:1;
+		uint32_t mac0_larger_neg:1;
+		uint32_t mac0_larger_pos:1;
+		uint32_t div_overflow:1;
+		uint32_t sz3_otz_sat:1;
+		uint32_t b_sat:1;
+		uint32_t g_sat:1;
+		uint32_t r_sat:1;
+		uint32_t ir3_sat:1;
+		uint32_t ir2_sat:1;
+		uint32_t ir1_sat:1;
+		uint32_t mac3_larger_neg:1;
+		uint32_t mac2_larger_neg:1;
+		uint32_t mac1_larger_neg:1;
+		uint32_t mac3_larger_pos:1;
+		uint32_t mac2_larger_pos:1;
+		uint32_t mac1_larger_pos:1;
+		uint32_t error:1;
+	};
+};
+
+union cop2 {
+	struct {
+		uint32_t DR[NUM_COP2_DATA_REGISTERS];
+		uint32_t CR[NUM_COP2_CTRL_REGISTERS];
+	};
+	struct {
+		union cop2_vec16 V[3];
+		union cop2_rgbc RGBC;
+		uint16_t OTZ;
+		uint16_t reserved1;
+		struct cop2_ir IR[4];
+		union cop2_sxy SXY[4];
+		struct cop2_sz SZ[4];
+		union cop2_rgbc RGB_FIFO[3];
+		uint32_t reserved2;
+		int32_t MAC[4];
+		uint32_t IRGB:15;
+		uint32_t reserved3:17;
+		uint32_t ORGB:15;
+		uint32_t reserved4:17;
+		int32_t LZCS;
+		int32_t LZCR;
+		union cop2_matrix RT;
+		union cop2_vec32 TR;
+		union cop2_matrix LLM;
+		union cop2_vec32 BK;
+		union cop2_matrix LCM;
+		union cop2_vec32 FC;
+		int32_t OFX;
+		int32_t OFY;
+		uint16_t H;
+		uint16_t reserved5;
+		int16_t DQA;
+		uint16_t reserved6;
+		int32_t DQB;
+		int16_t ZSF3;
+		uint16_t reserved7;
+		int16_t ZSF4;
+		uint16_t reserved8;
+		union cop2_flag FLAG;
+	};
+};
+
 struct r3051 {
 	union {
 		uint32_t R[NUM_REGISTERS];
@@ -211,6 +351,7 @@ struct r3051 {
 	uint32_t PC;
 	union instruction instruction;
 	union cop0 cop0;
+	union cop2 cop2;
 	union cache_control cache_ctrl;
 	int bus_id;
 	struct clock clock;
@@ -308,6 +449,8 @@ void r3051_reset(struct cpu_instance *instance)
 	cpu->PC = INITIAL_PC;
 	memset(cpu->R, 0, NUM_REGISTERS * sizeof(uint32_t));
 	memset(cpu->cop0.R, 0, NUM_COP0_REGISTERS * sizeof(uint32_t));
+	memset(cpu->cop2.DR, 0, NUM_COP2_DATA_REGISTERS * sizeof(uint32_t));
+	memset(cpu->cop2.CR, 0, NUM_COP2_CTRL_REGISTERS * sizeof(uint32_t));
 
 	/* Enable clock */
 	cpu->clock.enabled = true;
