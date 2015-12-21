@@ -11,6 +11,7 @@
 #define NUM_COP0_REGISTERS		64
 #define NUM_COP2_DATA_REGISTERS		32
 #define NUM_COP2_CTRL_REGISTERS		32
+#define MAX_UNR_INDEX			0x100
 #define INITIAL_PC			0xBFC00000
 #define EXCEPTION_ADDR_0		0x80000080
 #define EXCEPTION_ADDR_1		0xBFC00180
@@ -285,6 +286,7 @@ struct cop2_ir {
 };
 
 union cop2_sxy {
+	uint32_t raw;
 	int16_t data[2];
 	struct {
 		int16_t X;
@@ -454,6 +456,7 @@ static void r3051_tick(struct r3051 *cpu);
 static void r3051_opcode_SPECIAL(struct r3051 *cpu);
 static void r3051_opcode_BCOND(struct r3051 *cpu);
 static void r3051_opcode_COP0(struct r3051 *cpu);
+static void r3051_opcode_COP2(struct r3051 *cpu);
 static void r3051_raise_exception(struct r3051 *cpu, enum exception e);
 
 static inline void LB(struct r3051 *cpu);
@@ -519,12 +522,57 @@ static inline void MFC0(struct r3051 *cpu);
 static inline void MTC0(struct r3051 *cpu);
 static inline void RFE(struct r3051 *cpu);
 
+static inline void LWC2(struct r3051 *cpu);
+static inline void SWC2(struct r3051 *cpu);
+static inline void MFC2(struct r3051 *cpu);
+static inline void CFC2(struct r3051 *cpu);
+static inline void MTC2(struct r3051 *cpu);
+static inline void CTC2(struct r3051 *cpu);
+
+static uint32_t cop2_read_dr(union cop2 *cop2, int index);
+static void cop2_write_dr(union cop2 *cop2, int index, uint32_t v);
+static uint32_t cop2_read_cr(union cop2 *cop2, int index);
+static void cop2_write_cr(union cop2 *cop2, int index, uint32_t v);
+static inline uint32_t cop2_divide(union cop2 *cop2);
+static inline int64_t Ai(union cop2 *cop2, int i, int64_t value);
+static inline int16_t Lm_Bi(union cop2 *cop2, int i, int32_t value, bool lm);
+static inline int16_t Lm_Bi_PTZ(union cop2 *cop2, int, int32_t, int32_t, bool);
+static inline uint8_t Lm_Ci(union cop2 *cop2, int i, int32_t value);
+static inline int32_t Lm_D(union cop2 *cop2, int32_t value, bool chained);
+static inline int64_t F(union cop2 *cop2, int64_t value);
+static inline int32_t Lm_G(union cop2 *cop2, int i, int32_t value);
+static inline int32_t Lm_H(union cop2 *cop2, int32_t value);
+static inline void RTPS(struct r3051 *cpu);
+static inline void NCLIP(struct r3051 *cpu);
+static inline void OP(struct r3051 *cpu);
+static inline void DPCS(struct r3051 *cpu);
+static inline void INTPL(struct r3051 *cpu);
+static inline void MVMVA(struct r3051 *cpu);
+static inline void NCDS(struct r3051 *cpu);
+static inline void CDP(struct r3051 *cpu);
+static inline void NCDT(struct r3051 *cpu);
+static inline void NCCS(struct r3051 *cpu);
+static inline void CC(struct r3051 *cpu);
+static inline void NCS(struct r3051 *cpu);
+static inline void NCT(struct r3051 *cpu);
+static inline void SQR(struct r3051 *cpu);
+static inline void DCPL(struct r3051 *cpu);
+static inline void DPCT(struct r3051 *cpu);
+static inline void AVSZ3(struct r3051 *cpu);
+static inline void AVSZ4(struct r3051 *cpu);
+static inline void RTPT(struct r3051 *cpu);
+static inline void GPF(struct r3051 *cpu);
+static inline void GPL(struct r3051 *cpu);
+static inline void NCCT(struct r3051 *cpu);
+
 static struct mops int_ctrl_mops = {
 	.readw = (readw_t)r3051_int_ctrl_readw,
 	.readl = (readl_t)r3051_int_ctrl_readl,
 	.writew = (writew_t)r3051_int_ctrl_writew,
 	.writel = (writel_t)r3051_int_ctrl_writel
 };
+
+static uint8_t unr_table[MAX_UNR_INDEX + 1];
 
 uint16_t r3051_int_ctrl_readw(struct r3051 *cpu, uint32_t a)
 {
@@ -1373,6 +1421,1986 @@ void RFE(struct r3051 *cpu)
 	cpu->cop0.stat.KUp = cpu->cop0.stat.KUo;
 }
 
+void MFC2(struct r3051 *cpu)
+{
+	uint32_t l;
+	l = cop2_read_dr(&cpu->cop2, cpu->instruction.r_type.rd);
+	r3051_load(cpu, cpu->instruction.r_type.rt, l);
+}
+
+void CFC2(struct r3051 *cpu)
+{
+	uint32_t l;
+	l = cop2_read_cr(&cpu->cop2, cpu->instruction.r_type.rd);
+	r3051_load(cpu, cpu->instruction.r_type.rt, l);
+}
+
+void MTC2(struct r3051 *cpu)
+{
+	uint32_t l;
+	l = cpu->R[cpu->instruction.r_type.rt];
+	cop2_write_dr(&cpu->cop2, cpu->instruction.r_type.rd, l);
+}
+
+void CTC2(struct r3051 *cpu)
+{
+	uint32_t l;
+	l = cpu->R[cpu->instruction.r_type.rt];
+	cop2_write_cr(&cpu->cop2, cpu->instruction.r_type.rd, l);
+}
+
+uint32_t cop2_read_dr(union cop2 *cop2, int index)
+{
+	uint32_t v;
+	int16_t r;
+	int16_t g;
+	int16_t b;
+
+	/* Handle COP2 data register read */
+	switch (index) {
+	case 1:
+	case 3:
+	case 5:
+		/* Adapt index from 1/3/5 to 0/1/2 */
+		index = (index - 1) / 2;
+
+		/* Reading VZx returns a sign-extended 16-bit value */
+		v = cop2->V[index].Z;
+		break;
+	case 8:
+	case 9:
+	case 10:
+	case 11:
+		/* Adapt index from 8/9/10/11 to 0/1/2/3 */
+		index -= 8;
+
+		/* Reading IRx returns a sign-extended 16-bit value */
+		v = cop2->IR[index].data;
+		break;
+	case 28:
+	case 29:
+		/* Collapses 16:16:16 bit RGB (range 0000h..0F80h) to 5:5:5 bit
+		RGB (range 0..1Fh). Negative values (8000h..FFFFh/80h) are
+		saturated to 00h, large positive values (1000h..7FFFh/80h) are
+		saturated to 1Fh. Any changes to IR1, IR2, IR3 are reflected to
+		the ORGB and IRGB registers, so handle both cases at once.
+		0-4   Red   (0..1Fh) IR1 divided by 80h, saturated to +00h..+1Fh
+		5-9   Green (0..1Fh) IR2 divided by 80h, saturated to +00h..+1Fh
+		10-14 Blue  (0..1Fh) IR3 divided by 80h, saturated to +00h..+1Fh
+		15-31 Not used (always zero) */
+		r = cop2->IR[1].data / 0x80;
+		g = cop2->IR[2].data / 0x80;
+		b = cop2->IR[3].data / 0x80;
+		r = (r < 0) ? 0 : ((r > 0x1F) ? 0x1F : r);
+		g = (g < 0) ? 0 : ((g > 0x1F) ? 0x1F : g);
+		b = (b < 0) ? 0 : ((b > 0x1F) ? 0x1F : b);
+		v = 0;
+		bitops_setl(&v, 0, 5, r);
+		bitops_setl(&v, 5, 5, g);
+		bitops_setl(&v, 10, 5, b);
+		break;
+	default:
+		/* Read data register as regular 32-bit */
+		v = cop2->DR[index];
+		break;
+	}
+
+	/* Return value */
+	return v;
+}
+
+void cop2_write_dr(union cop2 *cop2, int index, uint32_t v)
+{
+	bool msb_a;
+	bool msb_b;
+
+	/* Handle COP2 data register write */
+	switch (index) {
+	case 7:
+		/* OTZ register is 16-bit (so discard higher bits) */
+		cop2->OTZ = v;
+		break;
+	case 29:
+	case 31:
+		/* ORGB and LZCR are read-only */
+		break;
+	case 16:
+	case 17:
+	case 18:
+	case 19:
+		/* Adapt index from 16/17/18/19 to 0/1/2/3 */
+		index -= 16;
+
+		/* SZ[0..3] are 16-bit (so discard higher bits) */
+		cop2->SZ[index].Z = v;
+		break;
+	case 14:
+		/* Write SXY2 register and SXYP (its mirror) */
+		cop2->SXY[2].raw = v;
+		cop2->SXY[3].raw = v;
+		break;
+	case 15:
+		/* Write SXYP register */
+		cop2->SXY[3].raw = v;
+
+		/* Writing to SXYP moves SXY2/SXY1 to SXY1/SXY0. */
+		cop2->SXY[0] = cop2->SXY[1];
+		cop2->SXY[1] = cop2->SXY[2];
+		cop2->SXY[2] = cop2->SXY[3];
+		break;
+	case 28:
+		/* Expands 5:5:5 bit RGB (range 0..1Fh) to 16:16:16 bit RGB
+		(range 0000h..0F80h).
+		0-4   Red   (0..1Fh) multiplied by 80h, written to IR1
+		5-9   Green (0..1Fh) multiplied by 80h, written to IR2
+		10-14 Blue  (0..1Fh) multiplied by 80h, written to IR3
+		15-31 Not used (always zero) */
+		cop2->IR[1].data = bitops_getl(&v, 0, 5) * 0x80;
+		cop2->IR[2].data = bitops_getl(&v, 5, 5) * 0x80;
+		cop2->IR[3].data = bitops_getl(&v, 10, 5) * 0x80;
+		break;
+	case 30:
+		/* Write LZCS register */
+		cop2->LZCS = v;
+
+		/* Update LZCR accordingly: reading LZCR returns the leading 0
+		count of LZCS if LZCS is positive and the leading 1 count of
+		LZCS if LZCS is negative. The results are in range 1..32. */
+		cop2->LZCR = 0;
+		msb_a = (bitops_getl(&v, 31, 1) != 0);
+		do {
+			cop2->LZCR++;
+			v <<= 1;
+			msb_b = (bitops_getl(&v, 31, 1) != 0);
+		} while ((msb_a == msb_b) && (cop2->LZCR < 32));
+		break;
+	default:
+		/* Write data register as regular 32-bit */
+		cop2->DR[index] = v;
+		break;
+	}
+}
+
+uint32_t cop2_read_cr(union cop2 *cop2, int index)
+{
+	uint32_t v;
+
+	/* Handle COP2 control register read */
+	switch (index) {
+	case 4:
+		/* Reading RT33 returns a sign-extended 16-bit value */
+		v = cop2->RT._33;
+		break;
+	case 12:
+		/* Reading L33 returns a sign-extended 16-bit value */
+		v = cop2->LLM._33;
+		break;
+	case 20:
+		/* Reading LB3 returns a sign-extended 16-bit value */
+		v = cop2->LCM._33;
+		break;
+	case 26:
+		/* When reading the H register, the hardware does accidently
+		sign-expand the unsigned 16-bit value (ie. values +8000h..+FFFFh
+		are returned as FFFF8000h..FFFFFFFFh). */
+		v = (int16_t)cop2->H;
+		break;
+	case 27:
+		/* Reading DQA returns a sign-extended 16-bit value */
+		v = cop2->DQA;
+		break;
+	case 29:
+		/* Reading ZSF3 returns a sign-extended 16-bit value */
+		v = cop2->ZSF3;
+		break;
+	case 30:
+		/* Reading ZSF4 returns a sign-extended 16-bit value */
+		v = cop2->ZSF4;
+		break;
+	default:
+		/* Read control register as regular 32-bit */
+		v = cop2->CR[index];
+		break;
+	}
+
+	/* Return value */
+	return v;
+}
+
+void cop2_write_cr(union cop2 *cop2, int index, uint32_t v)
+{
+	union cop2_flag flag;
+
+	/* Handle COP2 control register write */
+	switch (index) {
+	case 4:
+		/* RT33 register is 16-bit (so discard higher bits) */
+		cop2->RT._33 = v;
+		break;
+	case 12:
+		/* L33 register is 16-bit (so discard higher bits) */
+		cop2->LLM._33 = v;
+		break;
+	case 20:
+		/* LB3 register is 16-bit (so discard higher bits) */
+		cop2->LCM._33 = v;
+		break;
+	case 26:
+		/* H register is 16-bit (so discard higher bits) */
+		cop2->H = v;
+		break;
+	case 27:
+		/* DQA register is 16-bit (so discard higher bits) */
+		cop2->DQA = v;
+		break;
+	case 29:
+		/* ZSF3 register is 16-bit (so discard higher bits) */
+		cop2->ZSF3 = v;
+		break;
+	case 30:
+		/* ZSF4 register is 16-bit (so discard higher bits) */
+		cop2->ZSF4 = v;
+		break;
+	case 31:
+		/* Build flag taking care of read-only bits */
+		flag.raw = v;
+		flag.unused = 0;
+		flag.error = 0;
+		cop2->FLAG = flag;
+
+		/* Update error flag (bits 30..23, and 18..13 or'ed together) */
+		cop2->FLAG.error =
+			cop2->FLAG.mac1_larger_pos |
+			cop2->FLAG.mac2_larger_pos |
+			cop2->FLAG.mac3_larger_pos |
+			cop2->FLAG.mac1_larger_neg |
+			cop2->FLAG.mac2_larger_neg |
+			cop2->FLAG.mac3_larger_neg |
+			cop2->FLAG.ir1_sat |
+			cop2->FLAG.ir2_sat |
+			cop2->FLAG.sz3_otz_sat |
+			cop2->FLAG.div_overflow |
+			cop2->FLAG.mac0_larger_pos |
+			cop2->FLAG.mac0_larger_neg |
+			cop2->FLAG.sx2_sat |
+			cop2->FLAG.sy2_sat;
+		break;
+	default:
+		/* Write control register as regular 32-bit */
+		cop2->CR[index] = v;
+		break;
+	}
+}
+
+uint32_t cop2_divide(union cop2 *cop2)
+{
+	uint32_t n;
+	uint32_t d;
+	uint16_t divisor;
+	int32_t u;
+	int32_t t;
+	int bit;
+	int z;
+
+	/* GTE Division Inaccuracy (for RTPS/RTPT commands)
+	The GTE division does (attempt to) work as so (using 33bit math):
+	n = (((H * 20000h / SZ3) + 1) / 2)
+
+	Below would give (almost) the same result (using 32bit math):
+	n = ((H * 10000h + SZ3 / 2) / SZ3)
+
+	In both cases, the result is saturated as such:
+	if n > 1FFFFh or division_by_zero then n = 1FFFFh, FLAG.Bit17 = 1,
+	FLAG.Bit31 = 1
+
+	However, the real GTE hardware is using a fast, but less accurate
+	division mechanism (based on Unsigned Newton-Raphson algorithm). */
+
+	/* Check if overflow */
+	if (cop2->H < cop2->SZ[3].Z * 2) {
+		/* z = 0..0Fh (for 16bit SZ3) */
+		bit = bitops_fls(cop2->SZ[3].Z);
+		z = (bit != 0) ? 16 - bit : 0;
+
+		/* n = 0..7FFF8000h */
+		n = cop2->H << z;
+
+		/* d = 8000h..FFFFh */
+		d = cop2->SZ[3].Z << z;
+
+		/* u = 200h..101h */
+		divisor = d | 0x8000;
+		u = unr_table[((divisor & 0x7FFF) + 0x40) >> 7] + 0x101;
+
+		/* t = 10000h..0FF01h */
+		t = (((int32_t)divisor * -u) + 0x80) >> 8;
+
+		/* t = 20000h..10000h */
+		t = ((u * (0x20000 + t)) + 0x80) >> 8;
+
+		/* n = 0..1FFFFh */
+		n = (((uint64_t)n * t) + 0x8000) >> 16;
+		if (n > 0x1FFFF)
+			n = 0x1FFFF;
+	} else {
+		/* n = 1FFFFh plus overflow flag */
+		n = 0x1FFFF;
+		cop2->FLAG.div_overflow = 1;
+	}
+
+	/* Return division result */
+	return n;
+}
+
+int64_t Ai(union cop2 *cop2, int i, int64_t value)
+{
+	/* Handle result larger than 43 bits and positive or negative */
+	if (value >= (1LL << 43))
+		switch (i) {
+		case 1:
+			cop2->FLAG.mac1_larger_pos = 1;
+			break;
+		case 2:
+			cop2->FLAG.mac2_larger_pos = 1;
+			break;
+		case 3:
+		default:
+			cop2->FLAG.mac3_larger_pos = 1;
+			break;
+		}
+	else if (value < -(1LL << 43))
+		switch (i) {
+		case 1:
+			cop2->FLAG.mac1_larger_neg = 1;
+			break;
+		case 2:
+			cop2->FLAG.mac2_larger_neg = 1;
+			break;
+		case 3:
+		default:
+			cop2->FLAG.mac3_larger_neg = 1;
+			break;
+		}
+
+	/* Return result clamped to 44 bits while keeping sign */
+	value <<= 20;
+	value >>= 20;
+	return value;
+}
+
+int16_t Lm_Bi(union cop2 *cop2, int i, int32_t value, bool lm)
+{
+	bool sat = false;
+
+	/* Handle value negative (lm = 1) or larger than 15 bits (lm = 0) */
+	if (lm && (value < 0)) {
+		value = 0;
+		sat = true;
+	} else if (value > 32767) {
+		value = 32767;
+		sat = true;
+	} else if (value < -32768) {
+		value = -32768;
+		sat = true;
+	}
+
+	/* Set flags accordingly */
+	if (sat)
+		switch (i) {
+		case 1:
+			cop2->FLAG.ir1_sat = 1;
+			break;
+		case 2:
+			cop2->FLAG.ir2_sat = 1;
+			break;
+		case 3:
+		default:
+			cop2->FLAG.ir3_sat = 1;
+			break;
+		}
+
+	/* Return result clamped to 16 bits */
+	return value;
+}
+
+int16_t Lm_Bi_PTZ(union cop2 *cop2, int i, int32_t v1, int32_t v2, bool lm)
+{
+	/* Handle value negative (lm = 1) or larger than 15 bits (lm = 0) */
+	if (lm && (v1 < 0))
+		v1 = 0;
+	else if (v1 > 32767)
+		v1 = 32767;
+	else if (v1 < -32768)
+		v1 = -32768;
+
+	/* Handle flag update if needed */
+	if ((v2 > 32767) || (v2 < -32768))
+		switch (i) {
+		case 1:
+			cop2->FLAG.ir1_sat = 1;
+			break;
+		case 2:
+			cop2->FLAG.ir2_sat = 1;
+			break;
+		case 3:
+		default:
+			cop2->FLAG.ir3_sat = 1;
+			break;
+		}
+
+	/* Return result clamped to 16 bits */
+	return v1;
+}
+
+uint8_t Lm_Ci(union cop2 *cop2, int i, int32_t value)
+{
+	bool sat = false;
+
+	/* Handle value negative or larger than 8 bits */
+	if (value < 0) {
+		value = 0;
+		sat = true;
+	} else if (value > 0xFF) {
+		value = 0xFF;
+		sat = true;
+	}
+
+	/* Set flags accordingly */
+	if (sat)
+		switch (i) {
+		case 1:
+			cop2->FLAG.r_sat = 1;
+			break;
+		case 2:
+			cop2->FLAG.g_sat = 1;
+			break;
+		case 3:
+		default:
+			cop2->FLAG.b_sat = 1;
+			break;
+		}
+
+	/* Return result clamped to 8 bits */
+	return value;
+}
+
+int32_t Lm_D(union cop2 *cop2, int32_t value, bool chained)
+{
+	bool sat = false;
+
+	/* Handle MAC0 overflow case if requested */
+	if (chained) {
+		if (cop2->FLAG.mac0_larger_neg) {
+			value = 0;
+			sat = true;
+		}
+		if (cop2->FLAG.mac0_larger_pos) {
+			value = 0xFFFF;
+			sat = true;
+		}
+	}
+
+	/* Handle value negative or larger than 16 bits */
+	if (value < 0) {
+		value = 0;
+		sat = true;
+	} else if (value > 65535) {
+		value = 65535;
+		sat = true;
+	}
+
+	/* Set flags accordingly */
+	if (sat)
+		cop2->FLAG.sz3_otz_sat = 1;
+
+	/* Return result clamped to 16 bits */
+	return value;
+}
+
+int64_t F(union cop2 *cop2, int64_t value)
+{
+	/* Handle result larger than 31 bits and negative */
+	if (value > 2147483647LL)
+		cop2->FLAG.mac0_larger_pos = 1;
+	else if (value < -2147483648LL)
+		cop2->FLAG.mac0_larger_neg = 1;
+
+	/* Return untouched value */
+	return value;
+}
+
+int32_t Lm_G(union cop2 *cop2, int i, int32_t value)
+{
+	bool sat = false;
+
+	/* Handle value larger than 10 bits */
+	if (value < -1024) {
+		value = -1024;
+		sat = true;
+	} else if (value > 1023) {
+		value = 1023;
+		sat = true;
+	}
+
+	/* Set flags accordingly */
+	if (sat)
+		switch (i) {
+		case 1:
+			cop2->FLAG.sx2_sat = 1;
+			break;
+		case 2:
+		default:
+			cop2->FLAG.sy2_sat = 1;
+			break;
+		}
+
+	/* Return result clamped to 10 bits */
+	return value;
+}
+
+int32_t Lm_H(union cop2 *cop2, int32_t value)
+{
+	bool sat = false;
+
+	/* Handle value negative or larger than 12 bits */
+	if (value < 0) {
+		value = 0;
+		sat = true;
+	} else if (value > 4096) {
+		value = 4096;
+		sat = true;
+	}
+
+	/* Set flags accordingly */
+	if (sat)
+		cop2->FLAG.ir0_sat = 1;
+
+	/* Return result clamped to 0..4096 */
+	return value;
+}
+
+/* RTPS - Perspective Transformation (single) */
+void RTPS(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int64_t last;
+	int64_t div;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[TRX + R11 * VX0 + R12 * VY0 + R13 * VZ0]
+	   MAC2 = A2[TRY + R21 * VX0 + R22 * VY0 + R23 * VZ0]
+	   MAC3 = A3[TRZ + R31 * VX0 + R32 * VY0 + R33 * VZ0] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->TR.data[i] << 12;
+		for (j = 0; j < 3; j++) {
+			a = cop2->RT.data[i][j];
+			b = cop2->V[0].data[j];
+			res = Ai(cop2, i + 1, res + a * b);
+		}
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* Save last result (MAC3) */
+	last = res;
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	cop2->IR[1].data = Lm_Bi(cop2, 1, cop2->MAC[1], lm);
+	cop2->IR[2].data = Lm_Bi(cop2, 2, cop2->MAC[2], lm);
+	cop2->IR[3].data = Lm_Bi_PTZ(cop2, 3, cop2->MAC[3], last >> 12, lm);
+
+	/* SZ0 <- SZ1 <- SZ2 <- SZ3 */
+	cop2->SZ[0].Z = cop2->SZ[1].Z;
+	cop2->SZ[1].Z = cop2->SZ[2].Z;
+	cop2->SZ[2].Z = cop2->SZ[3].Z;
+
+	/* SZ3 = Lm_D(MAC3) */
+	cop2->SZ[3].Z = Lm_D(cop2, last >> 12, false);
+
+	/* div = ((H * 20000h / SZ3) + 1) / 2 */
+	div = cop2_divide(cop2);
+
+	/* SX2 = Lm_G1[F[OFX + IR1 * (H / SZ)]] */
+	res = F(cop2, cop2->OFX + cop2->IR[1].data * div) >> 16;
+	cop2->MAC[0] = res;
+	cop2->SXY[3].X = Lm_G(cop2, 1, cop2->MAC[0]);
+
+	/* SY2 = Lm_G2[F[OFY + IR2 * (H / SZ)]] */
+	res = F(cop2, cop2->OFY + cop2->IR[2].data * div) >> 16;
+	cop2->MAC[0] = res;
+	cop2->SXY[3].Y = Lm_G(cop2, 2, cop2->MAC[0]);
+
+	/* SX0 <- SX1 <- SX2, SY0 <- SY1 <- SY2 */
+	cop2->SXY[0] = cop2->SXY[1];
+	cop2->SXY[1] = cop2->SXY[2];
+	cop2->SXY[2] = cop2->SXY[3];
+
+	/* MAC0 = F[DQB + DQA * (H / SZ)]
+	   IR0 = Lm_H[MAC0] */
+	res = cop2->DQB + cop2->DQA * div;
+	cop2->MAC[0] = F(cop2, res);
+	cop2->IR[0].data = Lm_H(cop2, res >> 12);
+
+	clock_consume(23);
+}
+
+/* NCLIP - Normal clipping */
+void NCLIP(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+
+	/* MAC0 = F[SX0 * SY1 +
+	            SX1 * SY2 +
+	            SX2 * SY0 -
+	            SX0 * SY2 -
+	            SX1 * SY0 -
+	            SX2 * SY1] */
+	res = cop2->SXY[0].X * (cop2->SXY[1].Y - cop2->SXY[2].Y);
+	res += cop2->SXY[1].X * (cop2->SXY[2].Y - cop2->SXY[0].Y);
+	res += cop2->SXY[2].X * (cop2->SXY[0].Y - cop2->SXY[1].Y);
+	cop2->MAC[0] = F(cop2, res);
+
+	clock_consume(8);
+}
+
+/* OP - Outer product of 2 vectors */
+void OP(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	bool lm;
+	int sf;
+	int i;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[D2 * IR3 - D3 * IR2] */
+	res = cop2->RT.data[1][1] * cop2->IR[3].data;
+	res -= cop2->RT.data[2][2] * cop2->IR[2].data;
+	cop2->MAC[1] = Ai(cop2, 1, res >> sf);
+
+	/* MAC2 = A2[D3 * IR1 - D1 * IR3] */
+	res = cop2->RT.data[2][2] * cop2->IR[1].data;
+	res -= cop2->RT.data[0][0] * cop2->IR[3].data;
+	cop2->MAC[2] = Ai(cop2, 2, res >> sf);
+
+	/* MAC3 = A3[D1 * IR2 - D2 * IR1] */
+	res = cop2->RT.data[0][0] * cop2->IR[2].data;
+	res -= cop2->RT.data[1][1] * cop2->IR[1].data;
+	cop2->MAC[3] = Ai(cop2, 3, res >> sf);
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	clock_consume(6);
+}
+
+/* DPCS - Depth Cueing (single) */
+void DPCS(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	uint8_t t;
+	bool lm;
+	int sf;
+	int i;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[R + IR0 * (Lm_B1[RFC - R])]
+	   MAC2 = A2[G + IR0 * (Lm_B2[GFC - G])]
+	   MAC3 = A3[B + IR0 * (Lm_B3[BFC - B])] */
+	for (i = 0; i < 3; i++) {
+		t = cop2->RGBC.data[i];
+		res = (uint64_t)(int64_t)cop2->FC.data[i] << 12;
+		res -= (int32_t)((uint32_t)t << 16);
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], false);
+		res *= cop2->IR[0].data;
+		res += (int64_t)((uint64_t)(int64_t)t << 16);
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(8);
+}
+
+/* INTPL - Interpolation of a vector and far color */
+void INTPL(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	bool lm;
+	int sf;
+	int i;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[IR1 + IR0 * (Lm_B1[RFC - IR1])]
+	   MAC2 = A2[IR2 + IR0 * (Lm_B2[GFC - IR2])]
+	   MAC3 = A3[IR3 + IR0 * (Lm_B3[BFC - IR3])] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->FC.data[i] << 12;
+		res -= (int32_t)((uint32_t)(int32_t)cop2->IR[i + 1].data << 12);
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], false);
+		res *= cop2->IR[0].data;
+		res += (int64_t)((uint64_t)(int64_t)cop2->IR[i + 1].data << 12);
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res >> sf);
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(8);
+}
+
+/* MVMVA - Multiply vector by matrix and add vector */
+void MVMVA(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	union cop2_matrix m;
+	union cop2_vec16 v;
+	union cop2_vec32 t;
+	int64_t res;
+	bool quirk;
+	bool lm;
+	int sf;
+	int i;
+
+	/* Set matrix */
+	switch (cpu->instruction.cop2.mvmva_multiply_matrix) {
+	case 0:
+		m = cop2->RT;
+		break;
+	case 1:
+		m = cop2->LLM;
+		break;
+	case 2:
+		m = cop2->LCM;
+		break;
+	case 3:
+		/* Set up garbage matrix */
+		m.data[0][0] = -(cop2->RGBC.R << 4);
+		m.data[0][1] = cop2->RGBC.R << 4;
+		m.data[0][2] = cop2->IR[0].data;
+		m.data[1][0] = (int16_t)cop2->CR[1];
+		m.data[1][1] = (int16_t)cop2->CR[1];
+		m.data[1][2] = (int16_t)cop2->CR[1];
+		m.data[2][0] = (int16_t)cop2->CR[2];
+		m.data[2][1] = (int16_t)cop2->CR[2];
+		m.data[2][2] = (int16_t)cop2->CR[2];
+		break;
+	}
+
+	/* Set vector */
+	switch (cpu->instruction.cop2.mvmva_multiply_vector) {
+	case 0:
+		v = cop2->V[0];
+		break;
+	case 1:
+		v = cop2->V[1];
+		break;
+	case 2:
+		v = cop2->V[2];
+		break;
+	case 3:
+		v.X = cop2->IR[1].data;
+		v.Y = cop2->IR[2].data;
+		v.Z = cop2->IR[3].data;
+		break;
+	}
+
+	/* Set translation vector */
+	quirk = false;
+	switch (cpu->instruction.cop2.mvmva_translation_vector) {
+	case 0:
+		t = cop2->TR;
+		break;
+	case 1:
+		t = cop2->BK;
+		break;
+	case 2:
+		/* The GTE also allows selection of the far color vector (FC),
+		but this vector is not added correctly by the hardware. */
+		t = cop2->FC;
+		quirk = true;
+		break;
+	case 3:
+		t.X = 0;
+		t.Y = 0;
+		t.Z = 0;
+		break;
+	}
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[CV1 + MX11 * V1 + MX12 * V2 + MX13 * V3]
+	   MAC2 = A2[CV2 + MX21 * V1 + MX22 * V2 + MX23 * V3]
+	   MAC3 = A3[CV3 + MX31 * V1 + MX32 * V2 + MX33 * V3] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)t.data[i] << 12;
+		res = Ai(cop2, i + 1, res + m.data[i][0] * v.data[0]);
+		if (quirk) {
+			Lm_Bi(cop2, i + 1, res >> sf, false);
+			res = 0;
+		}
+		res = Ai(cop2, i + 1, res + m.data[i][1] * v.data[1]);
+		res = Ai(cop2, i + 1, res + m.data[i][2] * v.data[2]);
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	clock_consume(8);
+}
+
+/* NCDS - Normal color depth cue (single vector) */
+void NCDS(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[L11 * VX0 + L12 * VY0 + L13 * VZ0]
+	   MAC2 = A2[L21 * VX0 + L22 * VY0 + L23 * VZ0]
+	   MAC3 = A3[L31 * VX0 + L32 * VY0 + L33 * VZ0] */
+	for (i = 0; i < 3; i++) {
+		res = 0;
+		for (j = 0; j < 3; j++) {
+			a = cop2->LLM.data[i][j];
+			b = cop2->V[0].data[j];
+			res = Ai(cop2, i + 1, res + a * b);
+		}
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* MAC1 = A1[RBK + LR1 * IR1 + LR2 * IR2 + LR3 * IR3]
+	   MAC2 = A2[GBK + LG1 * IR1 + LG2 * IR2 + LG3 * IR3]
+	   MAC3 = A3[BBK + LB1 * IR1 + LB2 * IR2 + LB3 * IR3] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->BK.data[i] << 12;
+		for (j = 0; j < 3; j++) {
+			a = cop2->LCM.data[i][j];
+			b = cop2->IR[j + 1].data;
+			res = Ai(cop2, i + 1, res + a * b);
+		}
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* MAC1 = A1[R * IR1 + IR0 * (Lm_B1[RFC - R * IR1])]
+	   MAC2 = A2[G * IR2 + IR0 * (Lm_B2[GFC - G * IR2])]
+	   MAC3 = A3[B * IR3 + IR0 * (Lm_B3[BFC - B * IR3])] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->FC.data[i] << 12;
+		res -= (cop2->RGBC.data[i] << 4) * cop2->IR[i + 1].data;
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], false);
+		res *= cop2->IR[0].data;
+		res += (cop2->RGBC.data[i] << 4) * cop2->IR[i + 1].data;
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(19);
+}
+
+/* CDP - Color Depth Cue */
+void CDP(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[RBK + LR1 * IR1 + LR2 * IR2 + LR3 * IR3]
+	   MAC2 = A2[GBK + LG1 * IR1 + LG2 * IR2 + LG3 * IR3]
+	   MAC3 = A3[BBK + LB1 * IR1 + LB2 * IR2 + LB3 * IR3] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->BK.data[i] << 12;
+		for (j = 0; j < 3; j++) {
+			a = cop2->LCM.data[i][j];
+			b = cop2->IR[j + 1].data;
+			res = Ai(cop2, i + 1, res + a * b);
+		}
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* MAC1 = A1[R * IR1 + IR0 * (Lm_B1[RFC - R * IR1])]
+	   MAC2 = A2[G * IR2 + IR0 * (Lm_B2[GFC - G * IR2])]
+	   MAC3 = A3[B * IR3 + IR0 * (Lm_B3[BFC - B * IR3])] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->FC.data[i] << 12;
+		res -= (cop2->RGBC.data[i] << 4) * cop2->IR[i + 1].data;
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], false);
+		res *= cop2->IR[0].data;
+		res += (cop2->RGBC.data[i] << 4) * cop2->IR[i + 1].data;
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(13);
+}
+
+/* NCDT - Normal color depth cue (triple vector) */
+void NCDT(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int v;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* Handle 3 vectors */
+	for (v = 0; v < 3; v++) {
+		/* MAC1 = A1[L11 * VXv + L12 * VYv + L13 * VZv]
+		   MAC2 = A2[L21 * VXv + L22 * VYv + L23 * VZv]
+		   MAC3 = A3[L31 * VXv + L32 * VYv + L33 * VZv] */
+		for (i = 0; i < 3; i++) {
+			res = 0;
+			for (j = 0; j < 3; j++) {
+				a = cop2->LLM.data[i][j];
+				b = cop2->V[v].data[j];
+				res = Ai(cop2, i + 1, res + a * b);
+			}
+			cop2->MAC[i + 1] = res >> sf;
+		}
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+			cop2->IR[i + 1].data = res;
+		}
+
+		/* MAC1 = A1[RBK + LR1 * IR1 + LR2 * IR2 + LR3 * IR3]
+		   MAC2 = A2[GBK + LG1 * IR1 + LG2 * IR2 + LG3 * IR3]
+		   MAC3 = A3[BBK + LB1 * IR1 + LB2 * IR2 + LB3 * IR3] */
+		for (i = 0; i < 3; i++) {
+			res = (uint64_t)(int64_t)cop2->BK.data[i] << 12;
+			for (j = 0; j < 3; j++) {
+				a = cop2->LCM.data[i][j];
+				b = cop2->IR[j + 1].data;
+				res = Ai(cop2, i + 1, res + a * b);
+			}
+			cop2->MAC[i + 1] = res >> sf;
+		}
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+			cop2->IR[i + 1].data = res;
+		}
+
+		/* MAC1 = A1[R * IR1 + IR0 * (Lm_B1[RFC - R * IR1])]
+		   MAC2 = A2[G * IR2 + IR0 * (Lm_B2[GFC - G * IR2])]
+		   MAC3 = A3[B * IR3 + IR0 * (Lm_B3[BFC - B * IR3])] */
+		for (i = 0; i < 3; i++) {
+			res = (uint64_t)(int64_t)cop2->FC.data[i] << 12;
+			res -= (cop2->RGBC.data[i] << 4) * cop2->IR[i + 1].data;
+			cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], false);
+			res *= cop2->IR[0].data;
+			res += (cop2->RGBC.data[i] << 4) * cop2->IR[i + 1].data;
+			cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+		}
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+			cop2->IR[i + 1].data = res;
+		}
+
+		/* Cd0 <- Cd1 <- Cd2 <- CODE */
+		cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+		cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+		cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+		/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+		   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+		   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+			cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+			res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+			cop2->RGB_FIFO[2].data[i] = res;
+		}
+	}
+
+	clock_consume(44);
+}
+
+/* NCCS - Normal Color Color (single vector) */
+void NCCS(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[L11 * VX0 + L12 * VY0 + L13 * VZ0]
+	   MAC2 = A2[L21 * VX0 + L22 * VY0 + L23 * VZ0]
+	   MAC3 = A3[L31 * VX0 + L32 * VY0 + L33 * VZ0] */
+	for (i = 0; i < 3; i++) {
+		res = 0;
+		for (j = 0; j < 3; j++) {
+			a = cop2->LLM.data[i][j];
+			b = cop2->V[0].data[j];
+			res = Ai(cop2, i + 1, res + a * b);
+		}
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* MAC1 = A1[RBK + LR1 * IR1 + LR2 * IR2 + LR3 * IR3]
+	   MAC2 = A2[GBK + LG1 * IR1 + LG2 * IR2 + LG3 * IR3]
+	   MAC3 = A3[BBK + LB1 * IR1 + LB2 * IR2 + LB3 * IR3] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->BK.data[i] << 12;
+		for (j = 0; j < 3; j++) {
+			a = cop2->LCM.data[i][j];
+			b = cop2->IR[j + 1].data;
+			res = Ai(cop2, i + 1, res + a * b);
+		}
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* MAC1 = A1[R * IR1]
+	   MAC2 = A2[G * IR2]
+	   MAC3 = A3[B * IR3] */
+	cop2->MAC[1] = ((cop2->RGBC.R << 4) * cop2->IR[1].data) >> sf;
+	cop2->MAC[2] = ((cop2->RGBC.G << 4) * cop2->IR[2].data) >> sf;
+	cop2->MAC[3] = ((cop2->RGBC.B << 4) * cop2->IR[3].data) >> sf;
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(17);
+}
+
+/* CC - Color Color */
+void CC(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[RBK + LR1 * IR1 + LR2 * IR2 + LR3 * IR3]
+	   MAC2 = A2[GBK + LG1 * IR1 + LG2 * IR2 + LG3 * IR3]
+	   MAC3 = A3[BBK + LB1 * IR1 + LB2 * IR2 + LB3 * IR3] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->BK.data[i] << 12;
+		for (j = 0; j < 3; j++) {
+			a = cop2->LCM.data[i][j];
+			b = cop2->IR[j + 1].data;
+			res = Ai(cop2, i + 1, res + a * b);
+		}
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* MAC1 = A1[R * IR1]
+	   MAC2 = A2[G * IR2]
+	   MAC3 = A3[B * IR3] */
+	cop2->MAC[1] = ((cop2->RGBC.R << 4) * cop2->IR[1].data) >> sf;
+	cop2->MAC[2] = ((cop2->RGBC.G << 4) * cop2->IR[2].data) >> sf;
+	cop2->MAC[3] = ((cop2->RGBC.B << 4) * cop2->IR[3].data) >> sf;
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(11);
+}
+
+/* NCS - Normal color (single) */
+void NCS(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[L11 * VX0 + L12 * VY0 + L13 * VZ0]
+	   MAC2 = A2[L21 * VX0 + L22 * VY0 + L23 * VZ0]
+	   MAC3 = A3[L31 * VX0 + L32 * VY0 + L33 * VZ0] */
+	for (i = 0; i < 3; i++) {
+		res = 0;
+		for (j = 0; j < 3; j++) {
+			a = cop2->LLM.data[i][j];
+			b = cop2->V[0].data[j];
+			res = Ai(cop2, i + 1, res + a * b);
+		}
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* MAC1 = A1[RBK + LR1 * IR1 + LR2 * IR2 + LR3 * IR3]
+	   MAC2 = A2[GBK + LG1 * IR1 + LG2 * IR2 + LG3 * IR3]
+	   MAC3 = A3[BBK + LB1 * IR1 + LB2 * IR2 + LB3 * IR3] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->BK.data[i] << 12;
+		for (j = 0; j < 3; j++) {
+			a = cop2->LCM.data[i][j];
+			b = cop2->IR[j + 1].data;
+			res = Ai(cop2, i + 1, res + a * b);
+		}
+		cop2->MAC[i + 1] = res >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(14);
+}
+
+/* NCT - Normal color (triple) */
+void NCT(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int v;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* Handle 3 vectors */
+	for (v = 0; v < 3; v++) {
+		/* MAC1 = A1[L11 * VXv + L12 * VYv + L13 * VZv]
+		   MAC2 = A2[L21 * VXv + L22 * VYv + L23 * VZv]
+		   MAC3 = A3[L31 * VXv + L32 * VYv + L33 * VZv] */
+		for (i = 0; i < 3; i++) {
+			res = 0;
+			for (j = 0; j < 3; j++) {
+				a = cop2->LLM.data[i][j];
+				b = cop2->V[v].data[j];
+				res = Ai(cop2, i + 1, res + a * b);
+			}
+			cop2->MAC[i + 1] = res >> sf;
+		}
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+			cop2->IR[i + 1].data = res;
+		}
+
+		/* MAC1 = A1[RBK + LR1 * IR1 + LR2 * IR2 + LR3 * IR3]
+		   MAC2 = A2[GBK + LG1 * IR1 + LG2 * IR2 + LG3 * IR3]
+		   MAC3 = A3[BBK + LB1 * IR1 + LB2 * IR2 + LB3 * IR3] */
+		for (i = 0; i < 3; i++) {
+			res = (uint64_t)(int64_t)cop2->BK.data[i] << 12;
+			for (j = 0; j < 3; j++) {
+				a = cop2->LCM.data[i][j];
+				b = cop2->IR[j + 1].data;
+				res = Ai(cop2, i + 1, res + a * b);
+			}
+			cop2->MAC[i + 1] = res >> sf;
+		}
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+			cop2->IR[i + 1].data = res;
+		}
+
+		/* Cd0 <- Cd1 <- Cd2 <- CODE */
+		cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+		cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+		cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+		/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+		   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+		   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+			cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+			res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+			cop2->RGB_FIFO[2].data[i] = res;
+		}
+	}
+
+	clock_consume(30);
+}
+
+/* SQR - Square vector */
+void SQR(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	bool lm;
+	int sf;
+	int i;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[IR1 * IR1]
+	   MAC2 = A2[IR2 * IR2]
+	   MAC3 = A3[IR3 * IR3] */
+	for (i = 0; i < 3; i++) {
+		res = cop2->IR[i + 1].data * cop2->IR[i + 1].data;
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res >> sf);
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	clock_consume(5);
+}
+
+/* DCPL - Depth Cue Color light */
+void DCPL(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	bool lm;
+	int sf;
+	int i;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[R * IR1 + IR0 * (Lm_B1[RFC - R * IR1])]
+	   MAC2 = A2[G * IR2 + IR0 * (Lm_B2[GFC - G * IR2])]
+	   MAC3 = A3[B * IR3 + IR0 * (Lm_B3[BFC - B * IR3])] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->FC.data[i] << 12;
+		res -= (cop2->RGBC.data[i] << 4) * cop2->IR[i + 1].data;
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], false);
+		res *= cop2->IR[0].data;
+		res += (cop2->RGBC.data[i] << 4) * cop2->IR[i + 1].data;
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(8);
+}
+
+/* DPCT - Depth Cueing (triple) */
+void DPCT(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	uint8_t t;
+	bool lm;
+	int sf;
+	int c;
+	int i;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* Perform this calculation 3 times, so all three RGB values have been
+	replaced by the depth cued RGB values. */
+	for (c = 0; c < 3; c++) {
+		/* MAC1 = A1[R0 + IR0 * (Lm_B1[RFC - R0])]
+		   MAC2 = A2[G0 + IR0 * (Lm_B2[GFC - G0])]
+		   MAC3 = A3[B0 + IR0 * (Lm_B3[BFC - B0])] */
+		for (i = 0; i < 3; i++) {
+			t = cop2->RGB_FIFO[0].data[i];
+			res = (uint64_t)(int64_t)cop2->FC.data[i] << 12;
+			res -= (int32_t)((uint32_t)t << 16);
+			cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], false);
+			res *= cop2->IR[0].data;
+			res += (int64_t)((uint64_t)(int64_t)t << 16);
+			cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+		}
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+			cop2->IR[i + 1].data = res;
+		}
+
+		/* Cd0 <- Cd1 <- Cd2 <- CODE */
+		cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+		cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+		cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+		/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+		   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+		   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+			cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+			res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+			cop2->RGB_FIFO[2].data[i] = res;
+		}
+	}
+
+	clock_consume(17);
+}
+
+/* AVSZ3 - Average of three Z values (for Triangles) */
+void AVSZ3(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+
+	/* MAC0 = F[ZSF3 * SZ1 + ZSF3 * SZ2 + ZSF3 * SZ3] */
+	res = cop2->SZ[1].Z;
+	res += cop2->SZ[2].Z;
+	res += cop2->SZ[3].Z;
+	res *= cop2->ZSF3;
+	cop2->MAC[0] = F(cop2, res);
+
+	/* OTZ = Lm_D[MAC0] */
+	cop2->OTZ = Lm_D(cop2, cop2->MAC[0] >> 12, true);
+
+	clock_consume(5);
+}
+
+/* AVSZ4 - Average of four Z values (for Quads) */
+void AVSZ4(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+
+	/* MAC0 = F[ZSF4 * SZ0 + ZSF4 * SZ1 + ZSF4 * SZ2 + ZSF4 * SZ3] */
+	res = cop2->SZ[0].Z;
+	res += cop2->SZ[1].Z;
+	res += cop2->SZ[2].Z;
+	res += cop2->SZ[3].Z;
+	res *= cop2->ZSF4;
+	cop2->MAC[0] = F(cop2, res);
+
+	/* OTZ = Lm_D[MAC0] */
+	cop2->OTZ = Lm_D(cop2, cop2->MAC[0] >> 12, true);
+
+	clock_consume(6);
+}
+
+/* RTPT - Perspective Transformation (triple) */
+void RTPT(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int64_t l;
+	int64_t div;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int v;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* Handle 3 vectors */
+	for (v = 0; v < 3; v++) {
+		/* MAC1 = A1[TRX + R11 * VXv + R12 * VYv + R13 * VZv]
+		   MAC2 = A2[TRY + R21 * VXv + R22 * VYv + R23 * VZv]
+		   MAC3 = A3[TRZ + R31 * VXv + R32 * VYv + R33 * VZv] */
+		for (i = 0; i < 3; i++) {
+			res = (uint64_t)(int64_t)cop2->TR.data[i] << 12;
+			for (j = 0; j < 3; j++) {
+				a = cop2->RT.data[i][j];
+				b = cop2->V[v].data[j];
+				res = Ai(cop2, i + 1, res + a * b);
+			}
+			cop2->MAC[i + 1] = res >> sf;
+		}
+
+		/* Save last result (MAC3) */
+		l = res;
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		cop2->IR[1].data = Lm_Bi(cop2, 1, cop2->MAC[1], lm);
+		cop2->IR[2].data = Lm_Bi(cop2, 2, cop2->MAC[2], lm);
+		cop2->IR[3].data = Lm_Bi_PTZ(cop2, 3, cop2->MAC[3], l >> 12, lm);
+
+		/* SZ0 <- SZ1 <- SZ2 <- SZ3 */
+		cop2->SZ[0].Z = cop2->SZ[1].Z;
+		cop2->SZ[1].Z = cop2->SZ[2].Z;
+		cop2->SZ[2].Z = cop2->SZ[3].Z;
+
+		/* SZ3 = Lm_D(MAC3) */
+		cop2->SZ[3].Z = Lm_D(cop2, l >> 12, false);
+
+		/* div = ((H * 20000h / SZ3) + 1) / 2 */
+		div = cop2_divide(cop2);
+
+		/* SX2 = Lm_G1[F[OFX + IR1 * (H / SZ)]] */
+		cop2->MAC[0] = F(cop2, cop2->OFX + cop2->IR[1].data * div) >> 16;
+		cop2->SXY[3].X = Lm_G(cop2, 1, cop2->MAC[0]);
+
+		/* SY2 = Lm_G2[F[OFY + IR2 * (H / SZ)]] */
+		cop2->MAC[0] = F(cop2, cop2->OFY + cop2->IR[2].data * div) >> 16;
+		cop2->SXY[3].Y = Lm_G(cop2, 2, cop2->MAC[0]);
+
+		/* SX0 <- SX1 <- SX2, SY0 <- SY1 <- SY2 */
+		cop2->SXY[0] = cop2->SXY[1];
+		cop2->SXY[1] = cop2->SXY[2];
+		cop2->SXY[2] = cop2->SXY[3];
+	}
+
+	/* MAC0 = F[DQB + DQA * (H / SZ)]
+	   IR0 = Lm_H[MAC0] */
+	res = cop2->DQB + cop2->DQA * div;
+	cop2->MAC[0] = F(cop2, res);
+	cop2->IR[0].data = Lm_H(cop2, res >> 12);
+
+	clock_consume(23);
+}
+
+/* GPF - General purpose interpolation */
+void GPF(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	bool lm;
+	int sf;
+	int i;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[IR0 * IR1]
+	   MAC2 = A2[IR0 * IR2]
+	   MAC3 = A3[IR0 * IR3] */
+	for (i = 0; i < 3; i++) {
+		res = cop2->IR[0].data * cop2->IR[i + 1].data;
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(5);
+}
+
+/* GPL - General purpose interpolation with base */
+void GPL(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	bool lm;
+	int sf;
+	int i;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* MAC1 = A1[MAC1 + IR0 * IR1]
+	   MAC2 = A2[MAC2 + IR0 * IR2]
+	   MAC3 = A3[MAC3 + IR0 * IR3] */
+	for (i = 0; i < 3; i++) {
+		res = (uint64_t)(int64_t)cop2->MAC[i + 1] << sf;
+		res += cop2->IR[0].data * cop2->IR[i + 1].data;
+		cop2->MAC[i + 1] = Ai(cop2, i + 1, res) >> sf;
+	}
+
+	/* IR1 = Lm_B1[MAC1]
+	   IR2 = Lm_B2[MAC2]
+	   IR3 = Lm_B3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+		cop2->IR[i + 1].data = res;
+	}
+
+	/* Cd0 <- Cd1 <- Cd2 <- CODE */
+	cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+	cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+	cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+	/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+	   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+	   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+	for (i = 0; i < 3; i++) {
+		cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+		cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+		res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+		cop2->RGB_FIFO[2].data[i] = res;
+	}
+
+	clock_consume(5);
+}
+
+/* NCCT - Normal Color Color (triple vector) */
+void NCCT(struct r3051 *cpu)
+{
+	union cop2 *cop2 = &cpu->cop2;
+	int64_t res;
+	int16_t a;
+	int16_t b;
+	bool lm;
+	int sf;
+	int v;
+	int i;
+	int j;
+
+	/* Get lm/sf bits from instruction */
+	lm = cpu->instruction.cop2.lm;
+	sf = cpu->instruction.cop2.sf ? 12 : 0;
+
+	/* Handle 3 vectors */
+	for (v = 0; v < 3; v++) {
+		/* MAC1 = A1[L11 * VXv + L12 * VYv + L13 * VZv]
+		   MAC2 = A2[L21 * VXv + L22 * VYv + L23 * VZv]
+		   MAC3 = A3[L31 * VXv + L32 * VYv + L33 * VZv] */
+		for (i = 0; i < 3; i++) {
+			res = 0;
+			for (j = 0; j < 3; j++) {
+				a = cop2->LLM.data[i][j];
+				b = cop2->V[v].data[j];
+				res = Ai(cop2, i + 1, res + a * b);
+			}
+			cop2->MAC[i + 1] = res >> sf;
+		}
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+			cop2->IR[i + 1].data = res;
+		}
+
+		/* MAC1 = A1[RBK + LR1 * IR1 + LR2 * IR2 + LR3 * IR3]
+		   MAC2 = A2[GBK + LG1 * IR1 + LG2 * IR2 + LG3 * IR3]
+		   MAC3 = A3[BBK + LB1 * IR1 + LB2 * IR2 + LB3 * IR3] */
+		for (i = 0; i < 3; i++) {
+			res = (uint64_t)(int64_t)cop2->BK.data[i] << 12;
+			for (j = 0; j < 3; j++) {
+				a = cop2->LCM.data[i][j];
+				b = cop2->IR[j + 1].data;
+				res = Ai(cop2, i + 1, res + a * b);
+			}
+			cop2->MAC[i + 1] = res >> sf;
+		}
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+			cop2->IR[i + 1].data = res;
+		}
+
+		/* MAC1 = A1[R * IR1]
+		   MAC2 = A2[G * IR2]
+		   MAC3 = A3[B * IR3] */
+		cop2->MAC[1] = ((cop2->RGBC.R << 4) * cop2->IR[1].data) >> sf;
+		cop2->MAC[2] = ((cop2->RGBC.G << 4) * cop2->IR[2].data) >> sf;
+		cop2->MAC[3] = ((cop2->RGBC.B << 4) * cop2->IR[3].data) >> sf;
+
+		/* IR1 = Lm_B1[MAC1]
+		   IR2 = Lm_B2[MAC2]
+		   IR3 = Lm_B3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			res = Lm_Bi(cop2, i + 1, cop2->MAC[i + 1], lm);
+			cop2->IR[i + 1].data = res;
+		}
+
+		/* Cd0 <- Cd1 <- Cd2 <- CODE */
+		cop2->RGB_FIFO[0].C = cop2->RGB_FIFO[1].C;
+		cop2->RGB_FIFO[1].C = cop2->RGB_FIFO[2].C;
+		cop2->RGB_FIFO[2].C = cop2->RGBC.C;
+
+		/* R0 <- R1 <- R2 <- Lm_C1[MAC1]
+		   G0 <- G1 <- G2 <- Lm_C2[MAC2]
+		   B0 <- B1 <- B2 <- Lm_C3[MAC3] */
+		for (i = 0; i < 3; i++) {
+			cop2->RGB_FIFO[0].data[i] = cop2->RGB_FIFO[1].data[i];
+			cop2->RGB_FIFO[1].data[i] = cop2->RGB_FIFO[2].data[i];
+			res = Lm_Ci(cop2, i + 1, cop2->MAC[i + 1] >> 4);
+			cop2->RGB_FIFO[2].data[i] = res;
+		}
+	}
+
+	clock_consume(39);
+}
+
+void LWC2(struct r3051 *cpu)
+{
+	uint32_t a;
+	uint32_t l;
+
+	/* Set address and raise exception in case it is not aligned */
+	a = cpu->R[cpu->instruction.i_type.rs];
+	a += (int16_t)cpu->instruction.i_type.immediate;
+	if (bitops_getl(&a, 0, 2) != 0)
+		r3051_raise_exception(cpu, EXCEPTION_AdEL);
+
+	/* Read data from memory and write it into coprocessor register */
+	l = mem_readl(cpu, a);
+	cpu->cop2.DR[cpu->instruction.i_type.rt] = l;
+}
+
+void SWC2(struct r3051 *cpu)
+{
+	uint32_t a;
+	uint32_t l;
+
+	/* Set address and raise exception in case it is not aligned */
+	a = cpu->R[cpu->instruction.i_type.rs];
+	a += (int16_t)cpu->instruction.i_type.immediate;
+	if (bitops_getl(&a, 0, 2) != 0)
+		r3051_raise_exception(cpu, EXCEPTION_AdEL);
+
+	/* Read data from coprocessor register and write it to memory */
+	l = cpu->cop2.DR[cpu->instruction.i_type.rt];
+	mem_writel(cpu, l, a);
+}
+
 void r3051_fetch(struct r3051 *cpu)
 {
 	bool cache_access;
@@ -1566,6 +3594,9 @@ void r3051_tick(struct r3051 *cpu)
 	case 0x10:
 		r3051_opcode_COP0(cpu);
 		break;
+	case 0x12:
+		r3051_opcode_COP2(cpu);
+		break;
 	case 0x20:
 		LB(cpu);
 		break;
@@ -1601,6 +3632,12 @@ void r3051_tick(struct r3051 *cpu)
 		break;
 	case 0x2E:
 		SWR(cpu);
+		break;
+	case 0x32:
+		LWC2(cpu);
+		break;
+	case 0x3A:
+		SWC2(cpu);
 		break;
 	default:
 		LOG_W("Unknown opcode (%02x)!\n", cpu->instruction.opcode);
@@ -1789,6 +3826,126 @@ void r3051_opcode_COP0(struct r3051 *cpu)
 	}
 }
 
+void r3051_opcode_COP2(struct r3051 *cpu)
+{
+	/* Execute COP2 command if needed */
+	if (cpu->instruction.cop2.imm25 == 0x25) {
+		/* Reset entire flag register */
+		cpu->cop2.FLAG.raw = 0;
+
+		/* Execute command */
+		switch (cpu->instruction.cop2.real_cmd) {
+		case 0x01:
+			RTPS(cpu);
+			break;
+		case 0x06:
+			NCLIP(cpu);
+			break;
+		case 0x0C:
+			OP(cpu);
+			break;
+		case 0x10:
+			DPCS(cpu);
+			break;
+		case 0x11:
+			INTPL(cpu);
+			break;
+		case 0x12:
+			MVMVA(cpu);
+			break;
+		case 0x13:
+			NCDS(cpu);
+			break;
+		case 0x14:
+			CDP(cpu);
+			break;
+		case 0x16:
+			NCDT(cpu);
+			break;
+		case 0x1B:
+			NCCS(cpu);
+			break;
+		case 0x1C:
+			CC(cpu);
+			break;
+		case 0x1E:
+			NCS(cpu);
+			break;
+		case 0x20:
+			NCT(cpu);
+			break;
+		case 0x28:
+			SQR(cpu);
+			break;
+		case 0x29:
+			DCPL(cpu);
+			break;
+		case 0x2A:
+			DPCT(cpu);
+			break;
+		case 0x2D:
+			AVSZ3(cpu);
+			break;
+		case 0x2E:
+			AVSZ4(cpu);
+			break;
+		case 0x30:
+			RTPT(cpu);
+			break;
+		case 0x3D:
+			GPF(cpu);
+			break;
+		case 0x3E:
+			GPL(cpu);
+			break;
+		case 0x3F:
+			NCCT(cpu);
+			break;
+		default:
+			LOG_W("Unknown COP2 command opcode (%02x)!\n",
+				cpu->instruction.cop2.real_cmd);
+			break;
+		}
+
+		/* Update error flag (bits 30..23, and 18..13 or'ed together) */
+		cpu->cop2.FLAG.error =
+			cpu->cop2.FLAG.mac1_larger_pos |
+			cpu->cop2.FLAG.mac2_larger_pos |
+			cpu->cop2.FLAG.mac3_larger_pos |
+			cpu->cop2.FLAG.mac1_larger_neg |
+			cpu->cop2.FLAG.mac2_larger_neg |
+			cpu->cop2.FLAG.mac3_larger_neg |
+			cpu->cop2.FLAG.ir1_sat |
+			cpu->cop2.FLAG.ir2_sat |
+			cpu->cop2.FLAG.sz3_otz_sat |
+			cpu->cop2.FLAG.div_overflow |
+			cpu->cop2.FLAG.mac0_larger_pos |
+			cpu->cop2.FLAG.mac0_larger_neg |
+			cpu->cop2.FLAG.sx2_sat |
+			cpu->cop2.FLAG.sy2_sat;
+	} else {
+		/* Execute COP2 instruction */
+		switch (cpu->instruction.cop.opcode) {
+		case 0x00:
+			MFC2(cpu);
+			break;
+		case 0x02:
+			CFC2(cpu);
+			break;
+		case 0x04:
+			MTC2(cpu);
+			break;
+		case 0x06:
+			CTC2(cpu);
+			break;
+		default:
+			LOG_W("Unknown COP2 opcode (%02x)!\n",
+				cpu->instruction.cop.opcode);
+			break;
+		}
+	}
+}
+
 void r3051_raise_exception(struct r3051 *cpu, enum exception e)
 {
 	/* Save exception code and branch delay flag */
@@ -1820,6 +3977,8 @@ bool r3051_init(struct cpu_instance *instance)
 {
 	struct r3051 *cpu;
 	struct resource *res;
+	int value;
+	int i;
 
 	/* Allocate r3051 structure and set private data */
 	cpu = calloc(1, sizeof(struct r3051));
@@ -1857,6 +4016,12 @@ bool r3051_init(struct cpu_instance *instance)
 	cpu->cache_ctrl_region.mops = &ram_mops;
 	cpu->cache_ctrl_region.data = &cpu->cache_ctrl.raw;
 	memory_region_add(&cpu->cache_ctrl_region);
+
+	/* Compute Unsigned Newton-Raphson table used for GTE division */
+	for (i = 0; i <= MAX_UNR_INDEX; i++) {
+		value = (0x40000 / (i + 0x100) + 1) / 2 - 0x101;
+		unr_table[i] = (value < 0) ? 0 : value;
+	}
 
 	return true;
 }
