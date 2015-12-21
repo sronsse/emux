@@ -6,5 +6,11 @@ config CONTROLLER_TIMER_GB
 	help
 		Enable GB timer
 
+config CONTROLLER_TIMER_PSX
+	bool "PSX"
+	default y
+	help
+		Enable PSX timers
+
 endmenu
 

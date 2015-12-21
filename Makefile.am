@@ -214,6 +214,9 @@ endif
 if CONFIG_CONTROLLER_TIMER_GB
 emux_SOURCES += controllers/timer/gb_timer.c
 endif
+if CONFIG_CONTROLLER_TIMER_PSX
+emux_SOURCES += controllers/timer/psx_timer.c
+endif
 if CONFIG_CONTROLLER_VIDEO_GPU
 emux_SOURCES += controllers/video/gpu.c
 endif
