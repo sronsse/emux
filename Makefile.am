@@ -8,6 +8,7 @@ emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
 emux_LDADD = $(CACA_LIBS) $(GL_LIBS) $(GLU_LIBS) $(SDL2_LIBS) $(ROXML_LIBS) -lm
 emux_SOURCES = include/audio.h \
 	include/bitops.h \
+	include/cdrom.h \
 	include/clock.h \
 	include/cmdline.h \
 	include/controller.h \
@@ -25,6 +26,7 @@ emux_SOURCES = include/audio.h \
 	include/util.h \
 	include/video.h \
 	main/audio.c \
+	main/cdrom.c \
 	main/clock.c \
 	main/cmdline.c \
 	main/controller.c \

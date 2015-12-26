@@ -4,6 +4,7 @@ COMMON_SOURCES = \
 	$(CORE_DIR)/frontends/input/retro_input.c \
 	$(CORE_DIR)/frontends/video/retro_video.c \
 	$(CORE_DIR)/main/audio.c \
+	$(CORE_DIR)/main/cdrom.c \
 	$(CORE_DIR)/main/clock.c \
 	$(CORE_DIR)/main/cmdline.c \
 	$(CORE_DIR)/main/controller.c \

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <audio.h>
+#include <cdrom.h>
 #include <cmdline.h>
 #ifndef __LIBRETRO__
 #include <config.h>
@@ -250,6 +251,7 @@ void cmdline_print_usage(bool error)
 	struct machine *m;
 	struct audio_frontend *af;
 	struct video_frontend *vf;
+	struct cdrom_frontend *cf;
 	int i;
 
 	fprintf(stream, "\n");
@@ -295,6 +297,13 @@ void cmdline_print_usage(bool error)
 	fprintf(stream, "Video frontends:\n");
 	while ((vf = list_get_next(&link)))
 		fprintf(stream, "  %s\n", vf->name);
+	fprintf(stream, "\n");
+
+	/* Print CD-ROM frontends */
+	link = cdrom_frontends;
+	fprintf(stream, "CD-ROM frontends:\n");
+	while ((cf = list_get_next(&link)))
+		fprintf(stream, "  %s\n", cf->name);
 	fprintf(stream, "\n");
 
 	/* Print machine-specific options */
