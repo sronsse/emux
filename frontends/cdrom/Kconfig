@@ -1,0 +1,11 @@
+menu "CD-ROM frontend selection"
+
+config CDROM_CDIO
+	bool "cdio"
+	default y
+	help
+		Enable libcdio (GNU Compact Disc Input and Control library)
+		CD-ROM frontend
+
+endmenu
+

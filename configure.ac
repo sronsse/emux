@@ -46,6 +46,11 @@ if test "$CONFIG_MACH" != "y"; then
 	AC_MSG_ERROR([please select at least one machine.])
 fi
 
+# Add libcdio if needed
+if test "$CONFIG_CDROM_CDIO" == "y"; then
+PKG_CHECK_MODULES([CDIO], [libcdio])
+fi
+
 # Add libroxml if needed
 if test "$CONFIG_INPUT_XML" == "y"; then
 PKG_CHECK_MODULES([ROXML], [libroxml])
@@ -78,6 +83,7 @@ AC_DEFUN([AX_DECLARE_CONFIG], [
 
 # Declare all our CONFIG_xxx variables
 AX_DECLARE_CONFIG([CONFIG_AUDIO_SDL])
+AX_DECLARE_CONFIG([CONFIG_CDROM_CDIO])
 AX_DECLARE_CONFIG([CONFIG_INPUT_CACA])
 AX_DECLARE_CONFIG([CONFIG_INPUT_SDL])
 AX_DECLARE_CONFIG([CONFIG_INPUT_XML])

@@ -5,7 +5,14 @@ emux_CFLAGS = -I$(srcdir)/include -Wall -Wextra -Werror \
 	$(GL_CFLAGS) \
 	$(GLU_CFLAGS) \
 	$(SDL2_CFLAGS)
-emux_LDADD = $(CACA_LIBS) $(GL_LIBS) $(GLU_LIBS) $(SDL2_LIBS) $(ROXML_LIBS) -lm
+emux_LDADD = \
+	$(CACA_LIBS) \
+	$(CDIO_LIBS) \
+	$(GL_LIBS) \
+	$(GLU_LIBS) \
+	$(SDL2_LIBS) \
+	$(ROXML_LIBS) \
+	-lm
 emux_SOURCES = include/audio.h \
 	include/bitops.h \
 	include/cdrom.h \
@@ -54,6 +61,7 @@ EXTRA_DIST = Kconfig \
 	cpu/Kconfig \
 	frontends/Kconfig \
 	frontends/audio/Kconfig \
+	frontends/cdrom/Kconfig \
 	frontends/input/Kconfig \
 	frontends/video/Kconfig \
 	include/libretro.h \
@@ -104,6 +112,9 @@ endif
 # Frontends
 if CONFIG_AUDIO_SDL
 emux_SOURCES += frontends/audio/sdl_audio.c
+endif
+if CONFIG_CDROM_CDIO
+emux_SOURCES += frontends/cdrom/cdio_cdrom.c
 endif
 if CONFIG_INPUT_CACA
 emux_SOURCES += frontends/input/caca_input.c
