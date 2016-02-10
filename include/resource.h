@@ -79,7 +79,7 @@ struct resource {
 			uint8_t end;
 		} port;
 		int irq;
-		uint64_t clk;
+		float clk;
 	} data;
 	enum resource_type type;
 	struct resource *children;

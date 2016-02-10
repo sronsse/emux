@@ -8,42 +8,14 @@
 
 #define NS(s) ((s) * 1000000000)
 
-static uint64_t lcmm(int clock_index);
-
 static struct clock **clocks;
 static int num_clocks;
-static uint64_t machine_clock_rate;
-static uint64_t current_cycle;
-static unsigned int mach_delay;
+static float machine_clock_rate;
+static float mach_delay;
+static float current_cycle;
+static float num_remaining_cycles;
 static struct timeval start_time;
 struct clock *current_clock;
-
-uint64_t gcd(uint64_t a, uint64_t b)
-{
-	uint64_t t;
-	while (b) {
-		t = b;
-		b = a % b;
-		a = t;
-	}
-	return a;
-}
-
-uint64_t lcm(uint64_t a, uint64_t b)
-{
-	return a * b / gcd(a, b);
-}
-
-uint64_t lcmm(int clock_index)
-{
-	struct clock *clock1 = clocks[clock_index];
-	struct clock *clock2 = clocks[clock_index + 1];
-
-	if (clock_index + 2 == num_clocks)
-		return lcm(clock1->rate, clock2->rate);
-
-	return lcm(clock1->rate, lcmm(clock_index + 1));
-}
 
 void clock_add(struct clock *clock)
 {
@@ -53,15 +25,15 @@ void clock_add(struct clock *clock)
 	clocks = realloc(clocks, ++num_clocks * sizeof(struct clock *));
 	clocks[num_clocks - 1] = clock;
 
-	/* Update machine rate */
-	machine_clock_rate = (num_clocks > 1) ? lcmm(0) : clock->rate;
+	/* Update machine rate/delay if needed */
+	if (clock->rate > machine_clock_rate) {
+		machine_clock_rate = clock->rate;
+		mach_delay = NS(1) / machine_clock_rate;
+	}
 
-	/* Update clock dividers */
+	/* Set clock dividers */
 	for (i = 0; i < num_clocks; i++)
 		clocks[i]->div = machine_clock_rate / clocks[i]->rate;
-
-	/* Update machine delay between two ticks (in ns) */
-	mach_delay = NS(1) / machine_clock_rate;
 }
 
 void clock_reset()
@@ -69,54 +41,49 @@ void clock_reset()
 	int i;
 
 	/* Initialize current cycle and start time */
-	current_cycle = 0;
+	current_cycle = 0.0f;
 	gettimeofday(&start_time, NULL);
 
 	/* Reset all clock remaining cycles */
 	for (i = 0; i < num_clocks; i++)
-		clocks[i]->num_remaining_cycles = 0;
+		clocks[i]->num_remaining_cycles = 0.0f;
 }
 
 void clock_tick_all(bool handle_delay)
 {
-	unsigned int real_delay;
-	unsigned int d;
-	int num_remaining_cycles;
+	float num_cycles;
+	float real_delay;
+	float d;
 	struct timeval current_time;
 	int i;
+
+	/* Initialize number of cycles to skip */
+	num_cycles = machine_clock_rate;
 
 	/* Tick clocks */
 	for (i = 0; i < num_clocks; i++) {
 		/* Set current clock */
 		current_clock = clocks[i];
 
-		/* Only execute clock action if there are no remaining cycles */
-		if (current_clock->enabled &&
-			(current_clock->num_remaining_cycles == 0))
+		/* Skip clock if disabled */
+		if (!current_clock->enabled)
+			continue;
+
+		/* Decrease clock cycles */
+		current_clock->num_remaining_cycles -= num_remaining_cycles;
+
+		/* Tick clock if necessary */
+		if (current_clock->num_remaining_cycles <= 0.0f)
 			current_clock->tick(current_clock->data);
+
+		/* Save next number of remaining cycles if needed */
+		if (current_clock->num_remaining_cycles < num_cycles)
+			num_cycles = current_clock->num_remaining_cycles;
 	}
 
-	/* No clock is being ticked anymore */
-	current_clock = NULL;
-
-	/* Find minimum number of remaining cycles */
-	num_remaining_cycles = clocks[0]->num_remaining_cycles;
-	for (i = 1; i < num_clocks; i++)
-		if ((clocks[i]->num_remaining_cycles < num_remaining_cycles) &&
-			clocks[i]->enabled)
-			num_remaining_cycles = clocks[i]->num_remaining_cycles;
-
-	/* Sanity check (clocks should consume cycles at all times) */
-	if (num_remaining_cycles == 0)
-		LOG_W("Clock action should consume cycles!\n");
-
-	/* Increment current cycle by min number of remaining cycles found */
-	current_cycle += num_remaining_cycles;
-
-	/* Decrement enabled clocks remaining cycles */
-	for (i = 0; i < num_clocks; i++)
-		if (clocks[i]->enabled)
-			clocks[i]->num_remaining_cycles -= num_remaining_cycles;
+	/* Update current cycle and number of remaining cycles */
+	current_cycle += num_cycles;
+	num_remaining_cycles = num_cycles;
 
 	/* Only sleep if delay handling is needed */
 	if (handle_delay) {
