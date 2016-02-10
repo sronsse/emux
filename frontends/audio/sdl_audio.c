@@ -3,7 +3,6 @@
 #include <string.h>
 #include <SDL.h>
 #include <audio.h>
-#include <clock.h>
 #include <log.h>
 #include <util.h>
 
@@ -40,6 +39,24 @@ static void sdl_deinit(struct audio_frontend *fe);
 static void get_value(struct audio_data *data, void **buffer, uint64_t *v);
 static void push(struct audio_data *data, uint8_t *buffer, int len);
 static void pull(struct audio_data *data, void *buffer, int len);
+static uint32_t gcd(uint32_t a, uint32_t b);
+static uint32_t lcm(uint32_t a, uint32_t b);
+
+uint32_t gcd(uint32_t a, uint32_t b)
+{
+	uint32_t t;
+	while (b) {
+		t = b;
+		b = a % b;
+		a = t;
+	}
+	return a;
+}
+
+uint32_t lcm(uint32_t a, uint32_t b)
+{
+	return a * b / gcd(a, b);
+}
 
 void get_value(struct audio_data *data, void **buffer, uint64_t *v)
 {
