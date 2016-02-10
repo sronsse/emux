@@ -13,7 +13,7 @@
 #include <controllers/mapper/nes_mapper.h>
 
 /* Clock frequencies */
-#define MASTER_CLOCK_RATE	21477264
+#define MASTER_CLOCK_RATE	21477272.0f
 #define CPU_CLOCK_RATE		(MASTER_CLOCK_RATE / 12)
 #define PPU_CLOCK_RATE		(MASTER_CLOCK_RATE / 4)
 

@@ -13,7 +13,7 @@
 #include <controllers/mapper/sms_mapper.h>
 
 /* Clock frequencies */
-#define MASTER_CLOCK_RATE	53693040
+#define MASTER_CLOCK_RATE	53693100.0f
 #define AUDIO_CLOCK_RATE	(MASTER_CLOCK_RATE / 15)
 #define CPU_CLOCK_RATE		(MASTER_CLOCK_RATE / 15)
 #define VDP_CLOCK_RATE		(MASTER_CLOCK_RATE / 5)

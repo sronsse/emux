@@ -12,7 +12,7 @@
 #include <controllers/mapper/gb_mapper.h>
 
 /* Clock frequencies */
-#define GB_CLOCK_RATE		4194304
+#define GB_CLOCK_RATE		4194304.0f
 #define SOUND_CLOCK_RATE	GB_CLOCK_RATE
 #define SERIAL_CLOCK_RATE	(GB_CLOCK_RATE / 512)
 #define DIV_CLOCK_RATE		(GB_CLOCK_RATE / 256)
