@@ -1,5 +1,11 @@
 menu "Audio"
 
+config CONTROLLER_AUDIO_APU
+	bool "NES APU"
+	default y
+	help
+		Enable NES audio processing unit
+
 config CONTROLLER_AUDIO_PAPU
 	bool "GB PAPU"
 	default y

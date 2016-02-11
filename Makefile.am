@@ -114,6 +114,9 @@ emux_SOURCES += cpu/z80.c
 endif
 
 # Controllers
+if CONFIG_CONTROLLER_AUDIO_APU
+emux_SOURCES += controllers/audio/apu.c
+endif
 if CONFIG_CONTROLLER_AUDIO_PAPU
 emux_SOURCES += controllers/audio/papu.c
 endif
