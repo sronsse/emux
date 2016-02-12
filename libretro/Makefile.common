@@ -37,6 +37,7 @@ gb_SOURCES = $(CORE_DIR)/controllers/audio/papu.c \
 
 # Nintendo Entertainment System sources
 nes_SOURCES = \
+	$(CORE_DIR)/controllers/audio/apu.c \
 	$(CORE_DIR)/controllers/dma/nes_sprite.c \
 	$(CORE_DIR)/controllers/input/nes_controller.c \
 	$(CORE_DIR)/controllers/mapper/nes_mapper.c \

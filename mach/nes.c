@@ -16,6 +16,8 @@
 #define MASTER_CLOCK_RATE	21477272.0f
 #define CPU_CLOCK_RATE		(MASTER_CLOCK_RATE / 12)
 #define PPU_CLOCK_RATE		(MASTER_CLOCK_RATE / 4)
+#define APU_CLOCK_RATE		(MASTER_CLOCK_RATE / 12)
+#define APU_SEQ_CLOCK_RATE	(MASTER_CLOCK_RATE / 89490)
 
 /* Interrupt definitions */
 #define NMI_N			0
@@ -38,10 +40,14 @@
 #define PPU_END			0x2007
 #define PPU_MIRROR_START	0x2008
 #define PPU_MIRROR_END		0x3FFF
+#define APU_START		0x4000
+#define APU_END			0x4013
 #define SPRITE_DMA_START	0x4014
 #define SPRITE_DMA_END		0x4014
+#define APU_CTRL_STAT		0x4015
 #define CTRL_START		0x4016
 #define CTRL_END		0x4017
+#define APU_FRAME_COUNTER	0x4017
 #define EXPANSION_START		0x4018
 #define EXPANSION_END		0x5FFF
 #define SRAM_START		0x6000
@@ -89,6 +95,23 @@ static struct cpu_instance rp2a03_instance = {
 	.bus_id = CPU_BUS_ID,
 	.resources = rp2a03_resources,
 	.num_resources = ARRAY_SIZE(rp2a03_resources)
+};
+
+/* APU controller */
+static struct resource apu_resources[] = {
+	MEM("main", CPU_BUS_ID, APU_START, APU_END),
+	MEM("ctrl_stat", CPU_BUS_ID, APU_CTRL_STAT, APU_CTRL_STAT),
+	MEM("seq", CPU_BUS_ID, APU_FRAME_COUNTER, APU_FRAME_COUNTER),
+	CLK("clk", APU_CLOCK_RATE),
+	CLK("seq_clk", APU_SEQ_CLOCK_RATE),
+	IRQ("irq", IRQ_N)
+};
+
+static struct controller_instance apu_instance = {
+	.controller_name = "apu",
+	.bus_id = CPU_BUS_ID,
+	.resources = apu_resources,
+	.num_resources = ARRAY_SIZE(apu_resources)
 };
 
 /* Sprite DMA controller */
@@ -174,7 +197,8 @@ bool nes_init(struct machine *machine)
 	nes_mapper_mach_data.vram = nes_data->vram;
 
 	/* Add controllers and CPU */
-	if (!controller_add(&sprite_dma_instance) ||
+	if (!controller_add(&apu_instance) ||
+		!controller_add(&sprite_dma_instance) ||
 		!controller_add(&nes_mapper_instance) ||
 		!controller_add(&ppu_instance) ||
 		!controller_add(&nes_controller_instance) ||
