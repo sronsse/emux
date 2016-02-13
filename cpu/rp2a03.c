@@ -10,7 +10,7 @@
 
 #define NMI_VECTOR		0xFFFA
 #define RESET_VECTOR		0xFFFC
-#define INTERRUPT_VECTOR	0xFFFE
+#define IRQ_VECTOR		0xFFFE
 #define STACK_START		0x100
 #define ZP_SIZE			0x100
 
@@ -34,8 +34,10 @@ struct rp2a03 {
 		};
 	};
 	bool interrupted;
+	int interrupt;
 	int bus_id;
 	int nmi;
+	int irq;
 	struct clock clock;
 };
 
@@ -553,11 +555,11 @@ void BRK(struct rp2a03 *rp2a03)
 	rp2a03->B = 1;
 	memory_writeb(rp2a03->bus_id, rp2a03->P, STACK_START + rp2a03->S--);
 
-	/* Interrupt is now active */
+	/* Disable interrupts */
 	rp2a03->I = 1;
 
 	/* Set new PC to value written at the interrupt vector address */
-	rp2a03->PC = memory_readw(rp2a03->bus_id, INTERRUPT_VECTOR);
+	rp2a03->PC = memory_readw(rp2a03->bus_id, IRQ_VECTOR);
 	clock_consume(7);
 }
 
@@ -1738,6 +1740,7 @@ void TYA(struct rp2a03 *rp2a03)
 
 void rp2a03_tick(struct rp2a03 *rp2a03)
 {
+	uint16_t vector = 0;
 	uint8_t opcode;
 
 	/* Check if CPU has been interrupted */
@@ -1752,11 +1755,14 @@ void rp2a03_tick(struct rp2a03 *rp2a03)
 		memory_writeb(rp2a03->bus_id, rp2a03->P, STACK_START +
 			rp2a03->S--);
 
-		/* Interrupt is now active */
-		rp2a03->I = 1;
+		/* Get interrupt vector address */
+		if (rp2a03->interrupt == rp2a03->nmi)
+			vector = NMI_VECTOR;
+		else if (rp2a03->interrupt == rp2a03->irq)
+			vector = IRQ_VECTOR;
 
 		/* Set PC to value written at the interrupt vector address */
-		rp2a03->PC = memory_readw(rp2a03->bus_id, NMI_VECTOR);
+		rp2a03->PC = memory_readw(rp2a03->bus_id, vector);
 		clock_consume(7);
 
 		/* Interrupt is now being handled */
@@ -1927,6 +1933,9 @@ void rp2a03_tick(struct rp2a03 *rp2a03)
 		break;
 	case 0x56:
 		LSR_ZPX(rp2a03);
+		break;
+	case 0x58:
+		CLI(rp2a03);
 		break;
 	case 0x59:
 		EOR_AY(rp2a03);
@@ -2250,12 +2259,19 @@ bool rp2a03_init(struct cpu_instance *instance)
 	/* Save bus ID */
 	rp2a03->bus_id = instance->bus_id;
 
-	/* Save NMI IRQ number */
+	/* Save NMI number */
 	res = resource_get("nmi",
 		RESOURCE_IRQ,
 		instance->resources,
 		instance->num_resources);
 	rp2a03->nmi = res->data.irq;
+
+	/* Save IRQ number */
+	res = resource_get("irq",
+		RESOURCE_IRQ,
+		instance->resources,
+		instance->num_resources);
+	rp2a03->irq = res->data.irq;
 
 	/* Add CPU clock */
 	res = resource_get("clk",
@@ -2288,12 +2304,11 @@ void rp2a03_interrupt(struct cpu_instance *instance, int irq)
 {
 	struct rp2a03 *rp2a03 = instance->priv_data;
 
-	/* Make sure we handle NMIs only */
-	if (irq != rp2a03->nmi)
-		return;
-
-	/* Make sure we treat interrupt next time the CPU is ticked */
-	rp2a03->interrupted = true;
+	/* Handle interrupt if not masked (NMIs cannot be masked) */
+	if (!rp2a03->I || (irq == rp2a03->nmi)) {
+		rp2a03->interrupt = irq;
+		rp2a03->interrupted = true;
+	}
 }
 
 void rp2a03_deinit(struct cpu_instance *instance)
