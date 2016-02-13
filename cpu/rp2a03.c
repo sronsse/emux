@@ -82,6 +82,7 @@ static inline void BVC(struct rp2a03 *rp2a03);
 static inline void BVS(struct rp2a03 *rp2a03);
 static inline void CLC(struct rp2a03 *rp2a03);
 static inline void CLD(struct rp2a03 *rp2a03);
+static inline void CLI(struct rp2a03 *rp2a03);
 static inline void CLV(struct rp2a03 *rp2a03);
 static inline void CMP(struct rp2a03 *rp2a03, uint8_t b);
 static inline void CMP_A(struct rp2a03 *rp2a03);
@@ -592,6 +593,12 @@ void CLC(struct rp2a03 *rp2a03)
 void CLD(struct rp2a03 *rp2a03)
 {
 	rp2a03->D = 0;
+	clock_consume(2);
+}
+
+void CLI(struct rp2a03 *rp2a03)
+{
+	rp2a03->I = 0;
 	clock_consume(2);
 }
 
