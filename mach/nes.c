@@ -18,7 +18,8 @@
 #define PPU_CLOCK_RATE		(MASTER_CLOCK_RATE / 4)
 
 /* Interrupt definitions */
-#define NMI_IRQ			0
+#define NMI_N			0
+#define IRQ_N			1
 
 /* Bus definitions */
 #define CPU_BUS_ID		0
@@ -78,7 +79,8 @@ static struct resource wram_area =
 
 /* RP2A03 CPU */
 static struct resource rp2a03_resources[] = {
-	IRQ("nmi", NMI_IRQ),
+	IRQ("nmi", NMI_N),
+	IRQ("irq", IRQ_N),
 	CLK("clk", CPU_CLOCK_RATE)
 };
 
@@ -141,7 +143,7 @@ static struct resource palette_mirror =
 static struct resource ppu_resources[] = {
 	MEMX("mem", CPU_BUS_ID, PPU_START, PPU_END, &ppu_mirror, 1),
 	MEMX("pal", PPU_BUS_ID, PALETTE_START, PALETTE_END, &palette_mirror, 1),
-	IRQ("irq", NMI_IRQ),
+	IRQ("irq", NMI_N),
 	CLK("clk", PPU_CLOCK_RATE)
 };
 
