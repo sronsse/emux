@@ -1,6 +1,7 @@
 #include <limits.h>
 #include <string.h>
 #include <audio.h>
+#include <bitops.h>
 #include <clock.h>
 #include <controller.h>
 #include <cpu.h>
@@ -27,7 +28,7 @@
 #define DMC_SAMPLE_ADDR		0x12
 #define DMC_SAMPLE_LEN		0x13
 
-#define NUM_CHANNELS		3
+#define NUM_CHANNELS		4
 #define NUM_PULSE_STEPS		8
 #define NUM_TRIANGLE_STEPS	32
 #define MAX_VOLUME		0x0F
@@ -184,11 +185,24 @@ struct triangle {
 	uint8_t linear_counter;
 };
 
+struct noise {
+	bool len_counter_silenced;
+	uint8_t value;
+	uint8_t volume;
+	uint16_t counter;
+	uint16_t shift_reg;
+	uint8_t len_counter;
+	bool env_start;
+	uint8_t env_counter;
+	uint8_t env_period;
+};
+
 struct apu {
 	struct apu_regs r;
 	struct pulse pulse1;
 	struct pulse pulse2;
 	struct triangle triangle;
+	struct noise noise;
 	int seq_step;
 	int cycle;
 	struct region main_region;
@@ -214,6 +228,7 @@ static void sweep_tick(struct apu *apu);
 static void linear_counter_tick(struct apu *apu);
 static void pulse_update(struct apu *apu);
 static void triangle_update(struct apu *apu);
+static void noise_update(struct apu *apu);
 
 static struct mops apu_mops = {
 	.writeb = (writeb_t)apu_writeb
@@ -240,6 +255,11 @@ static uint8_t triangle_value_table[] = {
 	0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 	0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
+};
+
+static uint16_t noise_period_table[] = {
+	0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0060, 0x0080, 0x00A0,
+	0x00CA, 0x00FE, 0x017C, 0x01FC, 0x02FA, 0x03F8, 0x07F2, 0x0FE4
 };
 
 void apu_writeb(struct apu *apu, uint8_t b, address_t address)
@@ -289,6 +309,16 @@ void apu_writeb(struct apu *apu, uint8_t b, address_t address)
 		/* Set triangle linear counter reload flag */
 		apu->triangle.linear_counter_reload = true;
 		break;
+	case NOISE_LEN_COUNTER:
+		/* Load noise length counter if enabled */
+		if (apu->r.ctrl.noise_len_counter_en) {
+			id = apu->r.noise_len_counter.load;
+			apu->noise.len_counter = len_counter_table[id];
+		}
+
+		/* Set noise envelope start flag */
+		apu->noise.env_start = true;
+		break;
 	default:
 		break;
 	}
@@ -322,6 +352,8 @@ void ctrl_writeb(struct apu *apu, uint8_t b, address_t UNUSED(address))
 		apu->pulse2.len_counter = 0;
 	if (!apu->r.ctrl.triangle_len_counter_en)
 		apu->triangle.len_counter = 0;
+	if (!apu->r.ctrl.noise_len_counter_en)
+		apu->noise.len_counter = 0;
 }
 
 void seq_writeb(struct apu *apu, uint8_t b, address_t UNUSED(address))
@@ -435,11 +467,49 @@ void triangle_update(struct apu *apu)
 	apu->triangle.counter--;
 }
 
+void noise_update(struct apu *apu)
+{
+	struct noise *noise = &apu->noise;
+	bool mode;
+	uint16_t feedback;
+
+	/* Return if channel is disabled (zeroing the output) */
+	if (noise->len_counter_silenced) {
+		noise->value = 0;
+		return;
+	}
+
+	/* Check if noise channel needs update */
+	if (noise->counter == 0) {
+		/* Reset counter based on timer period */
+		noise->counter = noise_period_table[apu->r.noise_period.period];
+
+		/* Feedback is calculated as the XOR of bit 0 and one other bit:
+		bit 6 if mode flag is set, otherwise bit 1. */
+		mode = apu->r.noise_period.mode;
+		feedback = bitops_getw(&noise->shift_reg, 0, 1);
+		feedback ^= bitops_getw(&noise->shift_reg, mode ? 6 : 1, 1);
+
+		/* Shift shift register right by one bit */
+		noise->shift_reg >>= 1;
+
+		/* Set leftmost bit to the feedback calculated earlier */
+		bitops_setw(&noise->shift_reg, 14, 1, feedback);
+
+		/* Update channel value based on bit 0 of the shift register */
+		noise->value = bitops_getw(&noise->shift_reg, 0, 1);
+	}
+
+	/* Decrement noise channel counter */
+	noise->counter--;
+}
+
 void apu_tick(struct apu *apu)
 {
 	float ch1_output;
 	float ch2_output;
 	float ch3_output;
+	float ch4_output;
 	float output;
 	uint8_t buffer;
 
@@ -449,6 +519,7 @@ void apu_tick(struct apu *apu)
 	triangle_update(apu);
 	if (++apu->cycle == 2) {
 		pulse_update(apu);
+		noise_update(apu);
 		apu->cycle = 0;
 	}
 
@@ -463,10 +534,15 @@ void apu_tick(struct apu *apu)
 	/* Compute triangle output (which has no volume control) */
 	ch3_output = (float)apu->triangle.value / MAX_VOLUME;
 
+	/* Compute noise output */
+	ch4_output = apu->noise.value;
+	ch4_output *= (float)apu->noise.volume / MAX_VOLUME;
+
 	/* Mix all channels and compute final output */
 	output = ch1_output;
 	output += ch2_output;
 	output += ch3_output;
+	output += ch4_output;
 	output /= NUM_CHANNELS;
 
 	/* Enqueue audio data */
@@ -517,10 +593,23 @@ void length_counter_tick(struct apu *apu)
 	if (!halt && (apu->triangle.len_counter != 0))
 		apu->triangle.len_counter--;
 
+	/* Retrieve noise halt flag */
+	halt = apu->r.noise_main.env_loop_len_counter_halt;
+
+	/* The length counter silences the channel when clocked while it is
+	already zero (provided the length counter halt flag isn't set) */
+	silenced = ((apu->noise.len_counter == 0) && !halt);
+	apu->noise.len_counter_silenced = silenced;
+
+	/* Decrement noise length counter if needed */
+	if (!halt && (apu->noise.len_counter != 0))
+		apu->noise.len_counter--;
+
 	/* Update length counters status */
 	apu->r.stat.pulse1_len_counter_stat = (apu->pulse1.len_counter > 0);
 	apu->r.stat.pulse2_len_counter_stat = (apu->pulse2.len_counter > 0);
 	apu->r.stat.triangle_len_counter_stat = (apu->triangle.len_counter > 0);
+	apu->r.stat.noise_len_counter_stat = (apu->noise.len_counter > 0);
 }
 
 void vol_env_tick(struct apu *apu)
@@ -572,6 +661,43 @@ void vol_env_tick(struct apu *apu)
 		else
 			pulse->volume = pulse->env_counter;
 	}
+
+	/* Check if noise envelope start flag is set */
+	if (!apu->noise.env_start) {
+		/* Clock divider */
+		if (apu->noise.env_period != 0) {
+			/* Decrement divider period */
+			apu->noise.env_period--;
+		} else {
+			/* Reload divider period */
+			apu->noise.env_period = apu->r.noise_main.vol_env;
+
+			/* If the counter is non-zero, it is
+			decremented, otherwise if the loop flag is set,
+			the counter is loaded with 15. */
+			if (apu->noise.env_counter != 0)
+				apu->noise.env_counter--;
+			else if (apu->r.noise_main.env_loop_len_counter_halt)
+				apu->noise.env_counter = 15;
+		}
+	} else {
+		/* The start flag is cleared, the counter is loaded with
+		15, and the divider's period is immediately reloaded. */
+		apu->noise.env_start = false;
+		apu->noise.env_counter = 15;
+		apu->noise.env_period = apu->r.noise_main.vol_env;
+	}
+
+	/* The envelope unit's volume output depends on the constant
+	volume flag: if set, the envelope parameter directly sets the
+	volume, otherwise the counter's value is the current volume. The
+	constant volume flag has no effect besides selecting the volume
+	source; the envelope counter will still be updated when constant
+	volume is selected. */
+	if (apu->r.noise_main.constant_vol)
+		apu->noise.volume = apu->r.noise_main.vol_env;
+	else
+		apu->noise.volume = apu->noise.env_counter;
 }
 
 void sweep_tick(struct apu *apu)
@@ -851,6 +977,8 @@ void apu_reset(struct controller_instance *instance)
 	memset(&apu->pulse1, 0, sizeof(struct pulse));
 	memset(&apu->pulse2, 0, sizeof(struct pulse));
 	memset(&apu->triangle, 0, sizeof(struct triangle));
+	memset(&apu->noise, 0, sizeof(struct noise));
+	apu->noise.shift_reg = 1;
 	apu->seq_step = 0;
 	apu->cycle = 0;
 
@@ -861,6 +989,7 @@ void apu_reset(struct controller_instance *instance)
 	apu->pulse2.sweep_silenced = true;
 	apu->triangle.len_counter_silenced = true;
 	apu->triangle.linear_counter_silenced = true;
+	apu->noise.len_counter_silenced = true;
 }
 
 void apu_deinit(struct controller_instance *instance)
