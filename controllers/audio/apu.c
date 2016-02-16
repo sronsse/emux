@@ -27,8 +27,9 @@
 #define DMC_SAMPLE_ADDR		0x12
 #define DMC_SAMPLE_LEN		0x13
 
-#define NUM_CHANNELS		2
+#define NUM_CHANNELS		3
 #define NUM_PULSE_STEPS		8
+#define NUM_TRIANGLE_STEPS	32
 #define MAX_VOLUME		0x0F
 
 struct pulse_main {
@@ -52,7 +53,7 @@ struct pulse_timer_high {
 
 struct triangle_linear_counter {
 	uint8_t reload_val:7;
-	uint8_t len_counter_disable_counter_ctrl:1;
+	uint8_t control_len_counter_halt:1;
 };
 
 struct triangle_timer_high {
@@ -171,10 +172,23 @@ struct pulse {
 	uint8_t sweep_counter;
 };
 
+struct triangle {
+	bool len_counter_silenced;
+	bool linear_counter_silenced;
+	uint8_t value;
+	uint8_t step;
+	uint8_t volume;
+	uint16_t counter;
+	uint8_t len_counter;
+	bool linear_counter_reload;
+	uint8_t linear_counter;
+};
+
 struct apu {
 	struct apu_regs r;
 	struct pulse pulse1;
 	struct pulse pulse2;
+	struct triangle triangle;
 	int seq_step;
 	int cycle;
 	struct region main_region;
@@ -197,7 +211,9 @@ static void seq_tick(struct apu *apu);
 static void length_counter_tick(struct apu *apu);
 static void vol_env_tick(struct apu *apu);
 static void sweep_tick(struct apu *apu);
+static void linear_counter_tick(struct apu *apu);
 static void pulse_update(struct apu *apu);
+static void triangle_update(struct apu *apu);
 
 static struct mops apu_mops = {
 	.writeb = (writeb_t)apu_writeb
@@ -217,6 +233,13 @@ static uint8_t len_counter_table[] = {
 	0xA0, 0x08, 0x3C, 0x0A, 0x0E, 0x0C, 0x1A, 0x0E,
 	0x0C, 0x10, 0x18, 0x12, 0x30, 0x14, 0x60, 0x16,
 	0xC0, 0x18, 0x48, 0x1A, 0x10, 0x1C, 0x20, 0x1E
+};
+
+static uint8_t triangle_value_table[] = {
+	0x0F, 0x0E, 0x0D, 0x0C, 0x0B, 0x0A, 0x09, 0x08,
+	0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
 };
 
 void apu_writeb(struct apu *apu, uint8_t b, address_t address)
@@ -256,6 +279,16 @@ void apu_writeb(struct apu *apu, uint8_t b, address_t address)
 		/* Set pulse 2 sweep reload flag */
 		apu->pulse2.sweep_reload = true;
 		break;
+	case TRIANGLE_TIMER_HIGH:
+		/* Load triangle length counter if enabled */
+		if (apu->r.ctrl.triangle_len_counter_en) {
+			id = apu->r.triangle_t_hi.len_counter_load;
+			apu->triangle.len_counter = len_counter_table[id];
+		}
+
+		/* Set triangle linear counter reload flag */
+		apu->triangle.linear_counter_reload = true;
+		break;
 	default:
 		break;
 	}
@@ -287,6 +320,8 @@ void ctrl_writeb(struct apu *apu, uint8_t b, address_t UNUSED(address))
 		apu->pulse1.len_counter = 0;
 	if (!apu->r.ctrl.pulse2_len_counter_en)
 		apu->pulse2.len_counter = 0;
+	if (!apu->r.ctrl.triangle_len_counter_en)
+		apu->triangle.len_counter = 0;
 }
 
 void seq_writeb(struct apu *apu, uint8_t b, address_t UNUSED(address))
@@ -368,16 +403,50 @@ void pulse_update(struct apu *apu)
 	}
 }
 
+void triangle_update(struct apu *apu)
+{
+	uint16_t period;
+	bool silenced;
+
+	/* Return if channel is disabled (zeroing the output) */
+	silenced = apu->triangle.len_counter_silenced;
+	silenced |= apu->triangle.linear_counter_silenced;
+	if (silenced) {
+		apu->triangle.value = 0;
+		return;
+	}
+
+	/* Check if triangle channel needs update */
+	if (apu->triangle.counter == 0) {
+		/* Reset counter based on timer period */
+		period = apu->r.triangle_t_lo;
+		period |= apu->r.triangle_t_hi.timer_high << 8;
+		apu->triangle.counter = period;
+
+		/* Update triangle channel value based on table */
+		apu->triangle.value = triangle_value_table[apu->triangle.step];
+
+		/* Increment step and handle overflow */
+		if (++apu->triangle.step == NUM_TRIANGLE_STEPS)
+			apu->triangle.step = 0;
+	}
+
+	/* Decrement triangle channel counter */
+	apu->triangle.counter--;
+}
+
 void apu_tick(struct apu *apu)
 {
 	float ch1_output;
 	float ch2_output;
+	float ch3_output;
 	float output;
 	uint8_t buffer;
 
 	/* The triangle channel's timer is clocked on every APU cycle, but the
 	pulse, noise, and DMC timers are clocked only on every second APU cycle
 	and thus produce only even periods. */
+	triangle_update(apu);
 	if (++apu->cycle == 2) {
 		pulse_update(apu);
 		apu->cycle = 0;
@@ -391,9 +460,13 @@ void apu_tick(struct apu *apu)
 	ch2_output = apu->pulse2.value;
 	ch2_output *= (float)apu->pulse2.volume / MAX_VOLUME;
 
+	/* Compute triangle output (which has no volume control) */
+	ch3_output = (float)apu->triangle.value / MAX_VOLUME;
+
 	/* Mix all channels and compute final output */
 	output = ch1_output;
 	output += ch2_output;
+	output += ch3_output;
 	output /= NUM_CHANNELS;
 
 	/* Enqueue audio data */
@@ -432,9 +505,22 @@ void length_counter_tick(struct apu *apu)
 			pulse->len_counter--;
 	}
 
+	/* Retrieve triangle halt flag */
+	halt = apu->r.triangle_linear_counter.control_len_counter_halt;
+
+	/* The length counter silences the channel when clocked while it is
+	already zero (provided the length counter halt flag isn't set) */
+	silenced = ((apu->triangle.len_counter == 0) && !halt);
+	apu->triangle.len_counter_silenced = silenced;
+
+	/* Decrement triangle length counter if needed */
+	if (!halt && (apu->triangle.len_counter != 0))
+		apu->triangle.len_counter--;
+
 	/* Update length counters status */
 	apu->r.stat.pulse1_len_counter_stat = (apu->pulse1.len_counter > 0);
 	apu->r.stat.pulse2_len_counter_stat = (apu->pulse2.len_counter > 0);
+	apu->r.stat.triangle_len_counter_stat = (apu->triangle.len_counter > 0);
 }
 
 void vol_env_tick(struct apu *apu)
@@ -575,6 +661,33 @@ void sweep_tick(struct apu *apu)
 	}
 }
 
+void linear_counter_tick(struct apu *apu)
+{
+	uint8_t counter;
+	bool silenced;
+
+	/* If the linear counter reload flag is set, the linear counter is
+	reloaded with the counter reload value, otherwise if the linear counter
+	is non-zero, it is decremented. */
+	if (apu->triangle.linear_counter_reload) {
+		/* Reload counter */
+		counter = apu->r.triangle_linear_counter.reload_val;
+		apu->triangle.linear_counter = counter;
+	} else if (apu->triangle.linear_counter != 0) {
+		/* Decrement counter */
+		apu->triangle.linear_counter--;
+	}
+
+	/* If the control flag is clear, the linear counter reload flag is
+	cleared. */
+	if (!apu->r.triangle_linear_counter.control_len_counter_halt)
+		apu->triangle.linear_counter_reload = 0;
+
+	/* Silence triangle channel if linear counter is 0 */
+	silenced = (apu->triangle.linear_counter == 0);
+	apu->triangle.linear_counter_silenced = silenced;
+}
+
 void seq_tick(struct apu *apu)
 {
 	int s;
@@ -638,9 +751,11 @@ void seq_tick(struct apu *apu)
 		sweep_tick(apu);
 	}
 
-	/* Clock envelopes if required */
-	if (e)
+	/* Clock envelopes and linear counter if required */
+	if (e) {
 		vol_env_tick(apu);
+		linear_counter_tick(apu);
+	}
 
 	/* Always consume one cycle */
 	clock_consume(1);
@@ -735,6 +850,7 @@ void apu_reset(struct controller_instance *instance)
 	memset(&apu->r, 0, sizeof(struct apu_regs));
 	memset(&apu->pulse1, 0, sizeof(struct pulse));
 	memset(&apu->pulse2, 0, sizeof(struct pulse));
+	memset(&apu->triangle, 0, sizeof(struct triangle));
 	apu->seq_step = 0;
 	apu->cycle = 0;
 
@@ -743,6 +859,8 @@ void apu_reset(struct controller_instance *instance)
 	apu->pulse1.sweep_silenced = true;
 	apu->pulse2.len_counter_silenced = true;
 	apu->pulse2.sweep_silenced = true;
+	apu->triangle.len_counter_silenced = true;
+	apu->triangle.linear_counter_silenced = true;
 }
 
 void apu_deinit(struct controller_instance *instance)
