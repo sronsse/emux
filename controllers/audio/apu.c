@@ -28,12 +28,9 @@
 #define DMC_SAMPLE_ADDR		0x12
 #define DMC_SAMPLE_LEN		0x13
 
-#define NUM_CHANNELS		4
 #define NUM_PULSE_STEPS		8
 #define NUM_TRIANGLE_STEPS	32
-#define MAX_VOLUME		0x0F
 #define DMC_SAMPLE_ADDR_START	0xC000
-#define DMC_MAX_VALUE		0x7F
 
 struct pulse_main {
 	uint8_t vol_env:4;
@@ -653,11 +650,13 @@ void dmc_update(struct apu *apu)
 
 void apu_tick(struct apu *apu)
 {
-	float ch1_output;
-	float ch2_output;
-	float ch3_output;
-	float ch4_output;
-	float ch5_output;
+	float pulse1;
+	float pulse2;
+	float triangle;
+	float noise;
+	float dmc;
+	float pulse_out;
+	float tnd_out;
 	float output;
 	uint8_t buffer;
 
@@ -674,31 +673,21 @@ void apu_tick(struct apu *apu)
 	/* Update DMC channel */
 	dmc_update(apu);
 
-	/* Compute pulse 1 output */
-	ch1_output = apu->pulse1.value;
-	ch1_output *= (float)apu->pulse1.volume / MAX_VOLUME;
+	/* Compute channel outputs */
+	pulse1 = apu->pulse1.value * apu->pulse1.volume;
+	pulse2 = apu->pulse2.value * apu->pulse2.volume;
+	triangle = apu->triangle.value;
+	noise = apu->noise.value * apu->noise.volume;
+	dmc = apu->r.dmc_load.value;
 
-	/* Compute pulse 2 output */
-	ch2_output = apu->pulse2.value;
-	ch2_output *= (float)apu->pulse2.volume / MAX_VOLUME;
-
-	/* Compute triangle output (which has no volume control) */
-	ch3_output = (float)apu->triangle.value / MAX_VOLUME;
-
-	/* Compute noise output */
-	ch4_output = apu->noise.value;
-	ch4_output *= (float)apu->noise.volume / MAX_VOLUME;
-
-	/* Compute DMC output */
-	ch5_output = (float)apu->r.dmc_load.value / DMC_MAX_VALUE;
-
-	/* Mix all channels and compute final output */
-	output = ch1_output;
-	output += ch2_output;
-	output += ch3_output;
-	output += ch4_output;
-	output += ch5_output;
-	output /= NUM_CHANNELS;
+	/* A linear approximation can be used, which results in slightly louder
+	DMC samples, but otherwise fairly accurate operation since the wave
+	channels use a small portion of the transfer curve. The overall volume
+	will be reduced due to the headroom required by the DMC
+	approximation. */
+	pulse_out = 0.00752f * (pulse1 + pulse2);
+	tnd_out = 0.00851f * triangle + 0.00494f * noise + 0.00335f * dmc;
+	output = pulse_out + tnd_out;
 
 	/* Enqueue audio data */
 	buffer = output * UCHAR_MAX;
