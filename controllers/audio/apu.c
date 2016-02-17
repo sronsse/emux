@@ -32,6 +32,8 @@
 #define NUM_PULSE_STEPS		8
 #define NUM_TRIANGLE_STEPS	32
 #define MAX_VOLUME		0x0F
+#define DMC_SAMPLE_ADDR_START	0xC000
+#define DMC_MAX_VALUE		0x7F
 
 struct pulse_main {
 	uint8_t vol_env:4;
@@ -197,14 +199,27 @@ struct noise {
 	uint8_t env_period;
 };
 
+struct dmc {
+	bool silenced;
+	uint16_t current_addr;
+	uint16_t byte_count;
+	bool sample_buffer_full;
+	uint8_t sample_buffer;
+	uint8_t shift_reg;
+	uint8_t bits_remaining;
+	uint16_t counter;
+};
+
 struct apu {
 	struct apu_regs r;
 	struct pulse pulse1;
 	struct pulse pulse2;
 	struct triangle triangle;
 	struct noise noise;
+	struct dmc dmc;
 	int seq_step;
 	int cycle;
+	int bus_id;
 	struct region main_region;
 	struct region ctrl_stat_region;
 	struct region seq_region;
@@ -229,6 +244,7 @@ static void linear_counter_tick(struct apu *apu);
 static void pulse_update(struct apu *apu);
 static void triangle_update(struct apu *apu);
 static void noise_update(struct apu *apu);
+static void dmc_update(struct apu *apu);
 
 static struct mops apu_mops = {
 	.writeb = (writeb_t)apu_writeb
@@ -260,6 +276,11 @@ static uint8_t triangle_value_table[] = {
 static uint16_t noise_period_table[] = {
 	0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0060, 0x0080, 0x00A0,
 	0x00CA, 0x00FE, 0x017C, 0x01FC, 0x02FA, 0x03F8, 0x07F2, 0x0FE4
+};
+
+static uint16_t dmc_rate_table[] = {
+	0x01AC, 0x017C, 0x0154, 0x0140, 0x011E, 0x00FE, 0x00E2, 0x00D6,
+	0x00BE, 0x00A0, 0x008E, 0x0080, 0x006A, 0x0054, 0x0048, 0x0036
 };
 
 void apu_writeb(struct apu *apu, uint8_t b, address_t address)
@@ -354,6 +375,28 @@ void ctrl_writeb(struct apu *apu, uint8_t b, address_t UNUSED(address))
 		apu->triangle.len_counter = 0;
 	if (!apu->r.ctrl.noise_len_counter_en)
 		apu->noise.len_counter = 0;
+
+	/* When a sample is started, the current address is set to the sample
+	address, and bytes remaining is set to the sample length (the DMC sample
+	will be restarted only if its bytes remaining is 0. If there are bits
+	remaining in the 1-byte sample buffer, these will finish playing before
+	the next sample is fetched. */
+	if (apu->r.ctrl.dmc_en && (apu->dmc.byte_count == 0)) {
+		/* Set current address ($C000 + (A * 64)) */
+		apu->dmc.current_addr = DMC_SAMPLE_ADDR_START;
+		apu->dmc.current_addr += apu->r.dmc_sample_addr * 64;
+
+		/* Set bytes remaining ((L * 16) + 1) */
+		apu->dmc.byte_count = (apu->r.dmc_sample_len * 16) + 1;
+	}
+
+	/* If the DMC bit is clear, the DMC bytes remaining will be set to 0 and
+	the DMC will silence when it empties. */
+	if (!apu->r.ctrl.dmc_en)
+		apu->dmc.byte_count = 0;
+
+	/* Writing to this register clears the DMC interrupt flag. */
+	apu->r.stat.dmc_interrupt = 0;
 }
 
 void seq_writeb(struct apu *apu, uint8_t b, address_t UNUSED(address))
@@ -504,12 +547,117 @@ void noise_update(struct apu *apu)
 	noise->counter--;
 }
 
+void dmc_update(struct apu *apu)
+{
+	uint16_t addr;
+	uint16_t len;
+	uint8_t sample;
+	int16_t target;
+	bool inc;
+
+	/* Check if memory reader needs to fill sample */
+	if (!apu->dmc.sample_buffer_full && (apu->dmc.byte_count != 0)) {
+		/* The sample buffer is filled with the next sample byte read
+		from the current address, subject to whatever mapping hardware
+		is present. */
+		sample = memory_readb(apu->bus_id, apu->dmc.current_addr);
+		apu->dmc.sample_buffer = sample;
+		apu->dmc.sample_buffer_full = true;
+
+		/* The address is incremented; if it exceeds $FFFF, it is
+		wrapped around to $8000. */
+		addr = apu->dmc.current_addr;
+		addr = (addr != 0xFFFF) ? addr + 1 : 0x8000;
+		apu->dmc.current_addr = addr;
+
+		/* The bytes remaining counter is decremented; if it becomes
+		zero and the loop flag is set, the sample is restarted;
+		otherwise, if the bytes remaining counter becomes zero and the
+		IRQ enabled flag is set, the interrupt flag is set. */
+		apu->dmc.byte_count--;
+		if (apu->dmc.byte_count == 0) {
+			/* Check if loop flag is set */
+			if (apu->r.dmc_main.loop_sample) {
+				/* Set current address ($C000 + (A * 64)) */
+				addr = DMC_SAMPLE_ADDR_START;
+				addr += apu->r.dmc_sample_addr * 64;
+				apu->dmc.current_addr = addr;
+
+				/* Set bytes remaining */
+				len = (apu->r.dmc_sample_len * 16) + 1;
+				apu->dmc.byte_count = len;
+			}
+
+			/* Set interrupt flag if needed */
+			if (apu->r.dmc_main.irq_enable)
+				apu->r.stat.dmc_interrupt = 1;
+		}
+
+		/* Update status register */
+		apu->r.stat.dmc_active = (apu->dmc.byte_count != 0);
+	}
+
+	/* At any time, if the interrupt flag is set, the CPU's IRQ line is
+	continuously asserted until the interrupt flag is cleared. */
+	if (apu->r.stat.dmc_interrupt)
+		cpu_interrupt(apu->irq);
+
+	/* Check if DMC channel needs update */
+	if (apu->dmc.counter == 0) {
+		/* If the silence flag is clear, the output level changes based
+		on bit 0 of the shift register. If the bit is 1, add 2;
+		otherwise, subtract 2. But if adding or subtracting 2 would
+		cause the output level to leave the 0-127 range, leave the
+		output level unchanged. */
+		if (!apu->dmc.silenced) {
+			inc = (bitops_getb(&apu->dmc.shift_reg, 0, 1) == 1);
+			target = apu->r.dmc_load.value + (inc ? 2 : -2);
+			if ((target >= 0) && (target <= 127))
+				apu->r.dmc_load.value = target;
+		}
+
+		/* The right shift register is clocked. */
+		apu->dmc.shift_reg >>= 1;
+
+		/* When an output cycle ends, a new cycle is started as follows:
+		The bits-remaining counter is loaded with 8. If the sample
+		buffer is empty, then the silence flag is set; otherwise, the
+		silence flag is cleared and the sample buffer is emptied into
+		the shift register. */
+		if (apu->dmc.bits_remaining == 0) {
+			apu->dmc.bits_remaining = 8;
+			if (!apu->dmc.sample_buffer_full) {
+				/* Disable channel */
+				apu->dmc.silenced = true;
+			} else {
+				/* Enable channel and load shift register */
+				apu->dmc.silenced = false;
+				apu->dmc.shift_reg = apu->dmc.sample_buffer;
+				apu->dmc.sample_buffer = 0;
+				apu->dmc.sample_buffer_full = false;
+			}
+		}
+
+		/* The bits-remaining counter is updated whenever the timer
+		outputs a clock, regardless of whether a sample is currently
+		playing. */
+		apu->dmc.bits_remaining--;
+
+		/* Reload counter based on rate index */
+		apu->dmc.counter = dmc_rate_table[apu->r.dmc_main.freq_id];
+	}
+
+	/* Decrement DMC channel counter */
+	apu->dmc.counter--;
+}
+
 void apu_tick(struct apu *apu)
 {
 	float ch1_output;
 	float ch2_output;
 	float ch3_output;
 	float ch4_output;
+	float ch5_output;
 	float output;
 	uint8_t buffer;
 
@@ -522,6 +670,9 @@ void apu_tick(struct apu *apu)
 		noise_update(apu);
 		apu->cycle = 0;
 	}
+
+	/* Update DMC channel */
+	dmc_update(apu);
 
 	/* Compute pulse 1 output */
 	ch1_output = apu->pulse1.value;
@@ -538,11 +689,15 @@ void apu_tick(struct apu *apu)
 	ch4_output = apu->noise.value;
 	ch4_output *= (float)apu->noise.volume / MAX_VOLUME;
 
+	/* Compute DMC output */
+	ch5_output = (float)apu->r.dmc_load.value / DMC_MAX_VALUE;
+
 	/* Mix all channels and compute final output */
 	output = ch1_output;
 	output += ch2_output;
 	output += ch3_output;
 	output += ch4_output;
+	output += ch5_output;
 	output /= NUM_CHANNELS;
 
 	/* Enqueue audio data */
@@ -896,6 +1051,9 @@ bool apu_init(struct controller_instance *instance)
 	/* Allocate APU structure */
 	instance->priv_data = calloc(1, sizeof(struct apu));
 	apu = instance->priv_data;
+
+	/* Save bus ID */
+	apu->bus_id = instance->bus_id;
 
 	/* Add main memory region */
 	res = resource_get("main",
