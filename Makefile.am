@@ -53,11 +53,29 @@ EXTRA_DIST = Kconfig \
 	frontends/input/Kconfig \
 	frontends/video/Kconfig \
 	include/libretro.h \
-	libretro/jni/Android.mk \
-	libretro/jni/Application.mk \
-	libretro/libretro.c \
-	libretro/link.T \
-	libretro/Makefile \
+	libretro.c \
+	link.T \
+	Makefile.android_arm64-v8a \
+	Makefile.android_armeabi \
+	Makefile.android_armeabi-v7a \
+	Makefile.android_mips \
+	Makefile.android_mips64 \
+	Makefile.android_x86 \
+	Makefile.android_x86_64 \
+	Makefile.common \
+	Makefile.linux-portable_x86 \
+	Makefile.linux-portable_x86_64 \
+	Makefile.linux_x86 \
+	Makefile.linux_x86_64 \
+	Makefile.mingw_x86 \
+	Makefile.mingw_x86_64 \
+	Makefile.osx_x86 \
+	Makefile.osx_x86_64 \
+	Makefile.rules \
+	Makefile.vita_arm \
+	Makefile.wii_ppc \
+	Makefile.windows_x86 \
+	Makefile.windows_x86_64 \
 	mach/Kconfig \
 	mach/configs/all_defconfig \
 	mach/configs/chip8_defconfig \
