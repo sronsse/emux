@@ -11,7 +11,7 @@ static void insert_region(struct port_region *r, struct resource *a);
 static void remove_region(struct port_region *r, struct resource *a);
 static bool fixup_port(struct port_region *region, port_t *port);
 
-static struct list_link *regions;
+static struct list_link *port_regions;
 static struct list_link **read_map;
 static struct list_link **write_map;
 
@@ -48,13 +48,13 @@ bool port_region_add(struct port_region *region)
 	int i;
 
 	/* Initialize maps if needed */
-	if (!regions) {
+	if (!port_regions) {
 		read_map = calloc(NUM_PORTS, sizeof(struct list_link *));
 		write_map = calloc(NUM_PORTS, sizeof(struct list_link *));
 	}
 
 	/* Insert region */
-	list_insert(&regions, region);
+	list_insert(&port_regions, region);
 
 	/* Fill maps for region area and its mirrors */
 	insert_region(region, region->area);
@@ -74,13 +74,13 @@ void port_region_remove(struct port_region *region)
 		remove_region(region, &region->area->children[i]);
 
 	/* Remove region from list */
-	list_remove(&regions, region);
+	list_remove(&port_regions, region);
 }
 
 void port_region_remove_all()
 {
 	/* Remove all regions */
-	list_remove_all(&regions);
+	list_remove_all(&port_regions);
 
 	/* Free maps */
 	free(read_map);
