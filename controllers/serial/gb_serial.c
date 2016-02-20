@@ -27,7 +27,7 @@ struct serial {
 		uint8_t regs[NUM_REGS];
 		struct {
 			uint8_t sb;
-			union sc sc; 
+			union sc sc;
 		};
 	};
 	struct region region;

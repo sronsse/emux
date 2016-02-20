@@ -13,7 +13,7 @@
 #endif
 
 /* Command-line parameter */
-static bool help = false;
+static bool help;
 PARAM(help, bool, "help", NULL, "Display this help and exit")
 
 int main(int argc, char *argv[])
