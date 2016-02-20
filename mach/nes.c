@@ -1,16 +1,13 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
-#include <env.h>
 #include <log.h>
 #include <machine.h>
 #include <memory.h>
 #include <resource.h>
 #include <util.h>
-#include <controllers/mapper/nes_mapper.h>
 
 /* Clock frequencies */
 #define MASTER_CLOCK_RATE	21477272.0f
@@ -136,8 +133,6 @@ static struct controller_instance nes_controller_instance = {
 };
 
 /* NES mapper controller */
-static struct nes_mapper_mach_data nes_mapper_mach_data;
-
 static struct resource vram_mirror =
 	MEM("vram", PPU_BUS_ID, VRAM_MIRROR_START, VRAM_MIRROR_END);
 
@@ -152,8 +147,7 @@ static struct resource nes_mapper_resources[] = {
 static struct controller_instance nes_mapper_instance = {
 	.controller_name = "nes_mapper",
 	.resources = nes_mapper_resources,
-	.num_resources = ARRAY_SIZE(nes_mapper_resources),
-	.mach_data = &nes_mapper_mach_data
+	.num_resources = ARRAY_SIZE(nes_mapper_resources)
 };
 
 /* PPU controller */
@@ -184,9 +178,6 @@ bool nes_init(struct machine *machine)
 	/* Create machine data structure */
 	nes_data = calloc(1, sizeof(struct nes_data));
 
-	/* Set mapper path */
-	nes_mapper_mach_data.path = env_get_data_path();
-
 	/* Add WRAM region */
 	nes_data->wram_region.area = &wram_area;
 	nes_data->wram_region.mops = &ram_mops;
@@ -194,7 +185,7 @@ bool nes_init(struct machine *machine)
 	memory_region_add(&nes_data->wram_region);
 
 	/* NES cart controls VRAM address lines so let the mapper handle it */
-	nes_mapper_mach_data.vram = nes_data->vram;
+	nes_mapper_instance.mach_data = nes_data->vram;
 
 	/* Add controllers and CPU */
 	if (!controller_add(&apu_instance) ||

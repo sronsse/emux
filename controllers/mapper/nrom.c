@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <controller.h>
+#include <env.h>
 #include <file.h>
 #include <memory.h>
-#include <controllers/mapper/nes_mapper.h>
+#include "nes_mapper.h"
 
 struct nrom {
 	uint8_t *vram;
@@ -105,24 +106,26 @@ uint16_t prg_rom_readw(struct nrom *nrom, address_t address)
 bool nrom_init(struct controller_instance *instance)
 {
 	struct nrom *nrom;
-	struct nes_mapper_mach_data *mach_data = instance->mach_data;
 	struct cart_header *cart_header;
 	struct resource *area;
+	char *path;
 
 	/* Allocate NROM structure */
 	instance->priv_data = calloc(1, sizeof(struct nrom));
 	nrom = instance->priv_data;
 
+	/* Get cart path */
+	path = env_get_data_path();
+
 	/* Map cart header */
-	cart_header = file_map(PATH_DATA, mach_data->path, 0,
-		sizeof(struct cart_header));
+	cart_header = file_map(PATH_DATA, path, 0, sizeof(struct cart_header));
 
 	/* Get mirroring information (used for VRAM access) - NROM supports
 	only horizontal and vertical mirroring */
 	nrom->vertical_mirroring = (cart_header->flags6 & 0x09);
 
-	/* Save VRAM (specified by machine) */
-	nrom->vram = mach_data->vram;
+	/* Save VRAM (specified via machine data) */
+	nrom->vram = instance->mach_data;
 
 	/* Add VRAM region */
 	area = resource_get("vram",
@@ -136,8 +139,8 @@ bool nrom_init(struct controller_instance *instance)
 
 	/* Allocate and fill PRG ROM data */
 	nrom->prg_rom_size = PRG_ROM_SIZE(cart_header);
-	nrom->prg_rom = file_map(PATH_DATA, mach_data->path,
-		PRG_ROM_OFFSET(cart_header), nrom->prg_rom_size);
+	nrom->prg_rom = file_map(PATH_DATA, path, PRG_ROM_OFFSET(cart_header),
+		nrom->prg_rom_size);
 
 	/* Fill and add PRG ROM region */
 	area = resource_get("prg_rom",
@@ -151,8 +154,8 @@ bool nrom_init(struct controller_instance *instance)
 
 	/* Allocate and fill CHR ROM data */
 	nrom->chr_rom_size = CHR_ROM_SIZE(cart_header);
-	nrom->chr_rom = file_map(PATH_DATA, mach_data->path,
-		CHR_ROM_OFFSET(cart_header), nrom->chr_rom_size);
+	nrom->chr_rom = file_map(PATH_DATA, path, CHR_ROM_OFFSET(cart_header),
+		nrom->chr_rom_size);
 
 	/* Fill and add PRG ROM region */
 	area = resource_get("chr",

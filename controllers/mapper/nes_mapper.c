@@ -2,10 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <controller.h>
+#include <env.h>
 #include <file.h>
 #include <log.h>
 #include <util.h>
-#include <controllers/mapper/nes_mapper.h>
+#include "nes_mapper.h"
 
 #define INES_CONSTANT 0x1A53454E
 
@@ -18,16 +19,18 @@ static char *mappers[] = {
 
 bool nes_mapper_init(struct controller_instance *instance)
 {
-	struct nes_mapper_mach_data *mach_data = instance->mach_data;
 	struct controller_instance *mapper_instance;
 	struct cart_header *cart_header;
 	uint8_t number;
+	char *path;
+
+	/* Get cart path */
+	path = env_get_data_path();
 
 	/* Map cart header */
-	cart_header = file_map(PATH_DATA, mach_data->path, 0,
-		sizeof(struct cart_header));
+	cart_header = file_map(PATH_DATA, path, 0, sizeof(struct cart_header));
 	if (!cart_header) {
-		LOG_E("Could not map header from \"%s\"!\n", mach_data->path);
+		LOG_E("Could not map header from \"%s\"!\n", path);
 		return false;
 	}
 

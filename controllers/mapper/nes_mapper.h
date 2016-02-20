@@ -12,11 +12,6 @@
 #define CHR_ROM_OFFSET(cart_header) \
 	(sizeof(struct cart_header) + 16384 * cart_header->prg_rom_size)
 
-struct nes_mapper_mach_data {
-	char *path;
-	uint8_t *vram;
-};
-
 struct cart_header {
 	uint32_t ines_constant;
 	uint8_t prg_rom_size;
