@@ -1,12 +1,14 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cmdline.h>
 #include <controller.h>
+#include <env.h>
 #include <file.h>
 #include <log.h>
 #include <memory.h>
 #include <util.h>
-#include <controllers/mapper/gb_mapper.h>
+#include "gb_mapper.h"
 
 struct gb_mapper {
 	uint8_t *rom0;
@@ -24,7 +26,11 @@ static void gb_mapper_deinit(struct controller_instance *instance);
 static void lock_writeb(struct gb_mapper *gb_mapper, uint8_t b, address_t addr);
 static void print_header(struct cart_header *h);
 static bool get_mapper_number(char *path, uint8_t *number);
-static void add_mapper(struct controller_instance *instance, uint8_t number);
+static void add_mapper(struct controller_instance *i, char *p, uint8_t n);
+
+/* Command-line parameters */
+static char *bootrom_path = "DMG_ROM.bin";
+PARAM(bootrom_path, string, "bootrom", "gb", "GameBoy boot ROM path")
 
 static char *mbcs[] = {
 	"rom",	/* ROM ONLY */
@@ -138,17 +144,17 @@ bool get_mapper_number(char *path, uint8_t *number)
 	return true;
 }
 
-void add_mapper(struct controller_instance *instance, uint8_t number)
+void add_mapper(struct controller_instance *instance, char *path, uint8_t n)
 {
 	struct gb_mapper *gb_mapper = instance->priv_data;
 	struct controller_instance *mbc_instance;
 
 	mbc_instance = calloc(1, sizeof(struct controller_instance));
-	mbc_instance->controller_name = mbcs[number];
+	mbc_instance->controller_name = mbcs[n];
 	mbc_instance->bus_id = instance->bus_id;
 	mbc_instance->num_resources = instance->num_resources;
 	mbc_instance->resources = instance->resources;
-	mbc_instance->mach_data = instance->mach_data;
+	mbc_instance->mach_data = path;
 	gb_mapper->mbc_instance = mbc_instance;
 	controller_add(mbc_instance);
 }
@@ -156,21 +162,21 @@ void add_mapper(struct controller_instance *instance, uint8_t number)
 bool gb_mapper_init(struct controller_instance *instance)
 {
 	struct gb_mapper *gb_mapper;
-	struct gb_mapper_mach_data *mach_data;
 	struct resource *bootrom_area;
 	struct resource *rom0_area;
 	struct resource *lock_area;
 	uint8_t number;
+	char *cart_path;
 
 	/* Allocate GB mapper structure */
 	instance->priv_data = calloc(1, sizeof(struct gb_mapper));
 	gb_mapper = instance->priv_data;
 
-	/* Get mach data from instance */
-	mach_data = instance->mach_data;
+	/* Get cart path */
+	cart_path = env_get_data_path();
 
 	/* Get mapper number from cart header */
-	if (!get_mapper_number(mach_data->cart_path, &number)) {
+	if (!get_mapper_number(cart_path, &number)) {
 		LOG_E("Could not map cart header!\n");
 		free(gb_mapper);
 		return false;
@@ -204,7 +210,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 
 	/* Map ROM0 */
 	gb_mapper->rom0 = file_map(PATH_DATA,
-		mach_data->cart_path,
+		cart_path,
 		0,
 		ROM_BANK_SIZE);
 	if (!gb_mapper->rom0) {
@@ -214,7 +220,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 
 	/* Map boot ROM */
 	gb_mapper->bootrom = file_map(PATH_SYSTEM,
-		mach_data->bootrom_path,
+		bootrom_path,
 		0,
 		BOOTROM_SIZE);
 	if (!gb_mapper->bootrom) {
@@ -223,7 +229,7 @@ bool gb_mapper_init(struct controller_instance *instance)
 	}
 
 	/* Add mapper controller */
-	add_mapper(instance, number);
+	add_mapper(instance, cart_path, number);
 
 	/* Add ROM0 region */
 	gb_mapper->rom0_region.area = rom0_area;

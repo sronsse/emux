@@ -2,7 +2,7 @@
 #include <controller.h>
 #include <file.h>
 #include <memory.h>
-#include <controllers/mapper/gb_mapper.h>
+#include "gb_mapper.h"
 
 struct rom_data {
 	uint8_t *bank;
@@ -15,16 +15,19 @@ static void rom_deinit(struct controller_instance *instance);
 bool rom_init(struct controller_instance *instance)
 {
 	struct rom_data *rom_data;
-	struct gb_mapper_mach_data *mach_data = instance->mach_data;
 	struct resource *area;
+	char *cart_path;
 
 	/* Allocate ROM structure */
 	instance->priv_data = calloc(1, sizeof(struct rom_data));
 	rom_data = instance->priv_data;
 
+	/* Retrieve cart path (via machine data) */
+	cart_path = instance->mach_data;
+
 	/* Map second ROM bank (skip ROM0) */
 	rom_data->bank = file_map(PATH_DATA,
-		mach_data->cart_path,
+		cart_path,
 		ROM_BANK_SIZE,
 		ROM_BANK_SIZE);
 

@@ -12,11 +12,6 @@
 #define CART_HEADER_START	0x0100
 #define BOOTROM_SIZE		256
 
-struct gb_mapper_mach_data {
-	char *bootrom_path;
-	char *cart_path;
-};
-
 struct cart_header {
 	uint32_t entry_point;
 	uint8_t nintendo_logo[NINTENDO_LOGO_SIZE];

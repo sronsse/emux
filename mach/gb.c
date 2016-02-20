@@ -1,15 +1,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
-#include <env.h>
 #include <log.h>
 #include <machine.h>
 #include <memory.h>
 #include <util.h>
-#include <controllers/mapper/gb_mapper.h>
 
 /* Clock frequencies */
 #define GB_CLOCK_RATE		4194304.0f
@@ -85,10 +82,6 @@ struct gb_data {
 static bool gb_init();
 static void gb_deinit();
 
-/* Command-line parameters */
-static char *bootrom_path = "DMG_ROM.bin";
-PARAM(bootrom_path, string, "bootrom", "gb", "GameBoy boot ROM path")
-
 /* VRAM area */
 static struct resource vram_area =
 	MEM("vram", BUS_ID, VRAM_START, VRAM_END);
@@ -123,8 +116,6 @@ static struct cpu_instance cpu_instance = {
 };
 
 /* GB mapper controller */
-static struct gb_mapper_mach_data gb_mapper_mach_data;
-
 static struct resource gb_mapper_resources[] = {
 	MEM("bootrom", BUS_ID, BOOTROM_START, BOOTROM_END),
 	MEM("rom0", BUS_ID, ROM0_START, ROM0_END),
@@ -137,8 +128,7 @@ static struct controller_instance gb_mapper_instance = {
 	.controller_name = "gb_mapper",
 	.bus_id = BUS_ID,
 	.resources = gb_mapper_resources,
-	.num_resources = ARRAY_SIZE(gb_mapper_resources),
-	.mach_data = &gb_mapper_mach_data
+	.num_resources = ARRAY_SIZE(gb_mapper_resources)
 };
 
 /* Sound controller */
@@ -242,10 +232,6 @@ bool gb_init(struct machine *machine)
 	gb_data->oam_region.mops = &ram_mops;
 	gb_data->oam_region.data = gb_data->oam;
 	memory_region_add(&gb_data->oam_region);
-
-	/* Set GB mapper controller machine data */
-	gb_mapper_mach_data.bootrom_path = bootrom_path;
-	gb_mapper_mach_data.cart_path = env_get_data_path();
 
 	/* Add controllers and CPU */
 	if (!controller_add(&gb_mapper_instance) ||

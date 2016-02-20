@@ -4,7 +4,7 @@
 #include <file.h>
 #include <memory.h>
 #include <util.h>
-#include <controllers/mapper/gb_mapper.h>
+#include "gb_mapper.h"
 
 #define RAM_ENABLE_START	0x0000
 #define RAM_ENABLE_END		0x1FFF
@@ -157,18 +157,21 @@ void mode_sel_writeb(struct mbc1 *mbc1, uint8_t b, address_t UNUSED(address))
 
 bool mbc1_init(struct controller_instance *instance)
 {
-	struct gb_mapper_mach_data *mach_data = instance->mach_data;
 	struct mbc1 *mbc1;
 	struct cart_header *cart_header;
 	struct resource *area;
+	char *cart_path;
 
 	/* Allocate MBC1 structure */
 	instance->priv_data = calloc(1, sizeof(struct mbc1));
 	mbc1 = instance->priv_data;
 
+	/* Retrieve cart path (via machine data) */
+	cart_path = instance->mach_data;
+
 	/* Map cart header */
 	cart_header = file_map(PATH_DATA,
-		mach_data->cart_path,
+		cart_path,
 		CART_HEADER_START,
 		sizeof(struct cart_header));
 
@@ -177,7 +180,7 @@ bool mbc1_init(struct controller_instance *instance)
 
 	/* Map ROM contents (skip ROM0) */
 	mbc1->rom = file_map(PATH_DATA,
-		mach_data->cart_path,
+		cart_path,
 		ROM_BANK_SIZE,
 		mbc1->rom_size);
 
