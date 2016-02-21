@@ -1,11 +1,13 @@
 #include <stdlib.h>
+#include <cmdline.h>
 #include <controller.h>
+#include <env.h>
 #include <file.h>
 #include <log.h>
 #include <memory.h>
 #include <port.h>
 #include <util.h>
-#include <controllers/mapper/sms_mapper.h>
+#include "sms_mapper.h"
 
 #define BIOS_SIZE	0x2000
 #define HEADER_START	0x7FF0
@@ -52,8 +54,12 @@ static bool sms_mapper_init(struct controller_instance *instance);
 static void sms_mapper_reset(struct controller_instance *instance);
 static void sms_mapper_deinit(struct controller_instance *instance);
 static void print_header(char *cart_path);
-static void add_mapper(struct controller_instance *instance);
+static void add_mapper(struct controller_instance *instance, char *cart_path);
 static void ctrl_writeb(struct sms_mapper *sms_mapper, uint8_t b);
+
+/* Command-line parameters */
+static char *bios_path = "bios.sms";
+PARAM(bios_path, string, "bios", "sms", "SMS BIOS path")
 
 static struct pops ctrl_pops = {
 	.write = (write_t)ctrl_writeb
@@ -117,10 +123,9 @@ void print_header(char *cart_path)
 	LOG_I("ROM size: %01x\n", h.rom_size);
 }
 
-void add_mapper(struct controller_instance *instance)
+void add_mapper(struct controller_instance *instance, char *cart_path)
 {
 	struct sms_mapper *sms_mapper = instance->priv_data;
-	struct sms_mapper_mach_data *mach_data = instance->mach_data;
 	struct controller_instance *mapper = &sms_mapper->mapper_instance;
 	struct cart_mapper_mach_data *data = &sms_mapper->mapper_data;
 
@@ -131,7 +136,7 @@ void add_mapper(struct controller_instance *instance)
 	mapper->resources = instance->resources;
 
 	/* Set mapper machine data */
-	data->cart_path = mach_data->cart_path;
+	data->cart_path = cart_path;
 	data->cart_region = &sms_mapper->cart_region;
 	mapper->mach_data = data;
 
@@ -142,22 +147,20 @@ void add_mapper(struct controller_instance *instance)
 bool sms_mapper_init(struct controller_instance *instance)
 {
 	struct sms_mapper *sms_mapper;
-	struct sms_mapper_mach_data *mach_data;
 	struct resource *res;
+	char *cart_path;
 
 	/* Allocate SMS mapper structure */
 	instance->priv_data = calloc(1, sizeof(struct sms_mapper));
 	sms_mapper = instance->priv_data;
 
-	/* Get mach data from instance */
-	mach_data = instance->mach_data;
-
-	/* Print cart information */
-	print_header(mach_data->cart_path);
+	/* Get cart path and print cart information */
+	cart_path = env_get_data_path();
+	print_header(cart_path);
 
 	/* Map BIOS */
 	sms_mapper->bios = file_map(PATH_SYSTEM,
-		mach_data->bios_path,
+		bios_path,
 		0,
 		BIOS_SIZE);
 	if (!sms_mapper->bios) {
@@ -188,7 +191,7 @@ bool sms_mapper_init(struct controller_instance *instance)
 	sms_mapper->slot_control.raw = 0xFF;
 
 	/* Add actual mapper controller */
-	add_mapper(instance);
+	add_mapper(instance, cart_path);
 
 	return true;
 }

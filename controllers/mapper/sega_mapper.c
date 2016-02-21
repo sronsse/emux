@@ -2,7 +2,7 @@
 #include <controller.h>
 #include <file.h>
 #include <log.h>
-#include <controllers/mapper/sms_mapper.h>
+#include "sms_mapper.h"
 
 #define NUM_BANKS	3
 #define PAGE_OFFSET	0x0400

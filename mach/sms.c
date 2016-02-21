@@ -1,8 +1,6 @@
 #include <stdlib.h>
-#include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
-#include <env.h>
 #include <file.h>
 #include <log.h>
 #include <machine.h>
@@ -10,7 +8,6 @@
 #include <port.h>
 #include <resource.h>
 #include <util.h>
-#include <controllers/mapper/sms_mapper.h>
 
 /* Clock frequencies */
 #define MASTER_CLOCK_RATE	53693100.0f
@@ -60,10 +57,6 @@ struct sms_data {
 static bool sms_init(struct machine *machine);
 static void sms_deinit(struct machine *machine);
 
-/* Command-line parameters */
-static char *bios_path = "bios.sms";
-PARAM(bios_path, string, "bios", "sms", "SMS BIOS path")
-
 /* Z80A CPU */
 static struct resource cpu_resources[] = {
 	CLK("clk", CPU_CLOCK_RATE)
@@ -92,8 +85,6 @@ static struct controller_instance sn76489_instance = {
 };
 
 /* SMS mapper controller */
-static struct sms_mapper_mach_data sms_mapper_mach_data;
-
 static struct resource sms_mapper_resources[] = {
 	MEM("mapper", CPU_BUS_ID, MAPPER_START, MAPPER_END),
 	PORT("port", MAPPER_PORT, MAPPER_PORT)
@@ -103,8 +94,7 @@ static struct controller_instance sms_mapper_instance = {
 	.controller_name = "sms_mapper",
 	.bus_id = CPU_BUS_ID,
 	.resources = sms_mapper_resources,
-	.num_resources = ARRAY_SIZE(sms_mapper_resources),
-	.mach_data = &sms_mapper_mach_data
+	.num_resources = ARRAY_SIZE(sms_mapper_resources)
 };
 
 /* Input controller */
@@ -151,10 +141,6 @@ bool sms_init(struct machine *machine)
 	/* Create machine data structure */
 	data = calloc(1, sizeof(struct sms_data));
 	machine->priv_data = data;
-
-	/* Set mapper mach data */
-	sms_mapper_mach_data.bios_path = bios_path;
-	sms_mapper_mach_data.cart_path = env_get_data_path();
 
 	/* Add RAM region */
 	data->ram_region.area = &ram_area;
