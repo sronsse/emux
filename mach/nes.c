@@ -26,7 +26,7 @@
 
 /* Memory sizes */
 #define WRAM_SIZE		KB(2)
-#define VRAM_SIZE		KB(2)
+#define VRAM_SIZE		KB(4)
 
 /* CPU memory map */
 #define WRAM_START		0x0000
