@@ -141,7 +141,8 @@ static struct resource nes_mapper_resources[] = {
 	MEM("sram", CPU_BUS_ID, SRAM_START, SRAM_END),
 	MEM("prg_rom", CPU_BUS_ID, PRG_ROM_START, PRG_ROM_END),
 	MEM("chr", PPU_BUS_ID, CHR_START, CHR_END),
-	MEMX("vram", PPU_BUS_ID, VRAM_START, VRAM_END, &vram_mirror, 1)
+	MEMX("vram", PPU_BUS_ID, VRAM_START, VRAM_END, &vram_mirror, 1),
+	IRQ("irq", IRQ_N)
 };
 
 static struct controller_instance nes_mapper_instance = {
