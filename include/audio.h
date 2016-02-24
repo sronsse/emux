@@ -29,7 +29,7 @@ enum audio_format {
 };
 
 struct audio_specs {
-	int freq;
+	float freq;
 	enum audio_format format;
 	int channels;
 	int sampling_rate;
