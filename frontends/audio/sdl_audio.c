@@ -6,16 +6,16 @@
 #include <log.h>
 #include <util.h>
 
-#define AUDIO_LATENCY 50
+#define AUDIO_LATENCY_MS_MAX 100
 
 typedef void (*sdl_callback)(void *userdata, Uint8 *stream, int len);
 
 struct resample_data {
-	uint64_t input_len;
-	uint64_t output_len;
-	uint64_t count;
-	uint64_t left;
-	uint64_t right;
+	float mul;
+	float step;
+	int count;
+	int left;
+	int right;
 };
 
 struct audio_data {
@@ -36,80 +36,53 @@ static void sdl_enqueue(struct audio_frontend *fe, void *buffer, int count);
 static void sdl_start(struct audio_frontend *fe);
 static void sdl_stop(struct audio_frontend *fe);
 static void sdl_deinit(struct audio_frontend *fe);
-static void get_value(struct audio_data *data, void **buffer, uint64_t *v);
-static void push(struct audio_data *data, uint8_t *buffer, int len);
+static int get_value(struct audio_data *data, void **buffer);
+static void push(struct audio_data *data, uint8_t b);
 static void pull(struct audio_data *data, void *buffer, int len);
-static uint32_t gcd(uint32_t a, uint32_t b);
-static uint32_t lcm(uint32_t a, uint32_t b);
 
-uint32_t gcd(uint32_t a, uint32_t b)
+int get_value(struct audio_data *data, void **buffer)
 {
-	uint32_t t;
-	while (b) {
-		t = b;
-		b = a % b;
-		a = t;
-	}
-	return a;
-}
-
-uint32_t lcm(uint32_t a, uint32_t b)
-{
-	return a * b / gcd(a, b);
-}
-
-void get_value(struct audio_data *data, void **buffer, uint64_t *v)
-{
-	uint8_t **buf_u8 = (uint8_t **)buffer;
-	int8_t **buf_s8 = (int8_t **)buffer;
-	uint16_t **buf_u16 = (uint16_t **)buffer;
-	int16_t **buf_s16 = (int16_t **)buffer;
+	int v = 0;
 
 	/* Get value based on format */
 	switch (data->format) {
 	case AUDIO_FORMAT_U8:
-		*v = *(*buf_u8)++;
+		v = *((uint8_t *)*buffer);
+		*buffer += sizeof(uint8_t);
 		break;
 	case AUDIO_FORMAT_S8:
-		*v = *(*buf_s8)++;
+		v = *((int8_t *)*buffer);
+		*buffer += sizeof(int8_t);
 		break;
 	case AUDIO_FORMAT_U16:
-		*v = *(*buf_u16)++;
+		v = *((uint16_t *)*buffer);
+		*buffer += sizeof(uint16_t);
 		break;
 	case AUDIO_FORMAT_S16:
-		*v = *(*buf_s16)++;
+		v = *((int16_t *)*buffer);
+		*buffer += sizeof(int16_t);
 		break;
 	}
+
+	/* Return value */
+	return v;
 }
 
-void push(struct audio_data *data, uint8_t *buffer, int len)
+void push(struct audio_data *data, uint8_t b)
 {
-	int len1 = len;
-	int len2 = 0;
-
 	/* Lock access */
 	SDL_LockAudio();
 
 	/* Handle overrun */
-	if (data->count + len > data->buffer_size) {
+	if (data->count == data->buffer_size)
 		LOG_D("Audio overrun!\n");
-		len = data->buffer_size - data->count;
-		len1 = len;
-	}
 
-	/* Handle wrapping */
-	if (data->head + len > data->buffer_size) {
-		len1 = data->buffer_size - data->head;
-		len2 = len - len1;
-	}
-
-	/* Copy buffer */
-	memcpy(&data->buffer[data->head], buffer, len1);
-	memcpy(data->buffer, &buffer[len1], len2);
+	/* Copy data */
+	data->buffer[data->head] = b;
 
 	/* Move head and update count */
-	data->head = (data->head + len) % data->buffer_size;
-	data->count += len;
+	data->head = (data->head + 1) % data->buffer_size;
+	data->count++;
 
 	/* Unlock access */
 	SDL_UnlockAudio();
@@ -159,7 +132,6 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 	Uint16 fmt;
 	int fmt_size;
 	int samples;
-	uint64_t v;
 
 	/* Initialize audio sub-system */
 	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
@@ -171,12 +143,11 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 	audio_data = calloc(1, sizeof(struct audio_data));
 	fe->priv_data = audio_data;
 
-	/* Compute buffer lengths based on input and output frequencies */
-	v = lcm(specs->freq, specs->sampling_rate);
-	audio_data->resample_data.input_len = v / specs->freq;
-	audio_data->resample_data.output_len = v / specs->sampling_rate;
+	/* Compute mutiplier factor between output and input frequencies */
+	audio_data->resample_data.mul = specs->sampling_rate / specs->freq;
 
 	/* Initialize remaining resampling data */
+	audio_data->resample_data.step = 0.0f;
 	audio_data->resample_data.count = 0;
 	audio_data->resample_data.left = 0;
 	audio_data->resample_data.right = 0;
@@ -236,9 +207,9 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 	/* Compute buffer size (based on desired specs and latency) */
 	audio_data->buffer_size = specs->sampling_rate;
 	audio_data->buffer_size *= specs->channels * fmt_size;
-	audio_data->buffer_size *= AUDIO_LATENCY / 1000.0f;
+	audio_data->buffer_size *= AUDIO_LATENCY_MS_MAX / 1000.0f;
 	audio_data->buffer_size *= 2;
-	LOG_D("Computed audio buffer size: %ub\n", audio_data->buffer_size);
+	LOG_E("Computed audio buffer size: %ub\n", audio_data->buffer_size);
 
 	/* Initialize audio data */
 	audio_data->buffer = calloc(audio_data->buffer_size, sizeof(uint8_t));
@@ -255,53 +226,46 @@ bool sdl_init(struct audio_frontend *fe, struct audio_specs *specs)
 
 void sdl_enqueue(struct audio_frontend *fe, void *buffer, int count)
 {
-	struct audio_data *data = fe->priv_data;
-	struct resample_data *resample_data = &data->resample_data;
-	bool stereo = (data->num_channels == 2);
-	uint64_t v_l = 0;
-	uint64_t v_r = 0;
-	uint64_t l;
-	uint64_t d;
+	struct audio_data *audio_data = fe->priv_data;
+	struct resample_data *resample_data = &audio_data->resample_data;
+	bool stereo = (audio_data->num_channels == 2);
+	float prev_step;
+	uint8_t d;
 	int i;
 
+	/* Parse all input buffer samples */
 	for (i = 0; i < count; i++) {
-		/* Reset length */
-		l = resample_data->input_len;
+		/* Get left (or mono) value */
+		resample_data->left += get_value(audio_data, &buffer);
 
-		/* Get left value (and right value if available) */
-		get_value(data, &buffer, &v_l);
+		/* Get right value if needed */
 		if (stereo)
-			get_value(data, &buffer, &v_r);
+			resample_data->right += get_value(audio_data, &buffer);
 
-		/* Check if value needs to be pushed to output buffer */
-		if (resample_data->count + l >= resample_data->output_len) {
-			/* Set buffer length to use */
-			l = resample_data->output_len - resample_data->count;
+		/* Increment resample data count */
+		resample_data->count++;
 
-			/* Compute final left value and push it */
-			resample_data->left += l * v_l;
-			d = (resample_data->left / resample_data->output_len);
-			push(data, (uint8_t *)&d, data->fmt_size);
+		/* Compute next step and continue if no output is generated */
+		prev_step = resample_data->step;
+		resample_data->step = prev_step + resample_data->mul;
+		if ((int)prev_step == (int)resample_data->step)
+			continue;
 
-			/* Compute final right value and push it */
-			resample_data->right += l * v_r;
-			d = (resample_data->right / resample_data->output_len);
-			if (stereo)
-				push(data, (uint8_t *)&d, data->fmt_size);
+		/* Compute final left (or mono) value and push it */
+		d = resample_data->left / resample_data->count;
+		push(audio_data, d);
 
-			/* Reset resampling data */
-			resample_data->count = 0;
-			resample_data->left = 0;
-			resample_data->right = 0;
-
-			/* Set remaining buffer length */
-			l = resample_data->input_len - l;
+		/* Compute final right value and push it if needed */
+		if (stereo) {
+			d = (resample_data->right / resample_data->count);
+			push(audio_data, d);
 		}
 
-		/* Update buffer count and value */
-		resample_data->count += l;
-		resample_data->left += v_l * l;
-		resample_data->right += v_r * l;
+		/* Reset resample data */
+		resample_data->step -= 1.0f;
+		resample_data->count = 0;
+		resample_data->left = 0;
+		resample_data->right = 0;
 	}
 }
 
