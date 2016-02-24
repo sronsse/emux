@@ -4,7 +4,7 @@
 #include <util.h>
 
 struct retro_data {
-	int freq;
+	float freq;
 	enum audio_format format;
 	int channels;
 	retro_audio_sample_t audio_cb;
