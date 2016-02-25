@@ -193,10 +193,10 @@ struct ppu {
 	bool spr_0_evaluated;
 	bool spr_0_fetched;
 	int *events[NUM_SCANLINES];
-	int visible_scanline[NUM_DOTS];
-	int vblank_scanline[NUM_DOTS];
-	int pre_render_scanline[NUM_DOTS];
-	int idle_scanline[NUM_DOTS];
+	int visible_line[NUM_DOTS];
+	int vblank_line[NUM_DOTS];
+	int pre_render_line[NUM_DOTS];
+	int idle_line[NUM_DOTS];
 	struct ppu_render_data render_data;
 	struct clock clock;
 	uint8_t oam[OAM_SIZE];
@@ -216,6 +216,9 @@ static void ppu_deinit(struct controller_instance *instance);
 static void ppu_tick(struct ppu *ppu);
 static void ppu_update_counters(struct ppu *ppu);
 static void ppu_set_events(struct ppu *ppu);
+static void ppu_build_pre_render_line(struct ppu *ppu);
+static void ppu_build_visible_line(struct ppu *ppu);
+static void ppu_build_vblank_line(struct ppu *ppu);
 static uint8_t palette_readb(uint8_t *ram, address_t address);
 static void palette_writeb(uint8_t *ram, uint8_t b, address_t address);
 static uint8_t ppu_readb(struct ppu *ppu, address_t address);
@@ -530,7 +533,7 @@ void ppu_output(struct ppu *ppu)
 
 	/* Set pixel based on palette entry */
 	entry.value = memory_readb(ppu->bus_id, address);
-	video_set_pixel(ppu->h - 1, ppu->v,
+	video_set_pixel(ppu->h - 2, ppu->v,
 		ppu_palette[entry.luma][entry.chroma]);
 }
 
@@ -916,96 +919,278 @@ void ppu_fetch_sprite(struct ppu *ppu)
 	ppu->render_data.shift_spr_high[index] = high;
 }
 
+void ppu_build_pre_render_line(struct ppu *ppu)
+{
+	int cycle;
+
+	/* Cycle 0 */
+		/* This is an idle cycle. The value on the PPU address bus
+		during this cycle appears to be the same CHR address that is
+		later used to fetch the low background tile byte starting at dot
+		5 (possibly calculated during the two unused NT fetches at the
+		end of the previous scanline). */
+
+	/* Cycles 1-256 */
+		/* Add clear VBLANK/sprite 0/overflow during tick 1. */
+		cycle = 1;
+		ppu->pre_render_line[cycle] |= EVENT_VBLANK_CLEAR;
+
+		/* The data for each tile is fetched during this phase. Each
+		memory access takes 2 PPU cycles to complete, and 4 must be
+		performed per tile:
+			- Nametable byte
+			- Attribute table byte
+			- Tile bitmap low
+			- Tile bitmap high (+ 8 bytes from tile bitmap low) */
+		for (cycle = 1; cycle <= 256; cycle += 8) {
+			ppu->pre_render_line[cycle] |= EVENT_FETCH_NT;
+			ppu->pre_render_line[cycle + 2] |= EVENT_FETCH_AT;
+			ppu->pre_render_line[cycle + 4] |= EVENT_FETCH_LOW_BG;
+			ppu->pre_render_line[cycle + 6] |= EVENT_FETCH_HIGH_BG;
+		}
+
+		/* BG and sprite shift registers shift during ticks 2...257. */
+		for (cycle = 2; cycle <= 257; cycle++) {
+			ppu->pre_render_line[cycle] |= EVENT_SHIFT_BG;
+			ppu->pre_render_line[cycle] |= EVENT_SHIFT_SPR;
+		}
+
+		/* Shifters are reloaded during ticks 9, 17, ..., 257. */
+		for (cycle = 9; cycle <= 257; cycle += 8)
+			ppu->pre_render_line[cycle] |= EVENT_RELOAD_BG;
+
+		/* Add inc hori(v) updates during ticks 8, 16, ..., 256. */
+		for (cycle = 8; cycle <= 256; cycle += 8)
+			ppu->pre_render_line[cycle] |= EVENT_LOOPY_INC_HORI_V;
+
+		/* Add inc vert(v) update during tick 256. */
+		cycle = 256;
+		ppu->pre_render_line[cycle] |= EVENT_LOOPY_INC_VERT_V;
+
+		/* Add hori(v) = hori(t) during tick 257. */
+		cycle = 257;
+		ppu->pre_render_line[cycle] |= EVENT_LOOPY_SET_HORI_V;
+
+	/* Cycles 257-320 */
+		/* The tile data for the sprites on the next scanline are
+		fetched here. Again, each memory access takes 2 PPU cycles to
+		complete, and 4 are performed for each of the 8 sprites:
+		- Garbage nametable byte
+		- Garbage nametable byte
+		- Tile bitmap low
+		- Tile bitmap high (+ 8 bytes from tile bitmap low) */
+		for (cycle = 257; cycle < 320; cycle += 8)
+			ppu->pre_render_line[cycle] |= EVENT_FETCH_SPRITE;
+
+		/* Add vert(v) = vert(t) updates during ticks 280...304. */
+		for (cycle = 280; cycle <= 304; cycle++)
+			ppu->pre_render_line[cycle] |= EVENT_LOOPY_SET_VERT_V;
+
+	/* Cycles 321-336 */
+		/* This is where the first two tiles for the next scanline are
+		fetched, and loaded into the shift registers. Again, each memory
+		access takes 2 PPU cycles to complete, and 4 are performed for
+		the two tiles:
+			- Nametable byte
+			- Attribute table byte
+			- Tile bitmap low
+			- Tile bitmap high (+ 8 bytes from tile bitmap low) */
+		for (cycle = 321; cycle <= 336; cycle += 8) {
+			ppu->pre_render_line[cycle] |= EVENT_FETCH_NT;
+			ppu->pre_render_line[cycle + 2] |= EVENT_FETCH_AT;
+			ppu->pre_render_line[cycle + 4] |= EVENT_FETCH_LOW_BG;
+			ppu->pre_render_line[cycle + 6] |= EVENT_FETCH_HIGH_BG;
+		}
+
+		/* Background shift registers shift during ticks 322...337. */
+		for (cycle = 322; cycle <= 337; cycle++)
+			ppu->pre_render_line[cycle] |= EVENT_SHIFT_BG;
+
+		/* Shifters are reloaded during ticks 329 and 337. */
+		for (cycle = 329; cycle <= 337; cycle += 8)
+			ppu->pre_render_line[cycle] |= EVENT_RELOAD_BG;
+
+		/* Add inc hori(v) updates during ticks 328 and 336. */
+		for (cycle = 328; cycle <= 336; cycle += 8)
+			ppu->pre_render_line[cycle] |= EVENT_LOOPY_INC_HORI_V;
+
+	/* Cycles 337-340 */
+		/* Two bytes are fetched, but the purpose for this is unknown.
+		These fetches are 2 PPU cycles each.
+			- Nametable byte
+			- Nametable byte */
+		for (cycle = 337; cycle <= 340; cycle += 4) {
+			ppu->pre_render_line[cycle] |= EVENT_FETCH_NT;
+			ppu->pre_render_line[cycle + 2] |= EVENT_FETCH_NT;
+		}
+}
+
+void ppu_build_visible_line(struct ppu *ppu)
+{
+	int cycle;
+
+	/* Cycle 0 */
+		/* This is an idle cycle. The value on the PPU address bus
+		during this cycle appears to be the same CHR address that is
+		later used to fetch the low background tile byte starting at dot
+		5 (possibly calculated during the two unused NT fetches at the
+		end of the previous scanline). */
+
+	/* Cycles 1-256 */
+		/* Output pixels between ticks 2...257. */
+		for (cycle = 2; cycle <= 257; cycle++)
+			ppu->visible_line[cycle] |= EVENT_OUTPUT;
+
+		/* The data for each tile is fetched during this phase. Each
+		memory access takes 2 PPU cycles to complete, and 4 must be
+		performed per tile:
+			- Nametable byte
+			- Attribute table byte
+			- Tile bitmap low
+			- Tile bitmap high (+ 8 bytes from tile bitmap low) */
+		for (cycle = 1; cycle <= 256; cycle += 8) {
+			ppu->visible_line[cycle] |= EVENT_FETCH_NT;
+			ppu->visible_line[cycle + 2] |= EVENT_FETCH_AT;
+			ppu->visible_line[cycle + 4] |= EVENT_FETCH_LOW_BG;
+			ppu->visible_line[cycle + 6] |= EVENT_FETCH_HIGH_BG;
+		}
+
+		/* BG and sprite shift registers shift during ticks 2...257. */
+		for (cycle = 2; cycle <= 257; cycle++) {
+			ppu->visible_line[cycle] |= EVENT_SHIFT_BG;
+			ppu->visible_line[cycle] |= EVENT_SHIFT_SPR;
+		}
+
+		/* Shifters are reloaded during ticks 9, 17, ..., 257. */
+		for (cycle = 9; cycle <= 257; cycle += 8)
+			ppu->visible_line[cycle] |= EVENT_RELOAD_BG;
+
+		/* Add inc hori(v) updates during ticks 8, 16, ..., 256. */
+		for (cycle = 8; cycle <= 256; cycle += 8)
+			ppu->visible_line[cycle] |= EVENT_LOOPY_INC_HORI_V;
+
+		/* Add inc vert(v) update during tick 256. */
+		cycle = 256;
+		ppu->visible_line[cycle] |= EVENT_LOOPY_INC_VERT_V;
+
+		/* Add hori(v) = hori(t) during tick 257. */
+		cycle = 257;
+		ppu->visible_line[cycle] |= EVENT_LOOPY_SET_HORI_V;
+
+	/* Cycles 257-320 */
+		/* The tile data for the sprites on the next scanline are
+		fetched here. Again, each memory access takes 2 PPU cycles to
+		complete, and 4 are performed for each of the 8 sprites:
+		- Garbage nametable byte
+		- Garbage nametable byte
+		- Tile bitmap low
+		- Tile bitmap high (+ 8 bytes from tile bitmap low) */
+		for (cycle = 257; cycle < 320; cycle += 8)
+			ppu->visible_line[cycle] |= EVENT_FETCH_SPRITE;
+
+	/* Cycles 321-336 */
+		/* This is where the first two tiles for the next scanline are
+		fetched, and loaded into the shift registers. Again, each memory
+		access takes 2 PPU cycles to complete, and 4 are performed for
+		the two tiles:
+			- Nametable byte
+			- Attribute table byte
+			- Tile bitmap low
+			- Tile bitmap high (+ 8 bytes from tile bitmap low) */
+		for (cycle = 321; cycle <= 336; cycle += 8) {
+			ppu->visible_line[cycle] |= EVENT_FETCH_NT;
+			ppu->visible_line[cycle + 2] |= EVENT_FETCH_AT;
+			ppu->visible_line[cycle + 4] |= EVENT_FETCH_LOW_BG;
+			ppu->visible_line[cycle + 6] |= EVENT_FETCH_HIGH_BG;
+		}
+
+		/* Background shift registers shift during ticks 322...337. */
+		for (cycle = 322; cycle <= 337; cycle++)
+			ppu->visible_line[cycle] |= EVENT_SHIFT_BG;
+
+		/* Shifters are reloaded during ticks 329 and 337. */
+		for (cycle = 329; cycle <= 337; cycle += 8)
+			ppu->visible_line[cycle] |= EVENT_RELOAD_BG;
+
+		/* Add inc hori(v) updates during ticks 328 and 336. */
+		for (cycle = 328; cycle <= 336; cycle += 8)
+			ppu->visible_line[cycle] |= EVENT_LOOPY_INC_HORI_V;
+
+	/* Cycles 337-340 */
+		/* Two bytes are fetched, but the purpose for this is unknown.
+		These fetches are 2 PPU cycles each.
+			- Nametable byte
+			- Nametable byte */
+		for (cycle = 337; cycle <= 340; cycle += 4) {
+			ppu->visible_line[cycle] |= EVENT_FETCH_NT;
+			ppu->visible_line[cycle + 2] |= EVENT_FETCH_NT;
+		}
+
+	/* Cycles 1-64 */
+		/* Secondary OAM (32-byte buffer for current sprites on
+		scanline) is initialized to $FF. */
+		cycle = 1;
+		ppu->visible_line[cycle] |= EVENT_SEC_OAM_CLEAR;
+
+	/* Cycles 65-256 */
+		/* Sprite evaluation. */
+		cycle = 65;
+		ppu->visible_line[cycle] |= EVENT_SPRITE_EVAL;
+}
+
+void ppu_build_vblank_line(struct ppu *ppu)
+{
+	int cycle;
+
+	/* Cycle 1 */
+		/* Add VBLANK set event. */
+		cycle = 1;
+		ppu->vblank_line[cycle] |= EVENT_VBLANK_SET;
+}
+
 void ppu_set_events(struct ppu *ppu)
 {
-	int h;
 	int v;
 
-	/* Make sure no events are set initially */
-	for (h = 0; h < NUM_DOTS; h++) {
-		ppu->visible_scanline[h] = 0;
-		ppu->vblank_scanline[h] = 0;
-		ppu->pre_render_scanline[h] = 0;
-		ppu->idle_scanline[h] = 0;
-	}
+	/* Build pre-render, visible, and vertical blanking scanlines */
+	ppu_build_pre_render_line(ppu);
+	ppu_build_visible_line(ppu);
+	ppu_build_vblank_line(ppu);
 
-	/* Build visible scanline */
-	for (h = 1; h <= 255; h += 8) {
-		ppu->visible_scanline[h] |= EVENT_FETCH_NT;
-		ppu->visible_scanline[h + 2] |= EVENT_FETCH_AT;
-		ppu->visible_scanline[h + 4] |= EVENT_FETCH_LOW_BG;
-		ppu->visible_scanline[h + 6] |= EVENT_FETCH_HIGH_BG;
-		ppu->visible_scanline[h + 7] |= EVENT_LOOPY_INC_HORI_V;
-		ppu->visible_scanline[h + 8] |= EVENT_RELOAD_BG;
-	}
-	for (h = 1; h <= 256; h++) {
-		ppu->visible_scanline[h] |= EVENT_OUTPUT;
-		ppu->visible_scanline[h + 1] |= EVENT_SHIFT_BG;
-		ppu->visible_scanline[h + 1] |= EVENT_SHIFT_SPR;
-	}
-	ppu->visible_scanline[256] |= EVENT_LOOPY_INC_VERT_V;
-	ppu->visible_scanline[257] |= EVENT_LOOPY_SET_HORI_V;
-	for (h = 321; h <= 335; h += 8) {
-		ppu->visible_scanline[h] |= EVENT_FETCH_NT;
-		ppu->visible_scanline[h + 2] |= EVENT_FETCH_AT;
-		ppu->visible_scanline[h + 4] |= EVENT_FETCH_LOW_BG;
-		ppu->visible_scanline[h + 6] |= EVENT_FETCH_HIGH_BG;
-		ppu->visible_scanline[h + 7] |= EVENT_LOOPY_INC_HORI_V;
-		ppu->visible_scanline[h + 8] |= EVENT_RELOAD_BG;
-	}
-	for (h = 322; h <= 337; h++)
-		ppu->visible_scanline[h] |= EVENT_SHIFT_BG;
-	ppu->visible_scanline[337] |= EVENT_FETCH_NT;
-	ppu->visible_scanline[339] |= EVENT_FETCH_NT;
-	ppu->visible_scanline[1] |= EVENT_SEC_OAM_CLEAR;
-	ppu->visible_scanline[65] |= EVENT_SPRITE_EVAL;
-	for (h = 257; h <= 320; h += 8)
-		ppu->visible_scanline[h] |= EVENT_FETCH_SPRITE;
+	/* Pre-render scanline (261)
+	This is a dummy scanline, whose sole purpose is to fill the
+	shift registers with the data for the first two tiles of the
+	next scanline. Although no pixels are rendered for this
+	scanline, the PPU still makes the same memory accesses it would
+	for a regular scanline. */
+	v = 261;
+	ppu->events[v] = ppu->pre_render_line;
 
-	/* Build VBLANK scanline */
-	ppu->vblank_scanline[1] |= EVENT_VBLANK_SET;
-
-	/* Build pre-render scanline */
-	for (h = 1; h <= 255; h += 8) {
-		ppu->pre_render_scanline[h] |= EVENT_FETCH_NT;
-		ppu->pre_render_scanline[h + 2] |= EVENT_FETCH_AT;
-		ppu->pre_render_scanline[h + 4] |= EVENT_FETCH_LOW_BG;
-		ppu->pre_render_scanline[h + 6] |= EVENT_FETCH_HIGH_BG;
-		ppu->pre_render_scanline[h + 7] |= EVENT_LOOPY_INC_HORI_V;
-		ppu->pre_render_scanline[h + 8] |= EVENT_RELOAD_BG;
-	}
-	for (h = 2; h <= 257; h++) {
-		ppu->pre_render_scanline[h] |= EVENT_SHIFT_BG;
-		ppu->pre_render_scanline[h] |= EVENT_SHIFT_SPR;
-	}
-	ppu->pre_render_scanline[1] |= EVENT_VBLANK_CLEAR;
-	ppu->pre_render_scanline[256] |= EVENT_LOOPY_INC_VERT_V;
-	ppu->pre_render_scanline[257] |= EVENT_LOOPY_SET_HORI_V;
-	for (h = 280; h <= 304; h++)
-		ppu->pre_render_scanline[h] |= EVENT_LOOPY_SET_VERT_V;
-	for (h = 321; h <= 335; h += 8) {
-		ppu->pre_render_scanline[h] |= EVENT_FETCH_NT;
-		ppu->pre_render_scanline[h + 2] |= EVENT_FETCH_AT;
-		ppu->pre_render_scanline[h + 4] |= EVENT_FETCH_LOW_BG;
-		ppu->pre_render_scanline[h + 6] |= EVENT_FETCH_HIGH_BG;
-		ppu->pre_render_scanline[h + 7] |= EVENT_LOOPY_INC_HORI_V;
-		ppu->pre_render_scanline[h + 8] |= EVENT_RELOAD_BG;
-	}
-	for (h = 322; h <= 337; h++)
-		ppu->pre_render_scanline[h] |= EVENT_SHIFT_BG;
-	ppu->pre_render_scanline[337] |= EVENT_FETCH_NT;
-	ppu->pre_render_scanline[339] |= EVENT_FETCH_AT;
-	for (h = 257; h <= 320; h += 8)
-		ppu->pre_render_scanline[h] |= EVENT_FETCH_SPRITE;
-
-	/* Build frame events */
+	/* Visible scanlines (0-239)
+	These are the visible scanlines, which contain the graphics to be
+	displayed on the screen. This includes the rendering of both the
+	background and the sprites. During these scanlines, the PPU is busy
+	fetching data, so the program should not access PPU memory during this
+	time, unless rendering is turned off. */
 	for (v = 0; v <= 239; v++)
-		ppu->events[v] = ppu->visible_scanline;
-	ppu->events[240] = ppu->idle_scanline;
-	ppu->events[241] = ppu->vblank_scanline;
+		ppu->events[v] = ppu->visible_line;
+
+	/* Post-render scanline (240)
+	The PPU just idles during this scanline. Even though accessing PPU
+	memory from the program would be safe here, the VBlank flag isn't set
+	until after this scanline. */
+	v = 240;
+	ppu->events[v] = ppu->idle_line;
+
+	/* Vertical blanking lines (241-260)
+	The VBlank flag of the PPU is set at tick 1 (the second tick) of
+	scanline 241, where the VBlank NMI also occurs. The PPU makes no memory
+	accesses during these scanlines, so PPU memory can be freely accessed by
+	the program. */
+	v = 241;
+	ppu->events[v] = ppu->vblank_line;
 	for (v = 242; v <= 260; v++)
-		ppu->events[v] = ppu->idle_scanline;
-	ppu->events[261] = ppu->pre_render_scanline;
+		ppu->events[v] = ppu->idle_line;
 }
 
 void ppu_update_counters(struct ppu *ppu)
