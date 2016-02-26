@@ -81,8 +81,8 @@ union ppu_mask {
 	uint8_t value;
 	struct {
 		uint8_t greyscale:1;
-		uint8_t bg_clipping:1;
-		uint8_t sprite_cipping:1;
+		uint8_t bg_show_left_col:1;
+		uint8_t sprite_show_left_col:1;
 		uint8_t bg_visibility:1;
 		uint8_t sprite_visibility:1;
 		uint8_t color_emphasis:3;
@@ -467,6 +467,7 @@ void ppu_output(struct ppu *ppu)
 	union ppu_palette_entry entry;
 	uint16_t address;
 	bool bg_priority;
+	bool clipped;
 	uint8_t bg_color = 0;
 	uint8_t sprite_color = 0;
 	uint8_t bg_palette = 0;
@@ -474,10 +475,17 @@ void ppu_output(struct ppu *ppu)
 	uint8_t palette;
 	uint8_t l;
 	uint8_t h;
+	uint8_t x;
 	int i;
 
-	/* Only get data if background rendering is enabled */
-	if (ppu->mask.bg_visibility) {
+	/* Get current X coordinate from H counter (output starts at h = 2) */
+	x = ppu->h - 2;
+
+	/* Check if background clipping is enabled and must be discarded */
+	clipped = !ppu->mask.bg_show_left_col && (x < TILE_WIDTH);
+
+	/* Only get data if background rendering is enabled (and not clipped) */
+	if (ppu->mask.bg_visibility && !clipped) {
 		/* Get palette index */
 		l = bitops_getb(&r->shift_at_low, 7 - ppu->fine_x_scroll, 1);
 		h = bitops_getb(&r->shift_at_high, 7 - ppu->fine_x_scroll, 1);
@@ -489,8 +497,11 @@ void ppu_output(struct ppu *ppu)
 		bg_color = l | (h << 1);
 	}
 
+	/* Check if sprite clipping is enabled and must be discarded */
+	clipped = !ppu->mask.sprite_show_left_col && (x < TILE_WIDTH);
+
 	/* Find first sprite opaque pixel if sprite rendering is enabled */
-	if (ppu->mask.sprite_visibility)
+	if (ppu->mask.sprite_visibility && !clipped)
 		for (i = 0; i < NUM_SPRITES_PER_LINE; i++) {
 			/* Skip non-active sprites */
 			if (ppu->render_data.x_counters[i] > 0)
@@ -533,8 +544,7 @@ void ppu_output(struct ppu *ppu)
 
 	/* Set pixel based on palette entry */
 	entry.value = memory_readb(ppu->bus_id, address);
-	video_set_pixel(ppu->h - 2, ppu->v,
-		ppu_palette[entry.luma][entry.chroma]);
+	video_set_pixel(x, ppu->v, ppu_palette[entry.luma][entry.chroma]);
 }
 
 void ppu_shift_bg(struct ppu *ppu)
