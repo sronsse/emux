@@ -860,10 +860,11 @@ void ppu_fetch_sprite(struct ppu *ppu)
 	union ppu_sprite *sprite;
 	uint16_t address;
 	bool transparent;
-	int height;
 	int index;
 	uint8_t low;
 	uint8_t high;
+	uint8_t tile_number;
+	uint8_t y;
 
 	/* Return already if sprite rendering is not enabled */
 	if (!ppu->mask.sprite_visibility)
@@ -893,26 +894,34 @@ void ppu_fetch_sprite(struct ppu *ppu)
 		return;
 	}
 
-	/* Get height based on sprite size */
-	height = ppu->ctrl.sprite_size ? 2 * TILE_HEIGHT : TILE_HEIGHT;
+	/* Get relative Y coordinate from top of the tile */
+	y = ppu->v - sprite->y;
 
 	/* Select pattern table based on sprite size */
 	if (!ppu->ctrl.sprite_size) {
 		/* 8x8 pattern table is based on PPUCTRL */
 		address = (ppu->ctrl.sprite_pattern_table_addr_8x8 == 0) ?
 			PATTERN_TABLE_0_START : PATTERN_TABLE_1_START;
+
+		/* Set tile number */
+		tile_number = sprite->tile_number;
 	} else {
 		/* 8x16 pattern table is based on bit 0 of tile number */
 		address = !(sprite->tile_number & BIT(0)) ?
 			PATTERN_TABLE_0_START : PATTERN_TABLE_1_START;
+
+		/* Set tile number (based on Y/vertical flip) */
+		tile_number = sprite->tile_number & ~BIT(0);
+		if ((y >= TILE_HEIGHT) != sprite->attributes.v_flip)
+			tile_number++;
 	}
 
 	/* Add tile offset to address */
-	address += sprite->tile_number * TILE_SIZE;
+	address += tile_number * TILE_SIZE;
 
 	/* Add line offset to address based on vertical flip */
 	address += !sprite->attributes.v_flip ?
-		ppu->v - sprite->y : height - (ppu->v - sprite->y) - 1;
+		y % TILE_HEIGHT : (TILE_HEIGHT - (y % TILE_HEIGHT) - 1);
 
 	/* Fetch tile data */
 	low = memory_readb(ppu->bus_id, address);
