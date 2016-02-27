@@ -886,14 +886,6 @@ void ppu_fetch_sprite(struct ppu *ppu)
 	if (index == 0)
 		ppu->spr_0_fetched = ppu->spr_0_evaluated;
 
-	/* Dummy fetches are replaced by transparent data */
-	transparent = (sprite->y == 0xFF);
-	if (transparent) {
-		ppu->render_data.shift_spr_low[index] = 0;
-		ppu->render_data.shift_spr_high[index] = 0;
-		return;
-	}
-
 	/* Get relative Y coordinate from top of the tile */
 	y = ppu->v - sprite->y;
 
@@ -931,6 +923,14 @@ void ppu_fetch_sprite(struct ppu *ppu)
 	if (sprite->attributes.h_flip) {
 		low = bitops_reverse(low, 8);
 		high = bitops_reverse(high, 8);
+	}
+
+	/* Dummy fetches are replaced by transparent data */
+	transparent = (sprite->y == 0xFF);
+	if (transparent) {
+		ppu->render_data.shift_spr_low[index] = 0;
+		ppu->render_data.shift_spr_high[index] = 0;
+		return;
 	}
 
 	/* Set tile data into shift registers */
