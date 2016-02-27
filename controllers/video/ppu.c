@@ -468,6 +468,7 @@ void ppu_output(struct ppu *ppu)
 	uint16_t address;
 	bool bg_priority;
 	bool clipped;
+	bool hit;
 	uint8_t bg_color = 0;
 	uint8_t sprite_color = 0;
 	uint8_t bg_palette = 0;
@@ -516,8 +517,18 @@ void ppu_output(struct ppu *ppu)
 			if (color == 0)
 				continue;
 
-			/* Set sprite 0 hit flag if needed */
-			if ((i == 0) && (bg_color != 0) && ppu->spr_0_fetched)
+			/* Set sprite 0 hit flag if needed:
+			- If background or sprite rendering is disabled
+			- If the left-side clipping window is enabled
+			- At x = 255
+			- When the background or sprite pixel is transparent
+			- If sprite 0 hit has already occurred this frame */
+			hit = (i == 0);
+			hit &= ppu->spr_0_fetched;
+			hit &= (x != 255);
+			hit &= (bg_color != 0);
+			hit &= !ppu->status.sprite_0_hit;
+			if (hit)
 				ppu->status.sprite_0_hit = 1;
 
 			/* Save sprite information and break */
