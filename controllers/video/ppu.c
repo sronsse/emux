@@ -876,6 +876,7 @@ void ppu_fetch_sprite(struct ppu *ppu)
 	uint8_t high;
 	uint8_t tile_number;
 	uint8_t y;
+	int height;
 
 	/* Return already if sprite rendering is not enabled */
 	if (!ppu->mask.sprite_visibility)
@@ -896,6 +897,9 @@ void ppu_fetch_sprite(struct ppu *ppu)
 	/* Set sprite 0 fetched flag if needed */
 	if (index == 0)
 		ppu->spr_0_fetched = ppu->spr_0_evaluated;
+
+	/* Get height based on sprite size */
+	height = ppu->ctrl.sprite_size ? 2 * TILE_HEIGHT : TILE_HEIGHT;
 
 	/* Get relative Y coordinate from top of the tile */
 	y = ppu->v - sprite->y;
@@ -938,6 +942,7 @@ void ppu_fetch_sprite(struct ppu *ppu)
 
 	/* Dummy fetches are replaced by transparent data */
 	transparent = (sprite->y == 0xFF);
+	transparent |= ((ppu->v < sprite->y) || (ppu->v >= sprite->y + height));
 	if (transparent) {
 		ppu->render_data.shift_spr_low[index] = 0;
 		ppu->render_data.shift_spr_high[index] = 0;
