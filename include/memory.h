@@ -10,6 +10,9 @@
 #define KB(x) (x * 1024)
 #define MB(x) (x * 1024 * 1024)
 
+#define MEM_SIZE(area) \
+	(area->data.mem.end - area->data.mem.start + 1)
+
 #define DECLARE_MEMORY_READ_OP(ext, type) \
 	typedef type (*read##ext##_t)(region_data_t *, address_t);
 #define DECLARE_MEMORY_WRITE_OP(ext, type) \
@@ -92,6 +95,7 @@ extern struct mops ram_mops;
 	{ \
 		struct region *r; \
 		struct resource *mirror; \
+		address_t size; \
 		address_t a; \
 		int i; \
 		int j; \
@@ -112,6 +116,9 @@ extern struct mops ram_mops;
 				return r->mops->read##ext(r->data, a); \
 			} \
 	\
+			/* Get region size */ \
+			size = MEM_SIZE(r->area); \
+	\
 			/* Call operation if address is within a mirror */ \
 			for (j = 0; j < r->area->num_children; j++) { \
 				mirror = &r->area->children[j]; \
@@ -119,6 +126,7 @@ extern struct mops ram_mops;
 					(address >= mirror->data.mem.start) && \
 					(address <= mirror->data.mem.end)) { \
 					a = address - mirror->data.mem.start; \
+					a %= size; \
 					return r->mops->read##ext(r->data, a); \
 				} \
 			} \
@@ -138,6 +146,7 @@ extern struct mops ram_mops;
 	{ \
 		struct region *r; \
 		struct resource *mirror; \
+		address_t size; \
 		address_t a; \
 		int num; \
 		int i; \
@@ -161,6 +170,9 @@ extern struct mops ram_mops;
 				num++; \
 			} \
 	\
+			/* Get region size */ \
+			size = MEM_SIZE(r->area); \
+	\
 			/* Parse mirrors */ \
 			for (j = 0; j < r->area->num_children; j++) { \
 				mirror = &r->area->children[j]; \
@@ -172,7 +184,7 @@ extern struct mops ram_mops;
 					continue; \
 	\
 				/* Adapt address and call write operation */ \
-				a = addr - mirror->data.mem.start; \
+				a = (addr - mirror->data.mem.start) % size; \
 				r->mops->write##ext(r->data, data, a); \
 				num++; \
 			} \
