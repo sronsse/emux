@@ -492,13 +492,11 @@ void triangle_update(struct apu *apu)
 	uint16_t period;
 	bool silenced;
 
-	/* Return if channel is disabled (zeroing the output) */
+	/* Return if channel is disabled and output is 0 (avoiding popping) */
 	silenced = apu->triangle.len_counter_silenced;
 	silenced |= apu->triangle.linear_counter_silenced;
-	if (silenced) {
-		apu->triangle.value = 0;
+	if (silenced && (apu->triangle.value == 0))
 		return;
-	}
 
 	/* Check if triangle channel needs update */
 	if (apu->triangle.counter == 0) {
