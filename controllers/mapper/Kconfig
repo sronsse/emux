@@ -13,6 +13,13 @@ config CONTROLLER_MAPPER_MBC1
 	help
 		Enable GB MBC1 cartridge type
 
+config CONTROLLER_MAPPER_MBC2
+	bool "MBC2"
+	depends on CONTROLLER_MAPPER_GB
+	default y
+	help
+		Enable GB MBC2 cartridge type
+
 config CONTROLLER_MAPPER_ROM
 	bool "ROM"
 	depends on CONTROLLER_MAPPER_GB
