@@ -107,6 +107,7 @@ bool fixup_port(struct port_region *region, port_t *port)
 		end = region->area->children[i].data.port.end;
 		if ((*port >= start) && (*port <= end)) {
 			*port -= start;
+			*port %= PORT_SIZE(region->area);
 			return true;
 		}
 	}

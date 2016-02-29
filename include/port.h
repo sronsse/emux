@@ -5,6 +5,9 @@
 #include <list.h>
 #include <resource.h>
 
+#define PORT_SIZE(area) \
+	(area->data.port.end - area->data.port.start + 1)
+
 typedef uint8_t port_t;
 
 typedef void port_data_t;
