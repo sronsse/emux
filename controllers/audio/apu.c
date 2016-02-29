@@ -294,6 +294,7 @@ void apu_writeb(struct apu *apu, uint8_t b, address_t address)
 		if (apu->r.ctrl.pulse1_len_counter_en) {
 			id = apu->r.pulse1_t_hi.len_counter_load;
 			apu->pulse1.len_counter = len_counter_table[id];
+			apu->pulse1.len_counter_silenced = false;
 		}
 
 		/* Set pulse 1 envelope start flag */
@@ -308,6 +309,7 @@ void apu_writeb(struct apu *apu, uint8_t b, address_t address)
 		if (apu->r.ctrl.pulse2_len_counter_en) {
 			id = apu->r.pulse2_t_hi.len_counter_load;
 			apu->pulse2.len_counter = len_counter_table[id];
+			apu->pulse2.len_counter_silenced = false;
 		}
 
 		/* Set pulse 2 envelope start flag */
@@ -322,6 +324,7 @@ void apu_writeb(struct apu *apu, uint8_t b, address_t address)
 		if (apu->r.ctrl.triangle_len_counter_en) {
 			id = apu->r.triangle_t_hi.len_counter_load;
 			apu->triangle.len_counter = len_counter_table[id];
+			apu->triangle.len_counter_silenced = false;
 		}
 
 		/* Set triangle linear counter reload flag */
@@ -332,6 +335,7 @@ void apu_writeb(struct apu *apu, uint8_t b, address_t address)
 		if (apu->r.ctrl.noise_len_counter_en) {
 			id = apu->r.noise_len_counter.load;
 			apu->noise.len_counter = len_counter_table[id];
+			apu->noise.len_counter_silenced = false;
 		}
 
 		/* Set noise envelope start flag */
@@ -364,14 +368,22 @@ void ctrl_writeb(struct apu *apu, uint8_t b, address_t UNUSED(address))
 	/* The length counters can be disabled by clearing the appropriate bit
 	in the control register, which immediately sets the counter to 0 and
 	keeps it there. */
-	if (!apu->r.ctrl.pulse1_len_counter_en)
+	if (!apu->r.ctrl.pulse1_len_counter_en) {
 		apu->pulse1.len_counter = 0;
-	if (!apu->r.ctrl.pulse2_len_counter_en)
+		apu->pulse1.len_counter_silenced = true;
+	}
+	if (!apu->r.ctrl.pulse2_len_counter_en) {
 		apu->pulse2.len_counter = 0;
-	if (!apu->r.ctrl.triangle_len_counter_en)
+		apu->pulse2.len_counter_silenced = true;
+	}
+	if (!apu->r.ctrl.triangle_len_counter_en) {
 		apu->triangle.len_counter = 0;
-	if (!apu->r.ctrl.noise_len_counter_en)
+		apu->triangle.len_counter_silenced = true;
+	}
+	if (!apu->r.ctrl.noise_len_counter_en) {
 		apu->noise.len_counter = 0;
+		apu->noise.len_counter_silenced = true;
+	}
 
 	/* When a sample is started, the current address is set to the sample
 	address, and bytes remaining is set to the sample length (the DMC sample
@@ -702,7 +714,6 @@ void length_counter_tick(struct apu *apu)
 	struct pulse *pulse;
 	struct pulse_main *p_main;
 	bool halt;
-	bool silenced;
 	int c;
 
 	/* Handle pulse channels 1 & 2 */
@@ -711,43 +722,24 @@ void length_counter_tick(struct apu *apu)
 		pulse = (c == 1) ? &apu->pulse1 : &apu->pulse2;
 		p_main = (c == 1) ? &apu->r.pulse1_main : &apu->r.pulse2_main;
 
-		/* Retrieve halt flag */
+		/* Decrement length counter, silencing channel if needed */
 		halt = p_main->env_loop_len_counter_halt;
-
-		/* The length counter silences the channel when clocked while it
-		is already zero (provided the length counter halt flag isn't
-		set) */
-		silenced = ((pulse->len_counter == 0) && !halt);
-		pulse->len_counter_silenced = silenced;
-
-		/* Decrement length counter if needed */
 		if (!halt && (pulse->len_counter != 0))
-			pulse->len_counter--;
+			if (--pulse->len_counter == 0)
+				pulse->len_counter_silenced = true;
 	}
 
-	/* Retrieve triangle halt flag */
+	/* Decrement triangle length counter, silencing channel if needed */
 	halt = apu->r.triangle_linear_counter.control_len_counter_halt;
-
-	/* The length counter silences the channel when clocked while it is
-	already zero (provided the length counter halt flag isn't set) */
-	silenced = ((apu->triangle.len_counter == 0) && !halt);
-	apu->triangle.len_counter_silenced = silenced;
-
-	/* Decrement triangle length counter if needed */
 	if (!halt && (apu->triangle.len_counter != 0))
-		apu->triangle.len_counter--;
+		if (--apu->triangle.len_counter == 0)
+			apu->triangle.len_counter_silenced = true;
 
-	/* Retrieve noise halt flag */
+	/* Decrement noise length counter, silencing channel if needed */
 	halt = apu->r.noise_main.env_loop_len_counter_halt;
-
-	/* The length counter silences the channel when clocked while it is
-	already zero (provided the length counter halt flag isn't set) */
-	silenced = ((apu->noise.len_counter == 0) && !halt);
-	apu->noise.len_counter_silenced = silenced;
-
-	/* Decrement noise length counter if needed */
 	if (!halt && (apu->noise.len_counter != 0))
-		apu->noise.len_counter--;
+		if (--apu->noise.len_counter == 0)
+			apu->noise.len_counter_silenced = true;
 
 	/* Update length counters status */
 	apu->r.stat.pulse1_len_counter_stat = (apu->pulse1.len_counter > 0);
