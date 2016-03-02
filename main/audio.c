@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <audio.h>
@@ -7,6 +8,18 @@
 
 #define DEFAULT_SAMPLING_RATE 44100
 
+struct resample_data {
+	enum audio_format format;
+	int num_channels;
+	float mul;
+	float step;
+	int count;
+	int left;
+	int right;
+};
+
+static int16_t audio_get_sample(void **buffer);
+
 /* Command-line parameter */
 static char *audio_fe_name;
 PARAM(audio_fe_name, string, "audio", NULL, "Selects audio frontend")
@@ -15,6 +28,39 @@ PARAM(sampling_rate, int, "sampling-rate", NULL, "Sets audio sampling rate")
 
 struct list_link *audio_frontends;
 static struct audio_frontend *frontend;
+static struct resample_data resample_data;
+
+int16_t audio_get_sample(void **buffer)
+{
+	int16_t v = 0;
+
+	/* Get value based on format */
+	switch (resample_data.format) {
+	case AUDIO_FORMAT_U8:
+		v = *((uint8_t *)*buffer);
+		v -= UCHAR_MAX / 2;
+		v <<= 8;
+		*buffer += sizeof(uint8_t);
+		break;
+	case AUDIO_FORMAT_S8:
+		v = *((int8_t *)*buffer);
+		v <<= 8;
+		*buffer += sizeof(int8_t);
+		break;
+	case AUDIO_FORMAT_U16:
+		v = *((uint16_t *)*buffer);
+		v -= USHRT_MAX / 2;
+		*buffer += sizeof(uint16_t);
+		break;
+	case AUDIO_FORMAT_S16:
+		v = *((int16_t *)*buffer);
+		*buffer += sizeof(int16_t);
+		break;
+	}
+
+	/* Return value */
+	return v;
+}
 
 bool audio_init(struct audio_specs *specs)
 {
@@ -53,12 +99,22 @@ bool audio_init(struct audio_specs *specs)
 			continue;
 
 		/* Initialize frontend */
-		specs->sampling_rate = sampling_rate;
-		if (fe->init && !fe->init(fe, specs))
+		if (fe->init && !fe->init(fe, sampling_rate))
 			return false;
 
-		/* Save frontend and return success */
+		/* Save frontend */
 		frontend = fe;
+
+		/* Initialize resampling data */
+		resample_data.format = specs->format;
+		resample_data.num_channels = specs->channels;
+		resample_data.mul = sampling_rate / specs->freq;
+		resample_data.step = 0.0f;
+		resample_data.count = 0;
+		resample_data.left = 0;
+		resample_data.right = 0;
+
+		/* Return success */
 		return true;
 	}
 
@@ -69,8 +125,48 @@ bool audio_init(struct audio_specs *specs)
 
 void audio_enqueue(void *buffer, int length)
 {
-	if (frontend && frontend->enqueue)
-		frontend->enqueue(frontend, buffer, length);
+	bool stereo = (resample_data.num_channels == 2);
+	float prev_step;
+	int16_t left;
+	int16_t right;
+	int i;
+
+	/* Return if needed */
+	if (!frontend || !frontend->enqueue)
+		return;
+
+	/* Parse all input buffer samples */
+	for (i = 0; i < length; i++) {
+		/* Get left (or mono) value */
+		resample_data.left += audio_get_sample(&buffer);
+
+		/* Get right value if needed */
+		if (stereo)
+			resample_data.right += audio_get_sample(&buffer);
+
+		/* Increment resample data count */
+		resample_data.count++;
+
+		/* Compute next step until output is no longer generated */
+		prev_step = resample_data.step;
+		resample_data.step = prev_step + resample_data.mul;
+		while ((int)prev_step != (int)resample_data.step) {
+			/* Compute final left/right (or mono) samples */
+			left = resample_data.left / resample_data.count;
+			right = !stereo ?
+				left :
+				resample_data.right / resample_data.count;
+
+			/* Push left/right pair to frontend */
+			frontend->enqueue(frontend, left, right);
+
+			/* Reset resample data */
+			resample_data.step -= 1.0f;
+			resample_data.count = 0;
+			resample_data.left = 0;
+			resample_data.right = 0;
+		}
+	}
 }
 
 void audio_start()

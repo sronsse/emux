@@ -32,14 +32,13 @@ struct audio_specs {
 	float freq;
 	enum audio_format format;
 	int channels;
-	int sampling_rate;
 };
 
 struct audio_frontend {
 	char *name;
 	audio_priv_data_t *priv_data;
-	bool (*init)(struct audio_frontend *fe, struct audio_specs *specs);
-	void (*enqueue)(struct audio_frontend *fe, void *buffer, int count);
+	bool (*init)(struct audio_frontend *fe, int sampling_rate);
+	void (*enqueue)(struct audio_frontend *fe, int16_t left, int16_t right);
 	void (*start)(struct audio_frontend *fe);
 	void (*stop)(struct audio_frontend *fe);
 	void (*deinit)(struct audio_frontend *fe);
