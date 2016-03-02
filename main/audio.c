@@ -6,7 +6,7 @@
 #include <list.h>
 #include <log.h>
 
-#define DEFAULT_SAMPLING_RATE 44100
+#define DEFAULT_SAMPLING_RATE 48000
 
 struct resample_data {
 	enum audio_format format;
