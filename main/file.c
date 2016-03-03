@@ -1,12 +1,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
-#ifdef _WIN32
-#include <windows.h>
-#else
-#ifndef GEKKO
+#ifndef _WIN32
 #include <sys/mman.h>
-#endif
 #include <sys/stat.h>
 #endif
 #include <env.h>
@@ -37,69 +33,7 @@ file_handle_t open_file(char *path, char *mode)
 
 void *map_file(char *path, int offset, int size)
 {
-#if defined(_WIN32)
-	SYSTEM_INFO system_info;
-	HANDLE file;
-	HANDLE mapping;
-	char *data;
-	int pa_offset;
-
-	LOG_D("Mapping \"%s\".\n", path);
-
-	GetSystemInfo(&system_info);
-	pa_offset = offset & ~(system_info.dwAllocationGranularity - 1);
-	size += offset - pa_offset;
-
-	file = CreateFile(path, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
-	if (file == INVALID_HANDLE_VALUE) {
-		LOG_W("Could not open \"%s\"!\n", path);
-		return NULL;
-	}
-
-	mapping = CreateFileMapping(file, 0, PAGE_READONLY, 0, size, 0);
-	CloseHandle(file);
-	if (!mapping) {
-		LOG_W("Could not map \"%s\"!\n", path);
-		return NULL;
-	}
-
-	data = MapViewOfFile(mapping, FILE_MAP_READ, 0, pa_offset, size);
-	CloseHandle(mapping);
-
-	data += offset - pa_offset;
-	return data;
-#elif defined(GEKKO)
-	file_handle_t file;
-	char *data;
-
-	/* Allocate memory using requested size */
-	data = malloc(size);
-
-	/* Open requested file in read-only mode (as mmap is not supported) */
-	LOG_D("Opening \"%s\".\n", path);
-	file = fopen(path, "rb");
-
-	/* Warn if file was not opened */
-	if (!file) {
-		LOG_W("Could not open \"%s\"!\n", path);
-		free(data);
-		return NULL;
-	}
-
-	/* Set desired offset within file */
-	fseek(file, offset, SEEK_SET);
-
-	/* Read from file into buffer */
-	if (fread(data, 1, size, file) != (size_t)size) {
-		LOG_W("Could not read \"%s\"!\n", path);
-		free(data);
-		fclose(file);
-		return NULL;
-	}
-
-	fclose(file);
-	return data;
-#else
+#ifndef _WIN32
 	int fd;
 	struct stat sb;
 	char *data;
@@ -141,6 +75,37 @@ void *map_file(char *path, int offset, int size)
 	data += offset - pa_offset;
 
 	close(fd);
+	return data;
+#else
+	file_handle_t file;
+	char *data;
+
+	/* Allocate memory using requested size */
+	data = malloc(size);
+
+	/* Open requested file in read-only mode (as mmap is not supported) */
+	LOG_D("Opening \"%s\".\n", path);
+	file = fopen(path, "rb");
+
+	/* Warn if file was not opened */
+	if (!file) {
+		LOG_W("Could not open \"%s\"!\n", path);
+		free(data);
+		return NULL;
+	}
+
+	/* Set desired offset within file */
+	fseek(file, offset, SEEK_SET);
+
+	/* Read from file into buffer */
+	if (fread(data, 1, size, file) != (size_t)size) {
+		LOG_W("Could not read \"%s\"!\n", path);
+		free(data);
+		fclose(file);
+		return NULL;
+	}
+
+	fclose(file);
 	return data;
 #endif
 }
@@ -239,20 +204,13 @@ void *file_map(enum path_type type, char *path, int offset, int size)
 
 void file_unmap(void *data, int size)
 {
-#ifdef _WIN32
-	SYSTEM_INFO system_info;
-	intptr_t pa_data;
-	GetSystemInfo(&system_info);
-	pa_data = (intptr_t)data & ~(system_info.dwPageSize - 1);
-	size += (intptr_t)data - pa_data;
-	UnmapViewOfFile((void *)pa_data);
-#elif defined(GEKKO)
-	(void)size;
-	free(data);
-#else
+#ifndef _WIN32
 	intptr_t pa_data = (intptr_t)data & ~(sysconf(_SC_PAGE_SIZE) - 1);
 	size += (intptr_t)data - pa_data;
 	munmap((void *)pa_data, size);
+#else
+	(void)size;
+	free(data);
 #endif
 }
 
