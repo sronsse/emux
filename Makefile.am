@@ -160,12 +160,15 @@ endif
 if CONFIG_CONTROLLER_MAPPER_MBC1
 emux_SOURCES += controllers/mapper/mbc1.c
 endif
-if CONFIG_CONTROLLER_MAPPER_NES
-emux_SOURCES += controllers/mapper/nes_mapper.c
-emux_SOURCES += include/controllers/mapper/nes_mapper.h
+if CONFIG_CONTROLLER_MAPPER_MMC1
+emux_SOURCES += controllers/mapper/mmc1.c
 endif
 if CONFIG_CONTROLLER_MAPPER_MMC3
 emux_SOURCES += controllers/mapper/mmc3.c
+endif
+if CONFIG_CONTROLLER_MAPPER_NES
+emux_SOURCES += controllers/mapper/nes_mapper.c
+emux_SOURCES += include/controllers/mapper/nes_mapper.h
 endif
 if CONFIG_CONTROLLER_MAPPER_NROM
 emux_SOURCES += controllers/mapper/nrom.c

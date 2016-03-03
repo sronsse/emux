@@ -26,6 +26,13 @@ config CONTROLLER_MAPPER_NES
 	help
 		Enable NES mapper
 
+config CONTROLLER_MAPPER_MMC1
+	bool "MMC1"
+	depends on CONTROLLER_MAPPER_NES
+	default y
+	help
+		Enable NES MMC1 mapper
+
 config CONTROLLER_MAPPER_MMC3
 	bool "MMC3"
 	depends on CONTROLLER_MAPPER_NES
