@@ -15,7 +15,7 @@ static void nes_mapper_deinit(struct controller_instance *instance);
 
 static char *mappers[] = {
 	"nrom",		/* No Mapper (or unknown mapper) */
-	NULL,
+	"mmc1",
 	NULL,
 	NULL,
 	"mmc3"		/* MMC3 */
