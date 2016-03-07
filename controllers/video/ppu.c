@@ -180,7 +180,7 @@ struct ppu {
 	union ppu_ctrl ctrl;
 	union ppu_mask mask;
 	union ppu_status status;
-	uint16_t oam_addr;
+	uint8_t oam_addr;
 	union ppu_vram_address vram_addr;
 	union ppu_vram_address temp_vram_addr;
 	uint8_t fine_x_scroll:3;
