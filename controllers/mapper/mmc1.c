@@ -11,6 +11,7 @@
 
 #define PRG_ROM_BANK_SIZE	KB(16)
 #define CHR_ROM_BANK_SIZE	KB(4)
+#define CHR_RAM_SIZE		KB(8)
 
 #define SHIFT_REG_RESET_VALUE	0x00
 #define NUM_SHIFT_STEPS		5
@@ -56,11 +57,12 @@ struct mmc1 {
 	uint8_t *vram;
 	uint8_t *prg_ram;
 	uint8_t *prg_rom;
+	uint8_t *chr_ram;
 	uint8_t *chr_rom;
 	int prg_rom_size;
 	int chr_rom_size;
 	struct region prg_rom_region;
-	struct region chr_rom_region;
+	struct region chr_region;
 	struct region load_region;
 	struct region vram_region;
 	struct region sram_region;
@@ -336,15 +338,24 @@ bool mmc1_init(struct controller_instance *instance)
 	/* Allocate PRG RAM */
 	mmc1->prg_ram = calloc(PRG_RAM_SIZE(cart_header), sizeof(uint8_t));
 
-	/* Add CHR ROM region */
+	/* Allocate CHR RAM if needed */
+	if (cart_header->chr_rom_size == 0)
+		mmc1->chr_ram = calloc(CHR_RAM_SIZE, sizeof(uint8_t));
+
+	/* Add CHR ROM or CHR RAM region */
 	res = resource_get("chr",
 		RESOURCE_MEM,
 		instance->resources,
 		instance->num_resources);
-	mmc1->chr_rom_region.area = res;
-	mmc1->chr_rom_region.mops = &chr_rom_mops;
-	mmc1->chr_rom_region.data = mmc1;
-	memory_region_add(&mmc1->chr_rom_region);
+	mmc1->chr_region.area = res;
+	if (cart_header->chr_rom_size != 0) {
+		mmc1->chr_region.mops = &chr_rom_mops;
+		mmc1->chr_region.data = mmc1;
+	} else {
+		mmc1->chr_region.mops = &ram_mops;
+		mmc1->chr_region.data = mmc1->chr_ram;
+	}
+	memory_region_add(&mmc1->chr_region);
 
 	/* Add VRAM region */
 	res = resource_get("vram",
@@ -419,8 +430,10 @@ void mmc1_deinit(struct controller_instance *instance)
 {
 	struct mmc1 *mmc1 = instance->priv_data;
 	file_unmap(mmc1->prg_rom, mmc1->prg_rom_size);
-	file_unmap(mmc1->chr_rom, mmc1->chr_rom_size);
+	if (!mmc1->chr_ram)
+		file_unmap(mmc1->chr_rom, mmc1->chr_rom_size);
 	free(mmc1->prg_ram);
+	free(mmc1->chr_ram);
 	free(mmc1);
 }
 
