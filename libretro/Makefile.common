@@ -40,6 +40,7 @@ nes_SOURCES = \
 	$(CORE_DIR)/controllers/audio/apu.c \
 	$(CORE_DIR)/controllers/dma/nes_sprite.c \
 	$(CORE_DIR)/controllers/input/nes_controller.c \
+	$(CORE_DIR)/controllers/mapper/mmc1.c \
 	$(CORE_DIR)/controllers/mapper/mmc3.c \
 	$(CORE_DIR)/controllers/mapper/nes_mapper.c \
 	$(CORE_DIR)/controllers/mapper/nrom.c \
