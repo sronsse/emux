@@ -126,6 +126,7 @@ bool audio_init(struct audio_specs *specs)
 void audio_enqueue(void *buffer, int length)
 {
 	bool stereo = (resample_data.num_channels == 2);
+	bool reset;
 	float prev_step;
 	int16_t left;
 	int16_t right;
@@ -148,6 +149,7 @@ void audio_enqueue(void *buffer, int length)
 		resample_data.count++;
 
 		/* Compute next step until output is no longer generated */
+		reset = false;
 		prev_step = resample_data.step;
 		resample_data.step = prev_step + resample_data.mul;
 		while ((int)prev_step != (int)resample_data.step) {
@@ -160,8 +162,13 @@ void audio_enqueue(void *buffer, int length)
 			/* Push left/right pair to frontend */
 			frontend->enqueue(frontend, left, right);
 
-			/* Reset resample data */
+			/* Update step and request state reset */
 			resample_data.step -= 1.0f;
+			reset = true;
+		}
+
+		/* Reset state if required */
+		if (reset) {
 			resample_data.count = 0;
 			resample_data.left = 0;
 			resample_data.right = 0;
