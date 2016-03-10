@@ -78,7 +78,7 @@ bool sdl_init(struct audio_frontend *fe, int sampling_rate)
 	audio_data->buffer_size *= 2 * sizeof(int16_t);
 	audio_data->buffer_size *= LATENCY_MS_MAX / 1000.0f;
 	audio_data->buffer_size *= NUM_BUFFERS;
-	LOG_E("Computed audio buffer size: %ub\n", audio_data->buffer_size);
+	LOG_D("Computed audio buffer size: %ub\n", audio_data->buffer_size);
 
 	/* Initialize audio data */
 	audio_data->buffer = calloc(audio_data->buffer_size, sizeof(uint8_t));
