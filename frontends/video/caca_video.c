@@ -23,12 +23,14 @@ struct caca_data {
 	caca_display_t *dp;
 	int width;
 	int height;
+	int scale;
 	uint32_t *pixels;
 	caca_dither_t *dither;
 };
 
 static window_t *caca_init(struct video_frontend *fe, struct video_specs *vs);
 static void caca_update(struct video_frontend *fe);
+static window_t *caca_set_size(struct video_frontend *fe, int w, int h);
 static struct color caca_get_p(struct video_frontend *fe, int x, int y);
 static void caca_set_p(struct video_frontend *fe, int x, int y, struct color c);
 static void caca_deinit(struct video_frontend *fe);
@@ -60,6 +62,7 @@ window_t *caca_init(struct video_frontend *fe, struct video_specs *vs)
 	data->dp = dp;
 	data->width = w;
 	data->height = h;
+	data->scale = s;
 	fe->priv_data = data;
 
 	/* Initialize pixels */
@@ -84,6 +87,40 @@ void caca_update(struct video_frontend *fe)
 		caca_get_canvas_height(cv), data->dither, data->pixels);
 
 	caca_refresh_display(dp);
+}
+
+window_t *caca_set_size(struct video_frontend *fe, int w, int h)
+{
+	struct caca_data *data = fe->priv_data;
+	int s = data->scale;
+	caca_canvas_t *cv;
+	int pitch;
+
+	/* Free resource */
+	caca_free_dither(data->dither);
+	caca_free_canvas(caca_get_canvas(data->dp));
+	caca_free_display(data->dp);
+	free(data->pixels);
+
+	/* Re-create canvas and display */
+	cv = caca_create_canvas(w * s / CHAR_WIDTH, h * s / CHAR_HEIGHT);
+	data->dp = caca_create_display(cv);
+	caca_set_display_title(data->dp, "emux");
+	caca_refresh_display(data->dp);
+
+	/* Re-initialize pixels */
+	data->pixels = calloc(w * h, sizeof(uint32_t));
+
+	/* Re-initialize dither */
+	pitch = (BPP / 8) * w;
+	data->dither = caca_create_dither(BPP, w, h, pitch, R_MASK, G_MASK,
+		B_MASK, A_MASK);
+
+	/* Save dimensions */
+	data->width = w;
+	data->height = h;
+
+	return data->dp;
 }
 
 struct color caca_get_p(struct video_frontend *fe, int x, int y)
@@ -112,6 +149,7 @@ void caca_deinit(struct video_frontend *fe)
 	struct caca_data *data = fe->priv_data;
 	caca_display_t *dp = data->dp;
 
+	caca_free_dither(data->dither);
 	caca_free_canvas(caca_get_canvas(dp));
 	caca_free_display(dp);
 	free(data->pixels);
@@ -122,6 +160,7 @@ VIDEO_START(caca)
 	.input = "caca",
 	.init = caca_init,
 	.update = caca_update,
+	.set_size = caca_set_size,
 	.get_p = caca_get_p,
 	.set_p = caca_set_p,
 	.deinit = caca_deinit

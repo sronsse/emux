@@ -5,6 +5,7 @@
 #include <util.h>
 
 static bool caca_init(struct input_frontend *fe, window_t *window);
+static void caca_set_w(struct input_frontend *fe, window_t *window);
 static void caca_update(struct input_frontend *fe);
 static void key_event(caca_event_t *e);
 static void mouse_event(caca_event_t *e);
@@ -73,6 +74,12 @@ bool caca_init(struct input_frontend *fe, window_t *window)
 	return true;
 }
 
+void caca_set_w(struct input_frontend *fe, window_t *window)
+{
+	/* Update window */
+	fe->priv_data = window;
+}
+
 void caca_update(struct input_frontend *fe)
 {
 	caca_display_t *dp = fe->priv_data;
@@ -100,6 +107,7 @@ void caca_update(struct input_frontend *fe)
 
 INPUT_START(caca)
 	.init = caca_init,
+	.set_w = caca_set_w,
 	.update = caca_update
 INPUT_END
 
