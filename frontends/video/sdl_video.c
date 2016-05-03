@@ -21,9 +21,12 @@
 #endif
 
 struct sdl_data {
+	SDL_Window *window;
 	SDL_Surface *screen;
 	SDL_Renderer *renderer;
 	SDL_Texture *texture;
+	int width;
+	int height;
 	int scale;
 };
 
@@ -31,6 +34,7 @@ static window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs);
 static void sdl_update(struct video_frontend *fe);
 static void sdl_lock(struct video_frontend *fe);
 static void sdl_unlock(struct video_frontend *fe);
+static window_t *sdl_set_size(struct video_frontend *fe, int w, int h);
 static struct color sdl_get_p(struct video_frontend *fe, int x, int y);
 static void sdl_set_p(struct video_frontend *fe, int x, int y, struct color c);
 static void sdl_deinit(struct video_frontend *fe);
@@ -57,7 +61,7 @@ window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 		SDL_WINDOWPOS_CENTERED,
 		w,
 		h,
-		0);
+		SDL_WINDOW_RESIZABLE);
 	if (!window) {
 		LOG_E("Error creating window: %s\n", SDL_GetError());
 		SDL_VideoQuit();
@@ -101,9 +105,12 @@ window_t *sdl_init(struct video_frontend *fe, struct video_specs *vs)
 
 	/* Create and fill private data */
 	data = calloc(1, sizeof(struct sdl_data));
+	data->window = window;
 	data->screen = screen;
 	data->renderer = renderer;
 	data->texture = texture;
+	data->width = vs->width;
+	data->height = vs->height;
 	data->scale = vs->scale;
 	fe->priv_data = data;
 
@@ -138,6 +145,45 @@ void sdl_unlock(struct video_frontend *fe)
 	SDL_Surface *screen = data->screen;
 	if (SDL_MUSTLOCK(screen))
 		SDL_UnlockSurface(screen);
+}
+
+window_t *sdl_set_size(struct video_frontend *fe, int w, int h)
+{
+	struct sdl_data *data = fe->priv_data;
+
+	/* Save dimensions */
+	data->width = w;
+	data->height = h;
+
+	/* Adapt dimensions based on scale */
+	w *= data->scale;
+	h *= data->scale;
+
+	/* Free existing screen surface and texture */
+	SDL_FreeSurface(data->screen);
+	SDL_DestroyTexture(data->texture);
+
+	/* Update window size */
+	SDL_SetWindowSize(data->window, w, h);
+
+	/* Re-create screen surface */
+	data->screen = SDL_CreateRGBSurface(0,
+		w,
+		h,
+		BIT_DEPTH,
+		RMASK,
+		GMASK,
+		BMASK,
+		AMASK);
+
+	/* Re-create texture */
+	data->texture = SDL_CreateTexture(data->renderer,
+		data->screen->format->format,
+		SDL_TEXTUREACCESS_STREAMING,
+		w,
+		h);
+
+	return data->screen;
 }
 
 struct color sdl_get_p(struct video_frontend *fe, int x, int y)
@@ -220,6 +266,7 @@ VIDEO_START(sdl)
 	.update = sdl_update,
 	.lock = sdl_lock,
 	.unlock = sdl_unlock,
+	.set_size = sdl_set_size,
 	.get_p = sdl_get_p,
 	.set_p = sdl_set_p,
 	.deinit = sdl_deinit
