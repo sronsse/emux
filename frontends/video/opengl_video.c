@@ -43,6 +43,7 @@ struct vertex {
 static window_t *gl_init(struct video_frontend *fe, struct video_specs *vs);
 static void gl_deinit(struct video_frontend *fe);
 static void gl_update(struct video_frontend *fe);
+static window_t *gl_set_size(struct video_frontend *fe, int w, int h);
 static struct color gl_get_p(struct video_frontend *fe, int x, int y);
 static void gl_set_p(struct video_frontend *fe, int x, int y, struct color c);
 static bool init_shaders(struct video_frontend *fe);
@@ -171,7 +172,6 @@ window_t *gl_init(struct video_frontend *fe, struct video_specs *vs)
 {
 	SDL_Window *window;
 	SDL_GLContext *context;
-	Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
 	struct gl *gl;
 	int w = vs->width;
 	int h = vs->height;
@@ -189,7 +189,7 @@ window_t *gl_init(struct video_frontend *fe, struct video_specs *vs)
 		SDL_WINDOWPOS_CENTERED,
 		w * s,
 		h * s,
-		flags);
+		SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	if (!window) {
 		LOG_E("Error creating window: %s\n", SDL_GetError());
 		SDL_VideoQuit();
@@ -263,6 +263,25 @@ void gl_update(struct video_frontend *fe)
 	SDL_GL_SwapWindow(gl->window);
 }
 
+window_t *gl_set_size(struct video_frontend *fe, int w, int h)
+{
+	struct gl *gl = fe->priv_data;
+
+	/* Update window size */
+	SDL_SetWindowSize(gl->window, w * gl->scale, h * gl->scale);
+	gl->width = w;
+	gl->height = h;
+
+	/* Free pixels and delete texture */
+	free(gl->pixels);
+	glDeleteTextures(1, &gl->texture);
+
+	/* Re-initialize pixels */
+	init_pixels(fe);
+
+	return gl->window;
+}
+
 struct color gl_get_p(struct video_frontend *fe, int x, int y)
 {
 	struct gl *gl = fe->priv_data;
@@ -318,6 +337,7 @@ VIDEO_START(opengl)
 	.input = "sdl",
 	.init = gl_init,
 	.update = gl_update,
+	.set_size = gl_set_size,
 	.get_p = gl_get_p,
 	.set_p = gl_set_p,
 	.deinit = gl_deinit
