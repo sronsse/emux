@@ -9,6 +9,7 @@ COMMON_SOURCES = \
 	$(CORE_DIR)/main/controller.c \
 	$(CORE_DIR)/main/cpu.c \
 	$(CORE_DIR)/main/env.c \
+	$(CORE_DIR)/main/event.c \
 	$(CORE_DIR)/main/file.c \
 	$(CORE_DIR)/main/input.c \
 	$(CORE_DIR)/main/log.c \

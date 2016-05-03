@@ -9,6 +9,7 @@
 #include <cmdline.h>
 #include <controller.h>
 #include <cpu.h>
+#include <event.h>
 #include <input.h>
 #include <log.h>
 #include <machine.h>
@@ -178,6 +179,7 @@ void machine_deinit()
 	memory_region_remove_all();
 	dma_channel_remove_all();
 	port_region_remove_all();
+	event_remove_all();
 	if (machine && machine->deinit)
 		machine->deinit(machine);
 }
