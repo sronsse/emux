@@ -330,6 +330,7 @@ struct input_frontend {
 	char *name;
 	input_priv_data_t *priv_data;
 	bool (*init)(struct input_frontend *fe, window_t *window);
+	void (*set_w)(struct input_frontend *fe, window_t *window);
 	void (*load)(struct input_frontend *fe, struct input_config *cfg);
 	void (*unload)(struct input_frontend *fe, struct input_config *cfg);
 	void (*update)(struct input_frontend *fe);
@@ -337,6 +338,7 @@ struct input_frontend {
 };
 
 bool input_init(char *name, window_t *window);
+void input_set_window(window_t *window);
 void input_update();
 void input_report(struct input_event *event);
 void input_register(struct input_config *config, bool restore);

@@ -513,6 +513,12 @@ bool input_init(char *name, window_t *window)
 	return false;
 }
 
+void input_set_window(window_t *window)
+{
+	if (frontend && frontend->set_w)
+		frontend->set_w(frontend, window);
+}
+
 #ifdef CONFIG_INPUT_XML
 bool input_load(struct input_config *config)
 {

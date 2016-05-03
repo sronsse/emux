@@ -43,6 +43,7 @@ struct video_frontend {
 	void (*update)(struct video_frontend *fe);
 	void (*lock)(struct video_frontend *fe);
 	void (*unlock)(struct video_frontend *fe);
+	window_t *(*set_size)(struct video_frontend *fe, int w, int h);
 	struct color (*get_p)(struct video_frontend *fe, int x, int y);
 	void (*set_p)(struct video_frontend *fe, int x, int y, struct color c);
 	void (*deinit)(struct video_frontend *fe);
@@ -53,6 +54,8 @@ void video_update();
 bool video_updated();
 void video_lock();
 void video_unlock();
+void video_get_size(int *w, int *h);
+void video_set_size(int w, int h);
 struct color video_get_pixel(int x, int y);
 void video_set_pixel(int x, int y, struct color color);
 void video_deinit();

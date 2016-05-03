@@ -14,6 +14,8 @@ PARAM(scale, int, "scale", NULL, "Applies a screen scale ratio")
 
 struct list_link *video_frontends;
 static struct video_frontend *frontend;
+static int width;
+static int height;
 static bool updated;
 
 bool video_init(struct video_specs *vs)
@@ -26,6 +28,10 @@ bool video_init(struct video_specs *vs)
 		LOG_E("Video frontend already initialized!\n");
 		return false;
 	}
+
+	/* Save dimensions */
+	width = vs->width;
+	height = vs->height;
 
 	/* Validate video option */
 	if (!video_fe_name) {
@@ -108,6 +114,25 @@ void video_unlock()
 {
 	if (frontend && frontend->unlock)
 		frontend->unlock(frontend);
+}
+
+void video_get_size(int *w, int *h)
+{
+	*w = width;
+	*h = height;
+}
+
+void video_set_size(int w, int h)
+{
+	window_t *window;
+
+	width = w;
+	height = h;
+
+	if (frontend && frontend->set_size) {
+		window = frontend->set_size(frontend, w, h);
+		input_set_window(window);
+	}
 }
 
 struct color video_get_pixel(int x, int y)
