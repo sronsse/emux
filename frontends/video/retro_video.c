@@ -29,6 +29,7 @@ void retro_video_fill_geometry(struct retro_game_geometry *geometry);
 
 static window_t *ret_init(struct video_frontend *fe, struct video_specs *vs);
 static void ret_update(struct video_frontend *fe);
+static window_t *ret_set_size(struct video_frontend *fe, int w, int h);
 static struct color ret_get_p(struct video_frontend *fe, int x, int y);
 static void ret_set_p(struct video_frontend *fe, int x, int y, struct color c);
 static void ret_deinit(struct video_frontend *fe);
@@ -93,6 +94,30 @@ void ret_update(struct video_frontend *UNUSED(fe))
 	retro_data.video_updated = true;
 }
 
+window_t *ret_set_size(struct video_frontend *UNUSED(fe), int w, int h)
+{
+	struct retro_game_geometry geometry;
+
+	/* Free pixels */
+	free(retro_data.pixels);
+
+	/* Update geometry */
+	retro_data.width = w;
+	retro_data.height = h;
+	geometry.base_width = w;
+	geometry.base_height = h;
+
+	/* Re-initialize pixels */
+	retro_data.pixels = calloc(w * h, sizeof(uint32_t));
+
+	/* Request geometry update */
+	if (!retro_environment_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &geometry))
+		LOG_E("Could not update geometry!\n");
+
+	/* Return success (no window is returned) */
+	return (window_t *)1;
+}
+
 struct color ret_get_p(struct video_frontend *UNUSED(fe), int x, int y)
 {
 	uint32_t pixel = retro_data.pixels[x + y * retro_data.width];
@@ -121,6 +146,7 @@ VIDEO_START(retro)
 	.input = "retro",
 	.init = ret_init,
 	.update = ret_update,
+	.set_size = ret_set_size,
 	.get_p = ret_get_p,
 	.set_p = ret_set_p,
 	.deinit = ret_deinit
