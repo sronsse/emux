@@ -3086,6 +3086,9 @@ uint32_t gpu_readl(struct gpu *gpu, address_t address)
 					/* Reset saved command */
 					read_buffer->cmd = 0;
 
+					/* Reset send VRAM to CPU ready bit */
+					gpu->stat.ready_send_vram = 0;
+
 					/* Skip bound check */
 					continue;
 				}
@@ -3131,6 +3134,13 @@ void gpu_writel(struct gpu *gpu, uint32_t l, address_t address)
 		gpu_gp1_cmd(gpu, cmd);
 		break;
 	}
+
+	/* Update receive command ready bit */
+	gpu->stat.ready_recv_cmd = !gpu->fifo.cmd_in_progress;
+
+	/* Set receive DMA block ready bit once command is complete */
+	if (!gpu->fifo.cmd_in_progress)
+		gpu->stat.ready_recv_dma = 1;
 }
 
 uint32_t gpu_dma_readl(struct gpu *gpu)
