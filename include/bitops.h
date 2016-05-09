@@ -57,6 +57,21 @@ static inline int bitops_ffs(int i)
 	return bit;
 }
 
+static inline int bitops_fls(int i)
+{
+	int bit;
+
+	/* Handle case where no bit is set */
+	if (i == 0)
+		return 0;
+
+	/* Find position of last bit set within argument */
+	for (bit = 0; i != 0; bit++)
+		i >>= 1;
+
+	return bit;
+}
+
 static inline bool bitops_parity(int i)
 {
 	bool parity = false;
@@ -69,7 +84,6 @@ static inline bool bitops_parity(int i)
 
 	return parity;
 }
-
 
 #endif
 
