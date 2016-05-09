@@ -17,6 +17,7 @@
 #define EXCEPTION_ADDR_1		0xBFC00180
 #define NUM_CACHE_LINES			256
 #define NUM_INSTRUCTIONS_PER_CACHE_LINE	4
+#define SCRATCHPAD_SIZE			KB(4)
 
 #define I_STAT				0x00
 #define I_MASK				0x04
@@ -433,8 +434,10 @@ struct r3051 {
 	uint32_t i_mask;
 	union cache_control cache_ctrl;
 	struct cache_line instruction_cache[NUM_CACHE_LINES];
+	uint8_t scratchpad[SCRATCHPAD_SIZE];
 	int bus_id;
 	struct clock clock;
+	struct region scratchpad_region;
 	struct region int_ctrl_region;
 	struct region cache_ctrl_region;
 };
@@ -3996,6 +3999,16 @@ bool r3051_init(struct cpu_instance *instance)
 	cpu->clock.data = cpu;
 	cpu->clock.tick = (clock_tick_t)r3051_tick;
 	clock_add(&cpu->clock);
+
+	/* Add scratchpad region */
+	res = resource_get("scratchpad",
+		RESOURCE_MEM,
+		instance->resources,
+		instance->num_resources);
+	cpu->scratchpad_region.area = res;
+	cpu->scratchpad_region.mops = &ram_mops;
+	cpu->scratchpad_region.data = cpu->scratchpad;
+	memory_region_add(&cpu->scratchpad_region);
 
 	/* Add interrupt control region */
 	res = resource_get("int_control",
