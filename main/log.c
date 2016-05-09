@@ -9,7 +9,7 @@ static void log_fprint(enum log_level lvl, FILE *f, const char *fmt, va_list a);
 log_print_t log_cb = log_print;
 
 /* Command-line parameter */
-static enum log_level log_level = LOG_INFO;
+enum log_level log_level = LOG_INFO;
 PARAM(log_level, int, "log-level", NULL, "Specifies log level (0 to 3)")
 
 /* Prefixes matching log level enumeration */

@@ -16,6 +16,7 @@ enum log_level {
 
 typedef void (*log_print_t)(enum log_level lvl, const char *fmt, ...);
 
+extern enum log_level log_level;
 extern log_print_t log_cb;
 
 #endif
