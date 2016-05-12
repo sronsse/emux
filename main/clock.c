@@ -77,7 +77,8 @@ void clock_tick_all(bool handle_delay)
 			current_clock->tick(current_clock->data);
 
 		/* Save next number of remaining cycles if needed */
-		if (current_clock->num_remaining_cycles < num_cycles)
+		if ((current_clock->num_remaining_cycles < num_cycles) &&
+			current_clock->enabled)
 			num_cycles = current_clock->num_remaining_cycles;
 	}
 
