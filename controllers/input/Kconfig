@@ -18,5 +18,11 @@ config CONTROLLER_INPUT_SMS
 	help
 		Enable SMS peripheral support
 
+config CONTROLLER_INPUT_PSX
+	bool "PSX controller and memory card"
+	default y
+	help
+		Enable PSX controller and memory card I/O
+
 endmenu
 
