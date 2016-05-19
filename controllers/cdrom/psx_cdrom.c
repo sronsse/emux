@@ -224,6 +224,7 @@ struct psx_cdrom {
 	struct sram sram;
 	struct pos pos;
 	struct region region;
+	struct dma_channel dma_channel;
 	int irq;
 };
 
@@ -232,6 +233,7 @@ static void psx_cdrom_reset(struct controller_instance *instance);
 static void psx_cdrom_deinit(struct controller_instance *instance);
 static uint8_t psx_cdrom_readb(struct psx_cdrom *cdrom, address_t a);
 static void psx_cdrom_writeb(struct psx_cdrom *cdrom, uint8_t b, address_t a);
+static uint32_t psx_cdrom_dma_readl(struct psx_cdrom *cdrom);
 
 static bool fifo_empty(struct fifo *fifo);
 static bool fifo_full(struct fifo *fifo);
@@ -251,6 +253,10 @@ static void data_fifo_reset(struct psx_cdrom *cdrom);
 static struct mops psx_cdrom_mops = {
 	.readb = (readb_t)psx_cdrom_readb,
 	.writeb = (writeb_t)psx_cdrom_writeb
+};
+
+static struct dma_ops psx_cdrom_dma_ops = {
+	.readl = (dma_readl_t)psx_cdrom_dma_readl
 };
 
 uint8_t psx_cdrom_readb(struct psx_cdrom *cdrom, address_t address)
@@ -372,6 +378,27 @@ void psx_cdrom_writeb(struct psx_cdrom *cdrom, uint8_t b, address_t address)
 	default:
 		break;
 	}
+}
+
+uint32_t psx_cdrom_dma_readl(struct psx_cdrom *cdrom)
+{
+	uint32_t data;
+	uint8_t b = 0;
+
+	/* BIOS default is 24 clks, for some reason most games change it to 40
+	clks. TODO: implement register look up */
+	clock_consume(24);
+
+	/* Dequeue 4 bytes from data FIFO, combine them, and return data */
+	data_fifo_dequeue(cdrom, &b);
+	data = b;
+	data_fifo_dequeue(cdrom, &b);
+	data |= b << 8;
+	data_fifo_dequeue(cdrom, &b);
+	data |= b << 16;
+	data_fifo_dequeue(cdrom, &b);
+	data |= b << 24;
+	return data;
 }
 
 bool fifo_empty(struct fifo *fifo)
@@ -569,6 +596,16 @@ bool psx_cdrom_init(struct controller_instance *instance)
 	cdrom->region.mops = &psx_cdrom_mops;
 	cdrom->region.data = cdrom;
 	memory_region_add(&cdrom->region);
+
+	/* Add DMA channel */
+	res = resource_get("dma",
+		RESOURCE_DMA,
+		instance->resources,
+		instance->num_resources);
+	cdrom->dma_channel.res = res;
+	cdrom->dma_channel.ops = &psx_cdrom_dma_ops;
+	cdrom->dma_channel.data = cdrom;
+	dma_channel_add(&cdrom->dma_channel);
 
 	/* Get IRQ */
 	res = resource_get("irq",
