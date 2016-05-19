@@ -250,6 +250,23 @@ static bool data_fifo_enqueue(struct psx_cdrom *cdrom, uint8_t data);
 static bool data_fifo_dequeue(struct psx_cdrom *cdrom, uint8_t *data);
 static void data_fifo_reset(struct psx_cdrom *cdrom);
 
+static void cmd_handle_status(struct psx_cdrom *cdrom, uint8_t error);
+static void cmd_get_stat(struct psx_cdrom *cdrom);
+static void cmd_set_loc(struct psx_cdrom *cdrom);
+static void cmd_readn(struct psx_cdrom *cdrom);
+static void cmd_pause(struct psx_cdrom *cdrom);
+static void cmd_init(struct psx_cdrom *cdrom);
+static void cmd_mute(struct psx_cdrom *cdrom);
+static void cmd_demute(struct psx_cdrom *cdrom);
+static void cmd_set_filter(struct psx_cdrom *cdrom);
+static void cmd_set_mode(struct psx_cdrom *cdrom);
+static void cmd_get_locp(struct psx_cdrom *cdrom);
+static void cmd_get_tn(struct psx_cdrom *cdrom);
+static void cmd_seekl(struct psx_cdrom *cdrom);
+static void cmd_test(struct psx_cdrom *cdrom);
+static void cmd_get_id(struct psx_cdrom *cdrom);
+static void cmd_reads(struct psx_cdrom *cdrom);
+static void cmd_read_toc(struct psx_cdrom *cdrom);
 static void cmd_handle_timings(struct psx_cdrom *cdrom);
 
 static struct mops psx_cdrom_mops = {
@@ -260,6 +277,537 @@ static struct mops psx_cdrom_mops = {
 static struct dma_ops psx_cdrom_dma_ops = {
 	.readl = (dma_readl_t)psx_cdrom_dma_readl
 };
+
+void cmd_handle_status(struct psx_cdrom *cdrom, uint8_t error)
+{
+	/* Set error bit if needed */
+	if (error != 0)
+		cdrom->stat.error = 1;
+
+	/* Set seek error bit if needed */
+	if (error == ERR_SEEK_FAILED)
+		cdrom->stat.seek_error = 1;
+
+	/* Enqueue status */
+	resp_fifo_enqueue(cdrom, cdrom->stat.raw);
+
+	/* Enqueue error if needed */
+	if (error != 0)
+		resp_fifo_enqueue(cdrom, error);
+
+	/* Set response type based on error presence */
+	cdrom->cmd.resp = (error == 0) ? INT3 : INT5;
+}
+
+/* 01h: Getstat -> INT3(stat) */
+void cmd_get_stat(struct psx_cdrom *cdrom)
+{
+	/* Send status */
+	cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+	/* If the shell is closed, the ShellOpen flag is automatically reset to
+	zero after reading stat with the Getstat command */
+	if (cdrom->drive_status != DRIVE_DOOR_OPEN)
+		cdrom->stat.shell_open = 0;
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 02h: Setloc amm, ass, asect -> INT3(stat) */
+void cmd_set_loc(struct psx_cdrom *cdrom)
+{
+	struct msf msf;
+	uint8_t amm = 0;
+	uint8_t ass = 0;
+	uint8_t asect = 0;
+
+	/* Handle absence of disc */
+	if (cdrom->drive_status == DRIVE_NO_DISC) {
+		cmd_handle_status(cdrom, ERR_CANNOT_RESPOND);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Retrieve parameters (and handle parameter errors) */
+	if (!param_fifo_dequeue(cdrom, &amm) ||
+		!param_fifo_dequeue(cdrom, &ass) ||
+		!param_fifo_dequeue(cdrom, &asect)) {
+		cmd_handle_status(cdrom, ERR_WRONG_NUM_PARAMS);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Convert BCD parameters and fill MSF structure */
+	msf.m = FROM_BCD(amm);
+	msf.s = FROM_BCD(ass);
+	msf.f = FROM_BCD(asect);
+
+	/* Update internal location */
+	cdrom->loc = cdrom_get_sector_from_msf(&msf);
+
+	/* Send status */
+	cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 06h: ReadN -> INT3(stat), INT1(stat), datablock */
+void cmd_readn(struct psx_cdrom *cdrom)
+{
+	/* Handle absence of disc */
+	if (cdrom->drive_status == DRIVE_NO_DISC) {
+		cmd_handle_status(cdrom, ERR_CANNOT_RESPOND);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Flag read state */
+	cdrom->stat.state_bits = STATE_READ;
+
+	/* Send status */
+	cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+	/* Read with retry. The command responds once with "stat, INT3", and
+	then it's repeatedly sending "stat, INT1 --> datablock", that is
+	continued even after a successful read has occured; use the Pause
+	command to terminate the repeated INT1 responses. */
+	cdrom->data_clock.enabled = true;
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 09h: Pause -> INT3(stat), INT2(stat) */
+void cmd_pause(struct psx_cdrom *cdrom)
+{
+	/* Handle absence of disc */
+	if (cdrom->drive_status == DRIVE_NO_DISC) {
+		cmd_handle_status(cdrom, ERR_CANNOT_RESPOND);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Handle first response */
+	if (cdrom->cmd.step == 1) {
+		/* Send status */
+		cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+		/* Abort reading and playing */
+		cdrom->stat.state_bits = STATE_NORMAL;
+
+		/* Return and handle other responses later */
+		return;
+	}
+
+	/* Handle second response (sending status) */
+	resp_fifo_enqueue(cdrom, cdrom->stat.raw);
+	cdrom->cmd.resp = INT2;
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 0Ah: Init -> INT3(late-stat), INT2(stat) */
+void cmd_init(struct psx_cdrom *cdrom)
+{
+	/* Handle first response */
+	if (cdrom->cmd.step == 1) {
+		/* Send status */
+		cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+		/* Multiple effects at once:
+		- Sets mode = 00h
+		- Activates drive motor
+		- Standby
+		- Abort all commands */
+		cdrom->mode.raw = 0;
+		cdrom->stat.spindle_motor = 1;
+		cdrom->stat.state_bits = STATE_NORMAL;
+		cdrom->cmd.pending = 0;
+
+		/* Return and handle second response later */
+		return;
+	}
+
+	/* Handle second response (sending status) */
+	resp_fifo_enqueue(cdrom, cdrom->stat.raw);
+	cdrom->cmd.resp = INT2;
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 0Bh: Mute -> INT3(stat) */
+void cmd_mute(struct psx_cdrom *cdrom)
+{
+	/* Handle absence of disc */
+	if (cdrom->drive_status == DRIVE_NO_DISC) {
+		cmd_handle_status(cdrom, ERR_CANNOT_RESPOND);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Send status */
+	cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 0Ch: Demute -> INT3(stat) */
+void cmd_demute(struct psx_cdrom *cdrom)
+{
+	/* Handle absence of disc */
+	if (cdrom->drive_status == DRIVE_NO_DISC) {
+		cmd_handle_status(cdrom, ERR_CANNOT_RESPOND);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Send status */
+	cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 0Dh: Setfilter file, channel -> INT3(stat) */
+void cmd_set_filter(struct psx_cdrom *cdrom)
+{
+	uint8_t file;
+	uint8_t channel;
+
+	/* Handle absence of disc */
+	if (cdrom->drive_status == DRIVE_NO_DISC) {
+		cmd_handle_status(cdrom, ERR_CANNOT_RESPOND);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Retrieve parameters (and handle parameter errors) */
+	if (!param_fifo_dequeue(cdrom, &file) ||
+		!param_fifo_dequeue(cdrom, &channel)) {
+		cmd_handle_status(cdrom, ERR_WRONG_NUM_PARAMS);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Send status */
+	cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 0Eh: Setmode mode -> INT3(stat) */
+void cmd_set_mode(struct psx_cdrom *cdrom)
+{
+	uint8_t mode = 0;
+
+	/* Dequeue mode (without error handling) */
+	param_fifo_dequeue(cdrom, &mode);
+
+	/* Update mode */
+	cdrom->mode.raw = mode;
+
+	/* Send status */
+	cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 11h: GetLocP -> INT3(track, index, mm, ss, sect, amm, ass, asect) */
+void cmd_get_locp(struct psx_cdrom *cdrom)
+{
+	/* Handle absence of disc */
+	if (cdrom->drive_status == DRIVE_NO_DISC) {
+		cmd_handle_status(cdrom, ERR_CANNOT_RESPOND);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Enqueue position information in BCD format and set response type */
+	resp_fifo_enqueue(cdrom, TO_BCD(cdrom->pos.track));
+	resp_fifo_enqueue(cdrom, TO_BCD(cdrom->pos.index));
+	resp_fifo_enqueue(cdrom, TO_BCD(cdrom->pos.mm));
+	resp_fifo_enqueue(cdrom, TO_BCD(cdrom->pos.ss));
+	resp_fifo_enqueue(cdrom, TO_BCD(cdrom->pos.sect));
+	resp_fifo_enqueue(cdrom, TO_BCD(cdrom->pos.amm));
+	resp_fifo_enqueue(cdrom, TO_BCD(cdrom->pos.ass));
+	resp_fifo_enqueue(cdrom, TO_BCD(cdrom->pos.asect));
+	cdrom->cmd.resp = INT3;
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 13h: GetTN -> INT3(stat, first, last) */
+void cmd_get_tn(struct psx_cdrom *cdrom)
+{
+	uint8_t first;
+	uint8_t last;
+
+	/* Send status */
+	cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+	/* Get first and last track numbers */
+	first = cdrom_get_first_track_num();
+	last = cdrom_get_last_track_num();
+
+	/* Enqueue track numbers in BCD format */
+	resp_fifo_enqueue(cdrom, TO_BCD(first));
+	resp_fifo_enqueue(cdrom, TO_BCD(last));
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 15h: SeekL -> INT3(stat), INT2(stat) */
+void cmd_seekl(struct psx_cdrom *cdrom)
+{
+	/* Handle absence of disc */
+	if (cdrom->drive_status == DRIVE_NO_DISC) {
+		cmd_handle_status(cdrom, ERR_CANNOT_RESPOND);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Flag seek state */
+	cdrom->stat.state_bits = STATE_SEEK;
+
+	/* Handle first response */
+	if (cdrom->cmd.step == 1) {
+		/* Send status */
+		cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+		/* Return and handle second response later */
+		return;
+	}
+
+	/* Handle second response (sending status) */
+	resp_fifo_enqueue(cdrom, cdrom->stat.raw);
+	cdrom->cmd.resp = INT2;
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 19h: Test sub_function, depends on sub_function */
+void cmd_test(struct psx_cdrom *cdrom)
+{
+	uint8_t sub_func = 0;
+
+	/* Retrieve sub function (and handle parameter error) */
+	if (!param_fifo_dequeue(cdrom, &sub_func)) {
+		cmd_handle_status(cdrom, ERR_WRONG_NUM_PARAMS);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	LOG_D("Processing CD-ROM Test sub function (%02x)\n", sub_func);
+
+	/* Execute requested sub function */
+	switch (sub_func) {
+	case 0x20:
+		/* Enqueue the date (year-month-day, in BCD format) and version
+		of the HC05 CD-ROM controller BIOS (latest known date/version is
+		01 Feb 1999, version vC3 (b)), then set response type (INT3) */
+		resp_fifo_enqueue(cdrom, 0x97);
+		resp_fifo_enqueue(cdrom, 0x01);
+		resp_fifo_enqueue(cdrom, 0x10);
+		resp_fifo_enqueue(cdrom, 0xC2);
+		cdrom->cmd.resp = INT3;
+		break;
+	default:
+		/* Handle sub function error */
+		cmd_handle_status(cdrom, ERR_INVALID_PARAM);
+		LOG_W("Unknown CD-ROM Test sub function (%02x)!\n", sub_func);
+		break;
+	}
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 1Ah: GetID -> INT3(stat), INT2/5(stat, flg, typ, atip, "SCEx") */
+void cmd_get_id(struct psx_cdrom *cdrom)
+{
+	/* Handle first response */
+	if (cdrom->cmd.step == 1) {
+		/* First response is based on drive status */
+		switch (cdrom->drive_status) {
+		case DRIVE_DOOR_OPEN:
+			/* Handle door open state and complete command */
+			resp_fifo_enqueue(cdrom, 0x11);
+			resp_fifo_enqueue(cdrom, 0x80);
+			cdrom->cmd.resp = INT5;
+			cdrom->cmd.complete = true;
+			break;
+		case DRIVE_SPIN_UP:
+			/* Handle spin-up and complete command */
+			resp_fifo_enqueue(cdrom, 0x01);
+			resp_fifo_enqueue(cdrom, 0x80);
+			cdrom->cmd.resp = INT5;
+			cdrom->cmd.complete = true;
+			break;
+		case DRIVE_DETECT_BUSY:
+			/* Handle busy detection and complete command */
+			resp_fifo_enqueue(cdrom, 0x03);
+			resp_fifo_enqueue(cdrom, 0x80);
+			cdrom->cmd.resp = INT5;
+			cdrom->cmd.complete = true;
+			break;
+		default:
+			/* Other commands send status */
+			cmd_handle_status(cdrom, ERR_NO_ERROR);
+			break;
+		}
+
+		/* Return and handle second response later */
+		return;
+	}
+
+	/* Handle second response based on drive status */
+	switch (cdrom->drive_status) {
+	case DRIVE_NO_DISC:
+		/* Handle absence of disc */
+		resp_fifo_enqueue(cdrom, 0x08);
+		resp_fifo_enqueue(cdrom, 0x40);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		cdrom->cmd.resp = INT5;
+		break;
+	case DRIVE_AUDIO_DISC:
+		/* Handle audio disc */
+		resp_fifo_enqueue(cdrom, 0x0A);
+		resp_fifo_enqueue(cdrom, 0x90);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		cdrom->cmd.resp = INT5;
+		break;
+	case DRIVE_UNLICENSED_MODE1:
+		/* Handle unlicensed mode 1 disc */
+		resp_fifo_enqueue(cdrom, 0x0A);
+		resp_fifo_enqueue(cdrom, 0x80);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		cdrom->cmd.resp = INT5;
+		break;
+	case DRIVE_UNLICENSED_MODE2:
+		/* Handle unlicensed mode 2 disc */
+		resp_fifo_enqueue(cdrom, 0x0A);
+		resp_fifo_enqueue(cdrom, 0x80);
+		resp_fifo_enqueue(cdrom, 0x20);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		cdrom->cmd.resp = INT5;
+		break;
+	case DRIVE_UNLICENSED_MODE2_AUDIO:
+		/* Handle unlicensed mode 2 + audio disc */
+		resp_fifo_enqueue(cdrom, 0x0A);
+		resp_fifo_enqueue(cdrom, 0x90);
+		resp_fifo_enqueue(cdrom, 0x20);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		cdrom->cmd.resp = INT5;
+		break;
+	case DRIVE_LICENSED_MODE2:
+		/* Handle licensed mode 2 disc */
+		resp_fifo_enqueue(cdrom, 0x02);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x20);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x53);
+		resp_fifo_enqueue(cdrom, 0x43);
+		resp_fifo_enqueue(cdrom, 0x45);
+		resp_fifo_enqueue(cdrom, cdrom->region_byte);
+		cdrom->cmd.resp = INT2;
+		break;
+	case DRIVE_MODCHIP_AUDIO_MODE1:
+		/* Handle modchip audio/mode 1 disc */
+		resp_fifo_enqueue(cdrom, 0x02);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x00);
+		resp_fifo_enqueue(cdrom, 0x53);
+		resp_fifo_enqueue(cdrom, 0x43);
+		resp_fifo_enqueue(cdrom, 0x45);
+		resp_fifo_enqueue(cdrom, 0x45);
+		cdrom->cmd.resp = INT2;
+		break;
+	default:
+		break;
+	}
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 1Bh: ReadS -> INT3(stat), INT1(stat), datablock */
+void cmd_reads(struct psx_cdrom *cdrom)
+{
+	/* Handle absence of disc */
+	if (cdrom->drive_status == DRIVE_NO_DISC) {
+		cmd_handle_status(cdrom, ERR_CANNOT_RESPOND);
+		cdrom->cmd.complete = true;
+		return;
+	}
+
+	/* Flag read state */
+	cdrom->stat.state_bits = STATE_READ;
+
+	/* Send status */
+	cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+	/* Read without automatic retry. Maybe intended for continous streaming
+	video output (to skip bad frames, rather than to interrupt the stream by
+	performing read retries). */
+	cdrom->data_clock.enabled = true;
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
+
+/* 1Eh: ReadTOC -> INT3(late-stat), INT2(stat) */
+void cmd_read_toc(struct psx_cdrom *cdrom)
+{
+	/* Handle first response */
+	if (cdrom->cmd.step == 1) {
+		/* Send status */
+		cmd_handle_status(cdrom, ERR_NO_ERROR);
+
+		/* Return and handle second response later */
+		return;
+	}
+
+	/* Handle second response (sending status) */
+	resp_fifo_enqueue(cdrom, cdrom->stat.raw);
+	cdrom->cmd.resp = INT2;
+
+	/* Complete command */
+	cdrom->cmd.complete = true;
+}
 
 void cmd_handle_timings(struct psx_cdrom *cdrom)
 {
@@ -601,6 +1149,81 @@ void data_fifo_reset(struct psx_cdrom *cdrom)
 	/* Reset FIFO and update empty flag (0 = empty) */
 	fifo_reset(&cdrom->data_fifo);
 	cdrom->index_status.data_fifo_empty = 0;
+}
+
+void psx_cdrom_execute_cmd(struct psx_cdrom *cdrom)
+{
+	LOG_D("Processing CD-ROM command %02x (step %u)\n",
+		cdrom->cmd.code,
+		cdrom->cmd.step);
+
+	/* Execute command once initialization is complete */
+	if (cdrom->cmd.step > 0)
+		switch (cdrom->cmd.code) {
+		case 0x01:
+			cmd_get_stat(cdrom);
+			break;
+		case 0x02:
+			cmd_set_loc(cdrom);
+			break;
+		case 0x06:
+			cmd_readn(cdrom);
+			break;
+		case 0x09:
+			cmd_pause(cdrom);
+			break;
+		case 0x0A:
+			cmd_init(cdrom);
+			break;
+		case 0x0B:
+			cmd_mute(cdrom);
+			break;
+		case 0x0C:
+			cmd_demute(cdrom);
+			break;
+		case 0x0D:
+			cmd_set_filter(cdrom);
+			break;
+		case 0x0E:
+			cmd_set_mode(cdrom);
+			break;
+		case 0x11:
+			cmd_get_locp(cdrom);
+			break;
+		case 0x13:
+			cmd_get_tn(cdrom);
+			break;
+		case 0x15:
+			cmd_seekl(cdrom);
+			break;
+		case 0x19:
+			cmd_test(cdrom);
+			break;
+		case 0x1A:
+			cmd_get_id(cdrom);
+			break;
+		case 0x1B:
+			cmd_reads(cdrom);
+			break;
+		case 0x1E:
+			cmd_read_toc(cdrom);
+			break;
+		default:
+			LOG_W("Unknown CD-ROM command (%02x)!\n",
+				cdrom->cmd.code);
+			break;
+		}
+
+	/* The busy flag is reset once the first response has been pushed to the
+	FIFO and if previous interrupt has already been acknowledged. */
+	if ((cdrom->cmd.step == 1) && (cdrom->int_flag.resp_received == INT0))
+		cdrom->index_status.transmission_busy = 0;
+
+	/* Consume cycles based on executed command */
+	cmd_handle_timings(cdrom);
+
+	/* Increment command step */
+	cdrom->cmd.step++;
 }
 
 bool psx_cdrom_init(struct controller_instance *instance)
