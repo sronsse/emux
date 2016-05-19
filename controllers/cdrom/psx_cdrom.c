@@ -1,5 +1,6 @@
 #include <string.h>
 #include <bitops.h>
+#include <cdrom.h>
 #include <clock.h>
 #include <controller.h>
 #include <cpu.h>
@@ -545,10 +546,19 @@ bool psx_cdrom_init(struct controller_instance *instance)
 {
 	struct psx_cdrom *cdrom;
 	struct resource *res;
+	char *source;
+	bool result;
 
 	/* Allocate private structure */
 	instance->priv_data = calloc(1, sizeof(struct psx_cdrom));
 	cdrom = instance->priv_data;
+
+	/* Set CD-ROM source (either physical CD-ROM or file) */
+	source = env_get_data_path();
+
+	/* Initialize CD-ROM frontend and set drive status accordingly */
+	result = cdrom_init(source);
+	cdrom->drive_status = result ? DRIVE_LICENSED_MODE2 : DRIVE_NO_DISC;
 
 	/* Set up memory region */
 	res = resource_get("mem",
@@ -617,6 +627,7 @@ void psx_cdrom_reset(struct controller_instance *instance)
 void psx_cdrom_deinit(struct controller_instance *instance)
 {
 	struct psx_cdrom *cdrom = instance->priv_data;
+	cdrom_deinit();
 	free(cdrom->resp_fifo.data);
 	free(cdrom->param_fifo.data);
 	free(cdrom->data_fifo.data);
