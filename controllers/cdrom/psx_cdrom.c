@@ -225,12 +225,14 @@ struct psx_cdrom {
 	struct pos pos;
 	struct region region;
 	struct dma_channel dma_channel;
+	struct clock cmd_clock;
 	int irq;
 };
 
 static bool psx_cdrom_init(struct controller_instance *instance);
 static void psx_cdrom_reset(struct controller_instance *instance);
 static void psx_cdrom_deinit(struct controller_instance *instance);
+static void psx_cdrom_cmd_tick(struct psx_cdrom *cdrom);
 static uint8_t psx_cdrom_readb(struct psx_cdrom *cdrom, address_t a);
 static void psx_cdrom_writeb(struct psx_cdrom *cdrom, uint8_t b, address_t a);
 static uint32_t psx_cdrom_dma_readl(struct psx_cdrom *cdrom);
@@ -908,6 +910,7 @@ void psx_cdrom_writeb(struct psx_cdrom *cdrom, uint8_t b, address_t address)
 
 		/* Set command to be executed and enable command clock */
 		cdrom->cmd.pending = b;
+		cdrom->cmd_clock.enabled = true;
 		break;
 	case PARAM_FIFO:
 		/* Enqueue parameter FIFO */
@@ -948,6 +951,10 @@ void psx_cdrom_writeb(struct psx_cdrom *cdrom, uint8_t b, address_t address)
 		if (int_flag_w.ack_int1_int7) {
 			/* Reset response FIFO */
 			resp_fifo_reset(cdrom);
+
+			/* Re-schedule command clock if needed */
+			if (!cdrom->cmd.complete || (cdrom->cmd.pending != 0))
+				cdrom->cmd_clock.enabled = true;
 		}
 		break;
 	case SOUND_MAP_DATA:
@@ -1226,6 +1233,41 @@ void psx_cdrom_execute_cmd(struct psx_cdrom *cdrom)
 	cdrom->cmd.step++;
 }
 
+void psx_cdrom_cmd_tick(struct psx_cdrom *cdrom)
+{
+	int int_index;
+
+	/* Transfer command to main loop if required */
+	if (cdrom->cmd.complete && (cdrom->cmd.pending != 0)) {
+		cdrom->cmd.code = cdrom->cmd.pending;
+		cdrom->cmd.resp = INT0;
+		cdrom->cmd.step = 0;
+		cdrom->cmd.complete = false;
+		cdrom->cmd.pending = 0;
+	}
+
+	/* Disable clock and exit if command is complete or blocked */
+	if (cdrom->cmd.complete || (cdrom->int_flag.resp_received != INT0)) {
+		cdrom->cmd_clock.enabled = false;
+		return;
+	}
+
+	/* Execute current command */
+	psx_cdrom_execute_cmd(cdrom);
+
+	/* Check if a command response needs to be sent */
+	if (cdrom->cmd.resp != INT0) {
+		/* Transfer response to register */
+		cdrom->int_flag.resp_received = cdrom->cmd.resp;
+		cdrom->cmd.resp = INT0;
+
+		/* Interrupt CPU if interrupt is enabled */
+		int_index = cdrom->int_flag.resp_received - 1;
+		if (cdrom->int_enable.bits & (1 << int_index))
+			cpu_interrupt(cdrom->irq);
+	}
+}
+
 bool psx_cdrom_init(struct controller_instance *instance)
 {
 	struct psx_cdrom *cdrom;
@@ -1263,6 +1305,16 @@ bool psx_cdrom_init(struct controller_instance *instance)
 	cdrom->dma_channel.ops = &psx_cdrom_dma_ops;
 	cdrom->dma_channel.data = cdrom;
 	dma_channel_add(&cdrom->dma_channel);
+
+	/* Add command clock */
+	res = resource_get("clk",
+		RESOURCE_CLK,
+		instance->resources,
+		instance->num_resources);
+	cdrom->cmd_clock.rate = res->data.clk;
+	cdrom->cmd_clock.data = cdrom;
+	cdrom->cmd_clock.tick = (clock_tick_t)psx_cdrom_cmd_tick;
+	clock_add(&cdrom->cmd_clock);
 
 	/* Get IRQ */
 	res = resource_get("irq",
@@ -1316,6 +1368,9 @@ void psx_cdrom_reset(struct controller_instance *instance)
 
 	/* Reset SRAM */
 	cdrom->sram.size = 0;
+
+	/* Make sure clocks are disabled */
+	cdrom->cmd_clock.enabled = false;
 }
 
 void psx_cdrom_deinit(struct controller_instance *instance)
