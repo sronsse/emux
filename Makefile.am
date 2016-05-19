@@ -157,7 +157,7 @@ emux_SOURCES += controllers/input/sms_controller.c
 endif
 if CONFIG_CONTROLLER_MAPPER_GB
 emux_SOURCES += controllers/mapper/gb_mapper.c
-emux_SOURCES += include/controllers/mapper/gb_mapper.h
+emux_SOURCES += controllers/mapper/gb_mapper.h
 endif
 if CONFIG_CONTROLLER_MAPPER_MBC1
 emux_SOURCES += controllers/mapper/mbc1.c
@@ -170,7 +170,7 @@ emux_SOURCES += controllers/mapper/mmc3.c
 endif
 if CONFIG_CONTROLLER_MAPPER_NES
 emux_SOURCES += controllers/mapper/nes_mapper.c
-emux_SOURCES += include/controllers/mapper/nes_mapper.h
+emux_SOURCES += controllers/mapper/nes_mapper.h
 endif
 if CONFIG_CONTROLLER_MAPPER_NROM
 emux_SOURCES += controllers/mapper/nrom.c
@@ -183,7 +183,7 @@ emux_SOURCES += controllers/mapper/sega_mapper.c
 endif
 if CONFIG_CONTROLLER_MAPPER_SMS
 emux_SOURCES += controllers/mapper/sms_mapper.c
-emux_SOURCES += include/controllers/mapper/sms_mapper.h
+emux_SOURCES += controllers/mapper/sms_mapper.h
 endif
 if CONFIG_CONTROLLER_SERIAL_GB
 emux_SOURCES += controllers/serial/gb_serial.c
