@@ -250,6 +250,8 @@ static bool data_fifo_enqueue(struct psx_cdrom *cdrom, uint8_t data);
 static bool data_fifo_dequeue(struct psx_cdrom *cdrom, uint8_t *data);
 static void data_fifo_reset(struct psx_cdrom *cdrom);
 
+static void cmd_handle_timings(struct psx_cdrom *cdrom);
+
 static struct mops psx_cdrom_mops = {
 	.readb = (readb_t)psx_cdrom_readb,
 	.writeb = (writeb_t)psx_cdrom_writeb
@@ -258,6 +260,38 @@ static struct mops psx_cdrom_mops = {
 static struct dma_ops psx_cdrom_dma_ops = {
 	.readl = (dma_readl_t)psx_cdrom_dma_readl
 };
+
+void cmd_handle_timings(struct psx_cdrom *cdrom)
+{
+	/* Handle delay before first response */
+	if (cdrom->cmd.step == 0) {
+		/* Handle Init and ReadTOC command timings */
+		if ((cdrom->cmd.code == 0x0A) || (cdrom->cmd.code == 0x1E)) {
+			clock_consume(CYCLES_1_INIT);
+			return;
+		}
+
+		/* Other command timings depend on motor state */
+		clock_consume(cdrom->stat.spindle_motor ?
+			CYCLES_1_DEF_NORMAL : CYCLES_1_DEF_STOPPED);
+		return;
+	}
+
+	/* Handle further response timings based on code */
+	switch (cdrom->cmd.code) {
+	case 0x09:
+		/* Handle Pause timings based on speed */
+		clock_consume((cdrom->mode.speed == 0) ?
+			CYCLES_2_PAUSE_SINGLE : CYCLES_2_PAUSE_DOUBLE);
+		break;
+	case 0x1A:
+	default:
+		/* Handle GetID and other command timings */
+		clock_consume(CYCLES_2_GETID);
+		clock_consume(CYCLES_2_GETID);
+		break;
+	}
+}
 
 uint8_t psx_cdrom_readb(struct psx_cdrom *cdrom, address_t address)
 {
