@@ -226,6 +226,7 @@ struct psx_cdrom {
 	struct region region;
 	struct dma_channel dma_channel;
 	struct clock cmd_clock;
+	struct clock data_clock;
 	int irq;
 };
 
@@ -233,6 +234,7 @@ static bool psx_cdrom_init(struct controller_instance *instance);
 static void psx_cdrom_reset(struct controller_instance *instance);
 static void psx_cdrom_deinit(struct controller_instance *instance);
 static void psx_cdrom_cmd_tick(struct psx_cdrom *cdrom);
+static void psx_cdrom_data_tick(struct psx_cdrom *cdrom);
 static uint8_t psx_cdrom_readb(struct psx_cdrom *cdrom, address_t a);
 static void psx_cdrom_writeb(struct psx_cdrom *cdrom, uint8_t b, address_t a);
 static uint32_t psx_cdrom_dma_readl(struct psx_cdrom *cdrom);
@@ -955,6 +957,10 @@ void psx_cdrom_writeb(struct psx_cdrom *cdrom, uint8_t b, address_t address)
 			/* Re-schedule command clock if needed */
 			if (!cdrom->cmd.complete || (cdrom->cmd.pending != 0))
 				cdrom->cmd_clock.enabled = true;
+
+			/* Re-schedule data clock if needed */
+			if (cdrom->reading)
+				cdrom->data_clock.enabled = true;
 		}
 		break;
 	case SOUND_MAP_DATA:
@@ -1268,6 +1274,55 @@ void psx_cdrom_cmd_tick(struct psx_cdrom *cdrom)
 	}
 }
 
+void psx_cdrom_data_tick(struct psx_cdrom *cdrom)
+{
+	uint8_t sector[CDROM_M2F1_SECTOR_SIZE];
+	int size;
+
+	/* Reset reading flag and disable clock if needed */
+	if (cdrom->stat.state_bits != STATE_READ) {
+		cdrom->reading = false;
+		cdrom->data_clock.enabled = false;
+		return;
+	}
+
+	/* Handle read timings based on speed */
+	clock_consume((cdrom->mode.speed == 0) ?
+		CYCLES_READ_SINGLE : CYCLES_READ_DOUBLE);
+
+	/* Handle initialization, waiting for next iteration */
+	if (!cdrom->reading) {
+		cdrom->reading = true;
+		return;
+	}
+
+	/* Leave already if previous interrupt has not been acknowledged */
+	if (cdrom->int_flag.resp_received != INT0)
+		return;
+
+	/* Read at current location (using mode 2 form 1) incrementing it */
+	if (!cdrom_read_sector(sector, cdrom->loc++, CDROM_READ_MODE_M2F1))
+		LOG_W("CD-ROM read error!\n");
+
+	/* Compute size to copy */
+	size = (cdrom->sram.size + CDROM_M2F1_SECTOR_SIZE <= SRAM_SIZE) ?
+		CDROM_M2F1_SECTOR_SIZE : SRAM_SIZE - cdrom->sram.size;
+
+	/* Copy sector (or garbage) to SRAM */
+	memcpy(&cdrom->sram.data[cdrom->sram.size], sector, size);
+	cdrom->sram.size += size;
+
+	/* Enqueue status */
+	resp_fifo_enqueue(cdrom, cdrom->stat.raw);
+
+	/* Transfer response to register */
+	cdrom->int_flag.resp_received = INT1;
+
+	/* Interrupt CPU if INT1 is enabled */
+	if (cdrom->int_enable.bits & (1 << (INT1 - 1)))
+		cpu_interrupt(cdrom->irq);
+}
+
 bool psx_cdrom_init(struct controller_instance *instance)
 {
 	struct psx_cdrom *cdrom;
@@ -1315,6 +1370,16 @@ bool psx_cdrom_init(struct controller_instance *instance)
 	cdrom->cmd_clock.data = cdrom;
 	cdrom->cmd_clock.tick = (clock_tick_t)psx_cdrom_cmd_tick;
 	clock_add(&cdrom->cmd_clock);
+
+	/* Add data clock */
+	res = resource_get("clk",
+		RESOURCE_CLK,
+		instance->resources,
+		instance->num_resources);
+	cdrom->data_clock.rate = res->data.clk;
+	cdrom->data_clock.data = cdrom;
+	cdrom->data_clock.tick = (clock_tick_t)psx_cdrom_data_tick;
+	clock_add(&cdrom->data_clock);
 
 	/* Get IRQ */
 	res = resource_get("irq",
@@ -1371,6 +1436,7 @@ void psx_cdrom_reset(struct controller_instance *instance)
 
 	/* Make sure clocks are disabled */
 	cdrom->cmd_clock.enabled = false;
+	cdrom->data_clock.enabled = false;
 }
 
 void psx_cdrom_deinit(struct controller_instance *instance)
