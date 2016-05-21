@@ -180,6 +180,7 @@ emux_SOURCES += controllers/input/sms_controller.c
 endif
 if CONFIG_CONTROLLER_INPUT_PSX
 emux_SOURCES += controllers/input/psx_controller.c
+emux_SOURCES += controllers/input/psx_controller.h
 endif
 if CONFIG_CONTROLLER_MAPPER_GB
 emux_SOURCES += controllers/mapper/gb_mapper.c
