@@ -544,6 +544,7 @@ static void gpu_gp1_cmd(struct gpu *gpu, union cmd cmd);
 static void gpu_inc_counters(struct gpu *gpu, int num_cycles);
 static void gpu_tick(struct gpu *gpu);
 
+static bool draw_allowed(struct gpu *gpu, int y);
 static void draw_pixel(struct gpu *gpu, struct pixel *pixel);
 static void draw_line(struct gpu *gpu, struct line *line);
 static void draw_triangle_flat_bottom(struct gpu *gpu, struct triangle *tri);
@@ -620,6 +621,37 @@ static int8_t dither_pattern[] = {
 	-3, 1, -4, 0,
 	3, -1, 2, -2
 };
+
+bool draw_allowed(struct gpu *gpu, int y)
+{
+	bool mode_480;
+	bool odd_a;
+	bool odd_b;
+
+	/* Certain rendering commands prohibit rendering. This is a technique
+	used for interlaced mode preventing odd or even lines from being
+	rendered depending on the current odd/even state. This effectively
+	brings double-buffering capability to interlaced mode. */
+
+	/* Return true if drawing is allowed */
+	if (gpu->stat.drawing_allowed)
+		return true;
+
+	/* Return true if 480-lines interlaced mode is disabled */
+	mode_480 = (gpu->stat.vertical_res == 1);
+	mode_480 &= (gpu->stat.vertical_interlace == 1);
+	if (!mode_480)
+		return true;
+
+	/* Set odd A flag based on Y coordinate (line to be rendered) */
+	odd_a = (y & 1);
+
+	/* Set odd B flag based on display area Y coordinate and GPU state */
+	odd_b = ((gpu->display_area_src_y + (gpu->stat.odd ? 1 : 0)) & 1);
+
+	/* Allow rendering only if odd flags do not match */
+	return (odd_a != odd_b);
+}
 
 void draw_pixel(struct gpu *gpu, struct pixel *pixel)
 {
@@ -970,8 +1002,9 @@ void draw_triangle_flat_bottom(struct gpu *gpu, struct triangle *triangle)
 		x1 += x1_inc;
 		x2 += x2_inc;
 
-		/* Draw single line */
-		draw_line(gpu, &l);
+		/* Draw single line if allowed */
+		if (draw_allowed(gpu, l.y))
+			draw_line(gpu, &l);
 	}
 }
 
@@ -1076,8 +1109,9 @@ void draw_triangle_flat_top(struct gpu *gpu, struct triangle *triangle)
 		x1 -= x1_inc;
 		x2 -= x2_inc;
 
-		/* Draw single line */
-		draw_line(gpu, &l);
+		/* Draw single line if allowed */
+		if (draw_allowed(gpu, l.y))
+			draw_line(gpu, &l);
 	}
 }
 
@@ -1232,6 +1266,10 @@ void draw_rectangle(struct gpu *gpu, struct rectangle *rectangle)
 
 	/* Draw rectangle */
 	for (y = 0; y < rectangle->height; y++) {
+		/* Skip line if drawing is not allowed */
+		if (!draw_allowed(gpu, rectangle->y + y))
+			continue;
+
 		/* Reset texture U coordinate */
 		u = rectangle->u;
 
@@ -1343,13 +1381,16 @@ void draw_ray(struct gpu *gpu, struct ray *ray)
 
 	/* Draw line */
 	for (i = 0; i <= dk; i++) {
-		/* Build and draw pixel */
-		pixel.x = (x >> 32) & 0x7FF;
-		pixel.y = (y >> 32) & 0x7FF;
-		pixel.c.r = (r >> 12);
-		pixel.c.g = (g >> 12);
-		pixel.c.b = (b >> 12);
-		draw_pixel(gpu, &pixel);
+		/* Only draw pixel if drawing is allowed */
+		if (draw_allowed(gpu, y)) {
+			/* Build and draw pixel */
+			pixel.x = (x >> 32) & 0x7FF;
+			pixel.y = (y >> 32) & 0x7FF;
+			pixel.c.r = (r >> 12);
+			pixel.c.g = (g >> 12);
+			pixel.c.b = (b >> 12);
+			draw_pixel(gpu, &pixel);
+		}
 
 		/* Update coordinates/color */
 		x += dx_dk;
