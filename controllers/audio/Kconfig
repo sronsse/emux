@@ -18,5 +18,11 @@ config CONTROLLER_AUDIO_SN76489
 	help
 		Enable SN76489 sound chip
 
+config CONTROLLER_AUDIO_SPU
+	bool "PSX SPU"
+	default y
+	help
+		Enable PSX sound processing unit
+
 endmenu
 

@@ -160,6 +160,9 @@ endif
 if CONFIG_CONTROLLER_AUDIO_SN76489
 emux_SOURCES += controllers/audio/sn76489.c
 endif
+if CONFIG_CONTROLLER_AUDIO_SPU
+emux_SOURCES += controllers/audio/spu.c
+endif
 if CONFIG_CONTROLLER_CDROM_PSX
 emux_SOURCES += controllers/cdrom/psx_cdrom.c
 endif
