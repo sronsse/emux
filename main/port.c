@@ -79,6 +79,17 @@ void port_region_remove(struct port_region *region)
 
 void port_region_remove_all()
 {
+	struct list_link *link = port_regions;
+	struct port_region *region;
+	int i;
+
+	/* Remove all regions from maps */
+	while ((region = list_get_next(&link))) {
+		remove_region(region, region->area);
+		for (i = 0; i < region->area->num_children; i++)
+			remove_region(region, &region->area->children[i]);
+	}
+
 	/* Remove all regions */
 	list_remove_all(&port_regions);
 
