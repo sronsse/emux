@@ -18,6 +18,7 @@
 #include <util.h>
 #include <video.h>
 
+static void machine_cleanup();
 static void machine_event(int id, enum input_type type, input_data_t *data);
 static void quit();
 #ifdef EMSCRIPTEN
@@ -39,6 +40,18 @@ static struct input_desc input_descs[] = {
 	{ NULL, DEVICE_NONE, GENERIC_QUIT },
 	{ NULL, DEVICE_KEYBOARD, KEY_ESCAPE }
 };
+
+void machine_cleanup()
+{
+	/* Remove all components */
+	clock_remove_all();
+	cpu_remove_all();
+	memory_region_remove_all();
+	dma_channel_remove_all();
+	port_region_remove_all();
+	event_remove_all();
+	controller_remove_all();
+}
 
 void machine_event(int UNUSED(id), enum input_type UNUSED(type),
 	input_data_t *UNUSED(data))
@@ -101,13 +114,7 @@ bool machine_init()
 	LOG_I("Machine: %s (%s)\n", machine->name, machine->description);
 
 	if (machine->init && !machine->init(machine)) {
-		/* Remove all components which may have been added */
-		clock_remove_all();
-		cpu_remove_all();
-		controller_remove_all();
-		memory_region_remove_all();
-		dma_channel_remove_all();
-		port_region_remove_all();
+		machine_cleanup();
 		return false;
 	}
 
@@ -173,14 +180,8 @@ void machine_step()
 
 void machine_deinit()
 {
-	clock_remove_all();
-	cpu_remove_all();
-	controller_remove_all();
-	memory_region_remove_all();
-	dma_channel_remove_all();
-	port_region_remove_all();
-	event_remove_all();
-	if (machine && machine->deinit)
+	machine_cleanup();
+	if (machine->deinit)
 		machine->deinit(machine);
 }
 
