@@ -165,6 +165,7 @@ bool sms_mapper_init(struct controller_instance *instance)
 		BIOS_SIZE);
 	if (!sms_mapper->bios) {
 		LOG_E("Could not map BIOS!\n");
+		free(sms_mapper);
 		return false;
 	}
 
