@@ -528,6 +528,7 @@ struct gpu {
 	struct dma_channel dma_channel;
 	struct clock clock;
 	int vblk_irq;
+	int gpu_irq;
 };
 
 static bool gpu_init(struct controller_instance *instance);
@@ -560,6 +561,7 @@ static inline bool fifo_dequeue(struct fifo *fifo, uint32_t *data, int size);
 static inline void cmd_nop();
 static inline void cmd_clear_cache(struct gpu *gpu);
 static inline void cmd_fill_rectangle(struct gpu *gpu);
+static inline void cmd_int_request(struct gpu *gpu);
 static inline void cmd_monochrome_3p_poly(struct gpu *gpu, bool opaque);
 static inline void cmd_monochrome_4p_poly(struct gpu *gpu, bool opaque);
 static inline void cmd_textured_3p_poly(struct gpu *gpu, bool opaque, bool raw);
@@ -1419,6 +1421,24 @@ void cmd_fill_rectangle(struct gpu *gpu)
 			gpu->vram[offset] = data >> 8;
 			gpu->vram[offset + 1] = data;
 		}
+
+	/* Flag command as complete */
+	gpu->fifo.cmd_in_progress = false;
+}
+
+/* GP0(1Fh) - Interrupt Request (IRQ1) */
+void cmd_int_request(struct gpu *gpu)
+{
+	uint32_t cmd;
+
+	/* Dequeue FIFO (interrupt request needs 1 argument) */
+	fifo_dequeue(&gpu->fifo, &cmd, 1);
+
+	/* Interrupt CPU on new requests */
+	if (!gpu->stat.irq) {
+		cpu_interrupt(gpu->gpu_irq);
+		gpu->stat.irq = true;
+	}
 
 	/* Flag command as complete */
 	gpu->fifo.cmd_in_progress = false;
@@ -3204,6 +3224,9 @@ void gpu_process_fifo(struct gpu *gpu)
 	case 0x02:
 		cmd_fill_rectangle(gpu);
 		break;
+	case 0x1F:
+		cmd_int_request(gpu);
+		break;
 	case 0x20:
 	case 0x21:
 		cmd_monochrome_3p_poly(gpu, true);
@@ -3899,6 +3922,13 @@ bool gpu_init(struct controller_instance *instance)
 		instance->resources,
 		instance->num_resources);
 	gpu->vblk_irq = res->data.irq;
+
+	/* Get GPU IRQ */
+	res = resource_get("gpu_irq",
+		RESOURCE_IRQ,
+		instance->resources,
+		instance->num_resources);
+	gpu->gpu_irq = res->data.irq;
 
 	return true;
 }
