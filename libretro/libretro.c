@@ -21,6 +21,7 @@ void retro_video_fill_geometry(struct retro_game_geometry *geometry);
 bool retro_video_updated();
 
 retro_environment_t retro_environment_cb;
+static bool machine_initialized;
 
 void retro_init(void)
 {
@@ -119,6 +120,9 @@ bool retro_load_game(const struct retro_game_info *info)
 		LOG_E("Failed to initialize machine!\n");
 		return false;
 	}
+	
+	/* Flag machine as initialized */
+	machine_initialized = true;
 
 	/* Start audio processing */
 	audio_start();
@@ -128,11 +132,16 @@ bool retro_load_game(const struct retro_game_info *info)
 
 void retro_unload_game(void)
 {
+	/* Return already if machine was not initialized */
+	if (!machine_initialized)
+		return;
+
 	/* Stop audio processing */
 	audio_stop();
 
 	/* Deinitialize machine */
 	machine_deinit();
+	machine_initialized = false;
 }
 
 unsigned int retro_get_region(void)
