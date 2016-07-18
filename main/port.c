@@ -96,6 +96,8 @@ void port_region_remove_all()
 	/* Free maps */
 	free(read_map);
 	free(write_map);
+	read_map = NULL;
+	write_map = NULL;
 }
 
 bool fixup_port(struct port_region *region, port_t *port)
