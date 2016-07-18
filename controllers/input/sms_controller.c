@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <bitops.h>
 #include <controller.h>
+#include <cpu.h>
 #include <input.h>
 #ifdef __LIBRETRO__
 #include <libretro.h>
@@ -42,12 +43,15 @@ struct sms_ctrl {
 	struct port_region ctl_region;
 	struct port_region io_region;
 	struct input_config input_config;
+	struct input_config pause_input_config;
+	int pause_irq;
 };
 
 static bool sms_ctrl_init(struct controller_instance *instance);
 static void sms_ctrl_reset(struct controller_instance *instance);
 static void sms_ctrl_deinit(struct controller_instance *instance);
 static void sms_ctrl_event(int id, enum input_type type, struct sms_ctrl *s);
+static void sms_ctrl_pause_event(int id, enum input_type t, struct sms_ctrl *s);
 static void ctl_write(struct sms_ctrl *sms_ctrl, uint8_t b, port_t port);
 static uint8_t io_read(struct sms_ctrl *sms_ctrl, port_t port);
 
@@ -72,6 +76,13 @@ static struct input_desc input_descs[] = {
 	{ NULL, RETRO_DEVICE_JOYPAD, PRT(1) | RETRO_DEVICE_ID_JOYPAD_DOWN }
 #endif
 };
+
+static struct input_desc pause_input_desc =
+#ifndef __LIBRETRO__
+	{ "Pause", DEVICE_KEYBOARD, KEY_p };
+#else
+	{ NULL, RETRO_DEVICE_JOYPAD, PRT(0) | RETRO_DEVICE_ID_JOYPAD_START };
+#endif
 
 static struct pops ctl_pops = {
 	.write = (write_t)ctl_write
@@ -110,35 +121,49 @@ void sms_ctrl_event(int id, enum input_type type, struct sms_ctrl *sms_ctrl)
 		(type != EVENT_BUTTON_DOWN));
 }
 
+void sms_ctrl_pause_event(int UNUSED(id), enum input_type t, struct sms_ctrl *s)
+{
+	/* Interrupt CPU if pause button is pressed */
+	if (t == EVENT_BUTTON_DOWN)
+		cpu_interrupt(s->pause_irq);
+}
+
 bool sms_ctrl_init(struct controller_instance *instance)
 {
 	struct sms_ctrl *sms_ctrl;
 	struct input_config *input_config;
-	struct resource *area;
+	struct resource *res;
 
 	/* Allocate sms_ctrl structure */
 	instance->priv_data = calloc(1, sizeof(struct sms_ctrl));
 	sms_ctrl = instance->priv_data;
 
 	/* Set up control port region */
-	area = resource_get("ctl",
+	res = resource_get("ctl",
 		RESOURCE_PORT,
 		instance->resources,
 		instance->num_resources);
-	sms_ctrl->ctl_region.area = area;
+	sms_ctrl->ctl_region.area = res;
 	sms_ctrl->ctl_region.pops = &ctl_pops;
 	sms_ctrl->ctl_region.data = sms_ctrl;
 	port_region_add(&sms_ctrl->ctl_region);
 
 	/* Set up I/O port region */
-	area = resource_get("io",
+	res = resource_get("io",
 		RESOURCE_PORT,
 		instance->resources,
 		instance->num_resources);
-	sms_ctrl->io_region.area = area;
+	sms_ctrl->io_region.area = res;
 	sms_ctrl->io_region.pops = &io_pops;
 	sms_ctrl->io_region.data = sms_ctrl;
 	port_region_add(&sms_ctrl->io_region);
+
+	/* Get pause IRQ */
+	res = resource_get("pause_irq",
+		RESOURCE_IRQ,
+		instance->resources,
+		instance->num_resources);
+	sms_ctrl->pause_irq = res->data.irq;
 
 	/* Initialize input configuration */
 	input_config = &sms_ctrl->input_config;
@@ -147,6 +172,15 @@ bool sms_ctrl_init(struct controller_instance *instance)
 	input_config->num_descs = ARRAY_SIZE(input_descs);
 	input_config->data = sms_ctrl;
 	input_config->callback = (input_cb_t)sms_ctrl_event;
+	input_register(input_config, true);
+
+	/* Initialize pause input configuration */
+	input_config = &sms_ctrl->pause_input_config;
+	input_config->name = instance->controller_name;
+	input_config->descs = &pause_input_desc;
+	input_config->num_descs = 1;
+	input_config->data = sms_ctrl;
+	input_config->callback = (input_cb_t)sms_ctrl_pause_event;
 	input_register(input_config, true);
 
 	return true;
