@@ -38,7 +38,10 @@
 		uint16_t IXY; \
 	};
 
-#define INT_VECTOR 0x38
+#define IRQ_N		0
+#define NMI_N		1
+#define IRQ_VECTOR	0x0038
+#define NMI_VECTOR	0x0066
 
 struct z80_flags {
 	uint8_t C:1;
@@ -68,9 +71,10 @@ struct z80 {
 	uint8_t R;
 	bool IFF1;
 	bool IFF2;
-	bool interrupt_delay;
+	bool irq_delay;
 	uint8_t interrupt_mode;
-	bool interrupt_pending;
+	bool irq_pending;
+	bool nmi_pending;
 	bool halted;
 	int bus_id;
 	struct clock clock;
@@ -80,7 +84,8 @@ static bool z80_init(struct cpu_instance *instance);
 static void z80_reset(struct cpu_instance *instance);
 static void z80_interrupt(struct cpu_instance *instance, int irq);
 static void z80_deinit(struct cpu_instance *instance);
-static bool z80_handle_interrupts(struct z80 *cpu);
+static bool z80_handle_irq(struct z80 *cpu);
+static bool z80_handle_nmi(struct z80 *cpu);
 static void z80_tick(struct z80 *cpu);
 static void z80_opcode_CB(struct z80 *cpu);
 static void z80_opcode_DDFD(struct z80 *cpu, uint8_t prefix);
@@ -1248,7 +1253,7 @@ void EI(struct z80 *cpu)
 {
 	cpu->IFF1 = true;
 	cpu->IFF2 = true;
-	cpu->interrupt_delay = true;
+	cpu->irq_delay = true;
 	clock_consume(4);
 }
 
@@ -2061,16 +2066,16 @@ void OTDR(struct z80 *cpu)
 	clock_consume(16);
 }
 
-bool z80_handle_interrupts(struct z80 *cpu)
+bool z80_handle_irq(struct z80 *cpu)
 {
-	/* Reset interrupt delay and exit if needed */
-	if (cpu->interrupt_delay) {
-		cpu->interrupt_delay = false;
+	/* Reset IRQ delay and exit if needed */
+	if (cpu->irq_delay) {
+		cpu->irq_delay = false;
 		return false;
 	}
 
-	/* Leave if no interrupt is pending */
-	if (!cpu->interrupt_pending)
+	/* Leave if no IRQ is pending */
+	if (!cpu->irq_pending)
 		return false;
 
 	/* Any interrupt should resume CPU */
@@ -2091,14 +2096,35 @@ bool z80_handle_interrupts(struct z80 *cpu)
 	memory_writeb(cpu->bus_id, cpu->PC >> 8, --cpu->SP);
 	memory_writeb(cpu->bus_id, cpu->PC, --cpu->SP);
 
-	/* Jump to interrupt address */
-	cpu->PC = INT_VECTOR;
+	/* Jump to IRQ address */
+	cpu->PC = IRQ_VECTOR;
 
 	/* Interrupt handler should consume 20 cycles */
 	clock_consume(20);
 
-	/* Reset interrupt pending flag */
-	cpu->interrupt_pending = false;
+	/* Reset IRQ pending flag */
+	cpu->irq_pending = false;
+	return true;
+}
+
+bool z80_handle_nmi(struct z80 *cpu)
+{
+	/* Leave if no NMI is pending */
+	if (!cpu->nmi_pending)
+		return false;
+
+	/* Push PC on stack */
+	memory_writeb(cpu->bus_id, cpu->PC >> 8, --cpu->SP);
+	memory_writeb(cpu->bus_id, cpu->PC, --cpu->SP);
+
+	/* Jump to NMI address */
+	cpu->PC = NMI_VECTOR;
+
+	/* Interrupt handler should consume 20 cycles */
+	clock_consume(20);
+
+	/* Reset NMI pending flag */
+	cpu->nmi_pending = false;
 	return true;
 }
 
@@ -2106,8 +2132,8 @@ void z80_tick(struct z80 *cpu)
 {
 	uint8_t opcode;
 
-	/* Check for interrupt requests */
-	if (z80_handle_interrupts(cpu))
+	/* Check for interrupt requests (IRQ or NMI) */
+	if (z80_handle_irq(cpu) || z80_handle_nmi(cpu))
 		return;
 
 	/* Fetch opcode */
@@ -4174,19 +4200,25 @@ void z80_reset(struct cpu_instance *instance)
 	cpu->IY = 0xFFFF;
 	cpu->IFF1 = false;
 	cpu->IFF2 = false;
-	cpu->interrupt_delay = false;
+	cpu->irq_delay = false;
 	cpu->interrupt_mode = 0;
-	cpu->interrupt_pending = false;
+	cpu->irq_pending = false;
+	cpu->nmi_pending = false;
 	cpu->halted = false;
 
 	/* Enable clock */
 	cpu->clock.enabled = true;
 }
 
-void z80_interrupt(struct cpu_instance *instance, int UNUSED(irq))
+void z80_interrupt(struct cpu_instance *instance, int irq)
 {
 	struct z80 *cpu = instance->priv_data;
-	cpu->interrupt_pending = true;
+
+	/* Handle IRQ or NMI */
+	if (irq == IRQ_N)
+		cpu->irq_pending = true;
+	else if (irq == NMI_N)
+		cpu->nmi_pending = true;
 }
 
 void z80_deinit(struct cpu_instance *instance)
