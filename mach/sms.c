@@ -17,6 +17,7 @@
 
 /* Interrupt definitions */
 #define VDP_IRQ			0
+#define PAUSE_IRQ		1
 
 /* Bus definitions */
 #define CPU_BUS_ID		0
@@ -100,7 +101,8 @@ static struct controller_instance sms_mapper_instance = {
 /* Input controller */
 static struct resource input_resources[] = {
 	PORT("ctl", IO_CTL_PORT_START, IO_CTL_PORT_END),
-	PORT("io", IO_DATA_PORT_START, IO_DATA_PORT_END)
+	PORT("io", IO_DATA_PORT_START, IO_DATA_PORT_END),
+	IRQ("pause_irq", PAUSE_IRQ)
 };
 
 static struct controller_instance input_instance = {
