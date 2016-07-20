@@ -1,5 +1,6 @@
 #include <string.h>
 #include <bitops.h>
+#include <clock.h>
 #include <controller.h>
 #include <memory.h>
 
@@ -51,6 +52,11 @@
 #define TRANSFER_REP2				3
 #define TRANSFER_REP4				4
 #define TRANSFER_REP8				5
+
+#define TRANSFER_MODE_STOP			0
+#define TRANSFER_MODE_MANUAL_WRITE		1
+#define TRANSFER_MODE_DMA_WRITE			2
+#define TRANSFER_MODE_DMA_READ			3
 
 union volume {
 	uint16_t raw;
@@ -139,7 +145,7 @@ union cnt {
 		uint16_t ext_audio_en:1;
 		uint16_t cd_audio_reverb:1;
 		uint16_t ext_audio_reverb:1;
-		uint16_t snd_ram_transfer_mode:2;
+		uint16_t snd_ram_tfer_mode:2;
 		uint16_t irq_en:1;
 		uint16_t reverb_master_en:1;
 		uint16_t noise_freq_step:2;
@@ -165,7 +171,7 @@ union stat {
 		uint16_t ext_audio_en:1;
 		uint16_t cd_audio_reverb:1;
 		uint16_t ext_audio_reverb:1;
-		uint16_t snd_ram_transfer_mode:2;
+		uint16_t snd_ram_tfer_mode:2;
 		uint16_t irq:1;
 		uint16_t data_transfer_dma_rw_req:1;
 		uint16_t data_transfer_dma_r_req:1;
@@ -209,6 +215,7 @@ struct spu {
 	uint8_t ram[SPU_RAM_SIZE];
 	struct fifo fifo;
 	struct region region;
+	struct dma_channel dma_channel;
 };
 
 static bool spu_init(struct controller_instance *instance);
@@ -216,12 +223,20 @@ static void spu_reset(struct controller_instance *instance);
 static void spu_deinit(struct controller_instance *instance);
 static uint16_t spu_readw(struct spu *spu, address_t address);
 static void spu_writew(struct spu *spu, uint16_t w, address_t address);
+static uint32_t spu_dma_readl(struct spu *spu);
+static void spu_dma_writel(struct spu *spu, uint32_t l);
+static void spu_writew(struct spu *spu, uint16_t w, address_t address);
 static void spu_fifo_enqueue(struct spu *spu, uint16_t data);
 static bool spu_fifo_dequeue(struct spu *spu, uint16_t *data, int size);
 
 static struct mops spu_mops = {
 	.readw = (readw_t)spu_readw,
 	.writew = (writew_t)spu_writew
+};
+
+static struct dma_ops spu_dma_ops = {
+	.readl = (dma_readl_t)spu_dma_readl,
+	.writel = (dma_writel_t)spu_dma_writel
 };
 
 uint16_t spu_readw(struct spu *spu, address_t address)
@@ -516,6 +531,8 @@ uint16_t spu_readw(struct spu *spu, address_t address)
 void spu_writew(struct spu *spu, uint16_t w, address_t address)
 {
 	uint32_t l = 0;
+	bool rreq;
+	bool wreq;
 	int voice;
 	int i;
 
@@ -744,7 +761,7 @@ void spu_writew(struct spu *spu, uint16_t w, address_t address)
 		/* Handle each voice key on event */
 		for (i = 0; i < NUM_VOICES; i++)
 			if (l & (1 << i))
-				LOG_E("Voice %u key on\n", i);
+				LOG_D("Voice %u key on\n", i);
 		break;
 	case VOICE_KEY_OFF_LO:
 	case VOICE_KEY_OFF_HI:
@@ -757,7 +774,7 @@ void spu_writew(struct spu *spu, uint16_t w, address_t address)
 		/* Handle each voice key off event */
 		for (i = 0; i < NUM_VOICES; i++)
 			if (l & (1 << i))
-				LOG_E("Voice %u key off\n", i);
+				LOG_D("Voice %u key off\n", i);
 		break;
 	case VOICE_PITCH_MODE_ENABLE_LO:
 		/* Write voice pitch mode enable register (low) */
@@ -796,20 +813,35 @@ void spu_writew(struct spu *spu, uint16_t w, address_t address)
 		spu->cur_snd_ram_data_addr = w * 8;
 		break;
 	case SND_RAM_DATA_TRANSFER_FIFO:
-		/* Enqueue data into FIFO */
-		spu_fifo_enqueue(spu, w);
+		/* Enqueue data into FIFO (if transfer mode is set properly) */
+		if (spu->stat.snd_ram_tfer_mode == TRANSFER_MODE_MANUAL_WRITE)
+			spu_fifo_enqueue(spu, w);
 		break;
 	case SPUCNT:
 		/* Write control register */
 		spu->cnt.raw = w;
+
+		/* Apply bits 0-5 to SPUSTAT */
+		spu->stat.cd_audio_en = spu->cnt.cd_audio_en;
+		spu->stat.ext_audio_en = spu->cnt.ext_audio_en;
+		spu->stat.cd_audio_reverb = spu->cnt.cd_audio_reverb;
+		spu->stat.ext_audio_reverb = spu->cnt.ext_audio_reverb;
+		spu->stat.snd_ram_tfer_mode = spu->cnt.snd_ram_tfer_mode;
+
+		/* Update DMA transfer write request bit in SPUSTAT */
+		wreq = (spu->stat.snd_ram_tfer_mode == TRANSFER_MODE_DMA_WRITE);
+		spu->stat.data_transfer_dma_w_req = wreq;
+
+		/* Update DMA transfer read request bit in SPUSTAT */
+		rreq = (spu->stat.snd_ram_tfer_mode == TRANSFER_MODE_DMA_READ);
+		spu->stat.data_transfer_dma_r_req = rreq;
+
+		/* Update DMA transfer read/write request bit in SPUSTAT */
+		spu->stat.data_transfer_dma_rw_req = wreq | rreq;
 		break;
 	case SND_RAM_DATA_TRANSFER_CTRL:
 		/* Write sound RAM data transfer control register */
 		spu->snd_ram_data_transfer_ctrl.raw = w;
-		break;
-	case SPUSTAT:
-		/* Write status register */
-		spu->stat.raw = w;
 		break;
 	case CD_AUDIO_INPUT_VOL_LEFT:
 		/* Write CD audio input volume left register */
@@ -831,6 +863,43 @@ void spu_writew(struct spu *spu, uint16_t w, address_t address)
 		LOG_D("Unknown write %x at %x\n", w, address);
 		break;
 	}
+}
+
+uint32_t spu_dma_readl(struct spu *spu)
+{
+	uint32_t l;
+
+	/* Consume 4 clks/word */
+	clock_consume(4);
+
+	/* Return already if transfer mode is not properly set */
+	if (spu->stat.snd_ram_tfer_mode != TRANSFER_MODE_DMA_READ)
+		return 0;
+
+	/* Read 4 bytes from SPU RAM and return combined value */
+	l = spu->ram[spu->cur_snd_ram_data_addr++];
+	l |= spu->ram[spu->cur_snd_ram_data_addr++] << 8;
+	l |= spu->ram[spu->cur_snd_ram_data_addr++] << 16;
+	l |= spu->ram[spu->cur_snd_ram_data_addr++] << 24;
+	return l;
+}
+
+void spu_dma_writel(struct spu *spu, uint32_t l)
+{
+	uint16_t w;
+
+	/* Consume 4 clks/word */
+	clock_consume(4);
+
+	/* Return already if transfer mode is not properly set */
+	if (spu->stat.snd_ram_tfer_mode != TRANSFER_MODE_DMA_WRITE)
+		return;
+
+	/* Enqueue each half-word into SPU RAM FIFO */
+	w = l & 0xFFFF;
+	spu_fifo_enqueue(spu, w);
+	w = l >> 16;
+	spu_fifo_enqueue(spu, w);
 }
 
 void spu_fifo_enqueue(struct spu *spu, uint16_t data)
@@ -897,8 +966,8 @@ void spu_fifo_enqueue(struct spu *spu, uint16_t data)
 
 		/* Transfer words to SPU RAM, increasing transfer address */
 		for (i = 0; i < num; i++) {
-			spu->ram[spu->cur_snd_ram_data_addr++] = w << 8;
 			spu->ram[spu->cur_snd_ram_data_addr++] = w & 0xFF;
+			spu->ram[spu->cur_snd_ram_data_addr++] = w >> 8;
 		}
 	}
 }
@@ -942,6 +1011,16 @@ bool spu_init(struct controller_instance *instance)
 	spu->region.mops = &spu_mops;
 	spu->region.data = spu;
 	memory_region_add(&spu->region);
+
+	/* Add SPU DMA channel */
+	res = resource_get("dma",
+		RESOURCE_DMA,
+		instance->resources,
+		instance->num_resources);
+	spu->dma_channel.res = res;
+	spu->dma_channel.ops = &spu_dma_ops;
+	spu->dma_channel.data = spu;
+	dma_channel_add(&spu->dma_channel);
 
 	return true;
 }
