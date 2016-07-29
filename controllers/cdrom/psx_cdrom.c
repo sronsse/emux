@@ -75,6 +75,9 @@
 #define REGION_BYTE_EU		0x45
 #define REGION_BYTE_JP		0x49
 
+#define CDROM_CD_DA_OFFSET	12
+#define CDROM_M2F1_OFFSET	0
+
 union index_status {
 	uint8_t raw;
 	struct {
@@ -1276,8 +1279,11 @@ void psx_cdrom_cmd_tick(struct psx_cdrom *cdrom)
 
 void psx_cdrom_data_tick(struct psx_cdrom *cdrom)
 {
-	uint8_t sector[CDROM_M2F1_SECTOR_SIZE];
+	uint8_t sector[CDROM_CD_DA_SECTOR_SIZE];
+	enum cdrom_read_mode mode;
 	int size;
+	int off;
+	bool cdda;
 
 	/* Reset reading flag and disable clock if needed */
 	if (cdrom->stat.state_bits != STATE_READ) {
@@ -1300,16 +1306,23 @@ void psx_cdrom_data_tick(struct psx_cdrom *cdrom)
 	if (cdrom->int_flag.resp_received != INT0)
 		return;
 
-	/* Read at current location (using mode 2 form 1) incrementing it */
-	if (!cdrom_read_sector(sector, cdrom->loc++, CDROM_READ_MODE_M2F1))
+	/* Set mode, sector size, and offset based on mode register */
+	cdda = cdrom->mode.sector_size;
+	mode = cdda ? CDROM_READ_MODE_AUDIO : CDROM_READ_MODE_M2F1;
+	size = cdda ? CDROM_CD_DA_SECTOR_SIZE : CDROM_M2F1_SECTOR_SIZE;
+	off = cdda ? CDROM_CD_DA_OFFSET : CDROM_M2F1_OFFSET;
+
+	/* Read at current location, incrementing it */
+	if (!cdrom_read_sector(sector, cdrom->loc++, mode))
 		LOG_W("CD-ROM read error!\n");
 
-	/* Compute size to copy */
-	size = (cdrom->sram.size + CDROM_M2F1_SECTOR_SIZE <= SRAM_SIZE) ?
-		CDROM_M2F1_SECTOR_SIZE : SRAM_SIZE - cdrom->sram.size;
+	/* Adapt size */
+	size -= off;
+	if (cdrom->sram.size + size > SRAM_SIZE)
+		size = SRAM_SIZE - cdrom->sram.size;
 
 	/* Copy sector (or garbage) to SRAM */
-	memcpy(&cdrom->sram.data[cdrom->sram.size], sector, size);
+	memcpy(&cdrom->sram.data[cdrom->sram.size], &sector[off], size);
 	cdrom->sram.size += size;
 
 	/* Enqueue status */
