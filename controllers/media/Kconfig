@@ -1,0 +1,10 @@
+menu "Media"
+
+config CONTROLLER_MEDIA_MDEC
+	bool "PSX MDEC"
+	default y
+	help
+		Enable PSX MDEC (Motion Decoder)
+
+endmenu
+

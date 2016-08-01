@@ -56,6 +56,7 @@ EXTRA_DIST = Kconfig \
 	controllers/dma/Kconfig \
 	controllers/input/Kconfig \
 	controllers/mapper/Kconfig \
+	controllers/media/Kconfig \
 	controllers/serial/Kconfig \
 	controllers/timer/Kconfig \
 	controllers/video/Kconfig \
@@ -211,6 +212,9 @@ emux_SOURCES += controllers/mapper/rom.c
 endif
 if CONFIG_CONTROLLER_MAPPER_SEGA
 emux_SOURCES += controllers/mapper/sega_mapper.c
+endif
+if CONFIG_CONTROLLER_MEDIA_MDEC
+emux_SOURCES += controllers/media/mdec.c
 endif
 if CONFIG_CONTROLLER_MAPPER_SMS
 emux_SOURCES += controllers/mapper/sms_mapper.c
