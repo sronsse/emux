@@ -1281,6 +1281,12 @@ void psx_cdrom_data_tick(struct psx_cdrom *cdrom)
 {
 	uint8_t sector[CDROM_CD_DA_SECTOR_SIZE];
 	enum cdrom_read_mode mode;
+	struct msf track_msf;
+	struct msf sect_msf;
+	struct msf rel_msf;
+	int track_loc;
+	int rel_loc;
+	int track;
 	int size;
 	int off;
 	bool cdda;
@@ -1312,9 +1318,39 @@ void psx_cdrom_data_tick(struct psx_cdrom *cdrom)
 	size = cdda ? CDROM_CD_DA_SECTOR_SIZE : CDROM_M2F1_SECTOR_SIZE;
 	off = cdda ? CDROM_CD_DA_OFFSET : CDROM_M2F1_OFFSET;
 
-	/* Read at current location, incrementing it */
-	if (!cdrom_read_sector(sector, cdrom->loc++, mode))
+	/* Read at current location */
+	if (!cdrom_read_sector(sector, cdrom->loc, mode))
 		LOG_W("CD-ROM read error!\n");
+
+	/* Retrieve sector MSF equivalent */
+	sect_msf = cdrom_get_msf_from_sector(cdrom->loc);
+
+	/* Retrieve track MSF and location */
+	track = cdrom_get_track_from_sector(cdrom->loc);
+	track_msf = cdrom_get_msf_from_track(track);
+	track_loc = cdrom_get_sector_from_msf(&track_msf);
+
+	/* Compute relative location and MSF equivalent */
+	rel_loc = cdrom->loc - track_loc;
+	rel_msf.m = (rel_loc / SECTORS_PER_SEC) / SECS_PER_MIN;
+	rel_msf.s = (rel_loc / SECTORS_PER_SEC) % SECS_PER_MIN;
+	rel_msf.f = rel_loc % SECTORS_PER_SEC;
+
+	/* Fill position information - this should normally be retrieved from
+	Subchannel Q with ADR = 1, typically intended for displaying the current
+	audio position during playback. Here we simulate this data by using
+	available sector and track information. All results are in BCD. */
+	cdrom->pos.track = track;
+	cdrom->pos.index = 1;
+	cdrom->pos.mm = rel_msf.m;
+	cdrom->pos.ss = rel_msf.s;
+	cdrom->pos.sect = rel_msf.f;
+	cdrom->pos.amm = sect_msf.m;
+	cdrom->pos.ass = sect_msf.s;
+	cdrom->pos.asect = sect_msf.f;
+
+	/* Increment location */
+	cdrom->loc++;
 
 	/* Adapt size */
 	size -= off;
