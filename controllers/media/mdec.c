@@ -52,6 +52,8 @@ struct mdec {
 	union stat stat;
 	union ctrl ctrl;
 	struct region region;
+	struct dma_channel dma_in_channel;
+	struct dma_channel dma_out_channel;
 };
 
 static bool mdec_init(struct controller_instance *instance);
@@ -59,10 +61,20 @@ static void mdec_reset(struct controller_instance *instance);
 static void mdec_deinit(struct controller_instance *instance);
 static uint32_t mdec_readl(struct mdec *mdec, address_t address);
 static void mdec_writel(struct mdec *mdec, uint32_t l, address_t address);
+static void mdec_dma_in_writel(struct mdec *mdec, uint32_t l);
+static uint32_t mdec_dma_out_readl(struct mdec *mdec);
 
 static struct mops mdec_mops = {
 	.readl = (readl_t)mdec_readl,
 	.writel = (writel_t)mdec_writel
+};
+
+static struct dma_ops mdec_dma_in_ops = {
+	.writel = (dma_writel_t)mdec_dma_in_writel
+};
+
+static struct dma_ops mdec_dma_out_ops = {
+	.readl = (dma_readl_t)mdec_dma_out_readl
 };
 
 uint32_t mdec_readl(struct mdec *mdec, address_t address)
@@ -106,6 +118,24 @@ void mdec_writel(struct mdec *mdec, uint32_t l, address_t address)
 	}
 }
 
+void mdec_dma_in_writel(struct mdec *mdec, uint32_t l)
+{
+	/* Consume 1 clk/word */
+	clock_consume(1);
+
+	/* DMA operation is equivalent to writing to command register */
+	mdec_writel(mdec, l, COMMAND);
+}
+
+uint32_t mdec_dma_out_readl(struct mdec *mdec)
+{
+	/* Consume 1 clk/word */
+	clock_consume(1);
+
+	/* DMA operation is equivalent to reading from response register */
+	return mdec_readl(mdec, RESPONSE);
+}
+
 bool mdec_init(struct controller_instance *instance)
 {
 	struct mdec *mdec;
@@ -124,6 +154,26 @@ bool mdec_init(struct controller_instance *instance)
 	mdec->region.mops = &mdec_mops;
 	mdec->region.data = mdec;
 	memory_region_add(&mdec->region);
+
+	/* Add MDECin DMA channel */
+	res = resource_get("dma_in",
+		RESOURCE_DMA,
+		instance->resources,
+		instance->num_resources);
+	mdec->dma_in_channel.res = res;
+	mdec->dma_in_channel.ops = &mdec_dma_in_ops;
+	mdec->dma_in_channel.data = mdec;
+	dma_channel_add(&mdec->dma_in_channel);
+
+	/* Add MDECout DMA channel */
+	res = resource_get("dma_out",
+		RESOURCE_DMA,
+		instance->resources,
+		instance->num_resources);
+	mdec->dma_out_channel.res = res;
+	mdec->dma_out_channel.ops = &mdec_dma_out_ops;
+	mdec->dma_out_channel.data = mdec;
+	dma_channel_add(&mdec->dma_out_channel);
 
 	return true;
 }
