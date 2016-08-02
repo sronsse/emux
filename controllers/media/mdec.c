@@ -1,3 +1,5 @@
+#include <string.h>
+#include <bitops.h>
 #include <clock.h>
 #include <controller.h>
 #include <memory.h>
@@ -8,6 +10,10 @@
 #define CONTROL		4
 
 #define FIFO_SIZE	32
+
+#define LUM_IQTAB_SIZE	64
+#define COL_IQTAB_SIZE	64
+#define SCALE_TAB_SIZE	64
 
 #define BLOCK_Y		4
 #define BLOCK_Y1	0
@@ -87,6 +93,9 @@ struct mdec {
 	union stat stat;
 	union ctrl ctrl;
 	union cmd cmd;
+	uint8_t lum_iqtab[LUM_IQTAB_SIZE];
+	uint8_t col_iqtab[COL_IQTAB_SIZE];
+	int16_t scale_tab[SCALE_TAB_SIZE];
 	struct fifo fifo_in;
 	struct fifo fifo_out;
 	struct region region;
@@ -129,21 +138,117 @@ static struct dma_ops mdec_dma_out_ops = {
 /* MDEC(0) - No function */
 void cmd_no_function(struct mdec *mdec)
 {
+	/* This command has no function. Command bits 25-28 are reflected to
+	status bits 23-26 as usually. Command bits 0-15 are reflected to status
+	bits 0-15 (similar as the "number of parameter words" for MDEC(1), but
+	without the "minus 1" effect, and without actually expecting any
+	parameters). */
+	mdec->stat.bits0_15 = mdec->cmd.bits0_15;
+	mdec->stat.bits23_26 = mdec->cmd.bits25_28;
 }
 
 /* MDEC(1) - Decode Macroblock(s) */
 void cmd_decode_macroblock(struct mdec *mdec)
 {
+	(void)mdec;
 }
 
 /* MDEC(2) - Set Quant Table(s) */
 void cmd_set_iqtab(struct mdec *mdec)
 {
+	uint32_t l = 0;
+	uint8_t b;
+	int num_bytes;
+	int num_words;
+	int i;
+	int j;
+
+	/* Handle command start */
+	if (!mdec->stat.cmd_busy) {
+		/* Copy command bits 25-28 to status bits 23-26 */
+		mdec->stat.bits23_26 = mdec->cmd.bits25_28;
+
+		/* Flag command as busy */
+		mdec->stat.cmd_busy = 1;
+	}
+
+	/* The command word is followed by 64 unsigned parameter bytes for the
+	Luminance Quant Table (used for Y1..Y4), and if Command.Bit0 was set, by
+	another 64 unsigned parameter bytes for the Color Quant Table (used for
+	Cb and Cr). */
+	num_bytes = LUM_IQTAB_SIZE;
+	if (mdec->cmd.set_iqtab.color)
+		num_bytes += COL_IQTAB_SIZE;
+
+	/* Leave already if FIFO does not contain enough elements */
+	num_words = num_bytes / 4;
+	if (mdec->fifo_in.num < num_words)
+		return;
+
+	/* Save luminance quant table */
+	for (i = 0; i < LUM_IQTAB_SIZE / 4; i++) {
+		fifo_dequeue(&mdec->fifo_in, &l, 1);
+		for (j = 0; j < 4; j++) {
+			b = bitops_getl(&l, j * 8, 8);
+			mdec->col_iqtab[i * 4 + j] = b;
+		}
+	}
+
+	/* Save color quant table if needed */
+	if (mdec->cmd.set_iqtab.color)
+		for (i = 0; i < COL_IQTAB_SIZE / 4; i++) {
+			fifo_dequeue(&mdec->fifo_in, &l, 1);
+			for (j = 0; j < 4; j++) {
+				b = bitops_getl(&l, j * 8, 8);
+				mdec->col_iqtab[i * 4 + j] = b;
+			}
+		}
+
+	/* Flag command as complete */
+	mdec->stat.cmd_busy = 0;
 }
 
 /* MDEC(3) - Set Scale Table */
 void cmd_set_scale(struct mdec *mdec)
 {
+	uint32_t l = 0;
+	int16_t w = 0;
+	int num_half_words;
+	int num_words;
+	int i;
+	int j;
+
+	/* Handle command start */
+	if (!mdec->stat.cmd_busy) {
+		/* Copy command bits 25-28 to status bits 23-26 */
+		mdec->stat.bits23_26 = mdec->cmd.bits25_28;
+
+		/* Flag command as busy */
+		mdec->stat.cmd_busy = 1;
+	}
+
+	/* The command is followed by 64 signed halfwords with 14bit fractional
+	part, the values should be usually/always the same values (based on the
+	standard JPEG constants, although, MDEC(3) allows to use other values
+	than that constants). */
+	num_half_words = SCALE_TAB_SIZE;
+
+	/* Leave already if FIFO does not contain enough elements */
+	num_words = num_half_words / 2;
+	if (mdec->fifo_in.num < num_words)
+		return;
+
+	/* Save scale table */
+	for (i = 0; i < SCALE_TAB_SIZE / 2; i++) {
+		fifo_dequeue(&mdec->fifo_in, &l, 1);
+		for (j = 0; j < 2; j++) {
+			w = bitops_getl(&l, j * 16, 16);
+			mdec->scale_tab[i * 2 + j] = w;
+		}
+	}
+
+	/* Flag command as complete */
+	mdec->stat.cmd_busy = 0;
 }
 
 uint32_t mdec_readl(struct mdec *mdec, address_t address)
@@ -377,11 +482,14 @@ void mdec_reset(struct controller_instance *instance)
 {
 	struct mdec *mdec = instance->priv_data;
 
-	/* Reset registers */
+	/* Reset registers/data */
 	mdec->stat.raw = 0;
 	mdec->stat.current_block = BLOCK_Y;
 	mdec->stat.data_out_fifo_empty = 1;
 	mdec->ctrl.raw = 0;
+	memset(mdec->lum_iqtab, 0, LUM_IQTAB_SIZE);
+	memset(mdec->col_iqtab, 0, COL_IQTAB_SIZE);
+	memset(mdec->scale_tab, 0, SCALE_TAB_SIZE);
 
 	/* Reset FIFOs */
 	mdec->fifo_in.pos = 0;
