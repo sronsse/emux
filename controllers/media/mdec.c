@@ -17,6 +17,33 @@
 #define BLOCK_CR	4
 #define BLOCK_CB	5
 
+struct cmd_decode_macroblock {
+	uint32_t num_param_words:16;
+	uint32_t unused:9;
+	uint32_t data_output_bit15:1;
+	uint32_t data_output_signed:1;
+	uint32_t data_output_depth:2;
+	uint32_t cmd:3;
+};
+
+struct cmd_set_iqtab {
+	uint32_t color:1;
+	uint32_t unused:29;
+	uint32_t cmd:3;
+};
+
+union cmd {
+	uint32_t raw;
+	struct {
+		uint32_t bits0_15:16;
+		uint32_t unused:9;
+		uint32_t bits25_28:4;
+		uint32_t code:3;
+	};
+	struct cmd_decode_macroblock decode_macroblock;
+	struct cmd_set_iqtab set_iqtab;
+};
+
 struct fifo {
 	uint32_t data[FIFO_SIZE];
 	int pos;
@@ -59,6 +86,7 @@ union ctrl {
 struct mdec {
 	union stat stat;
 	union ctrl ctrl;
+	union cmd cmd;
 	struct fifo fifo_in;
 	struct fifo fifo_out;
 	struct region region;
@@ -73,11 +101,17 @@ static uint32_t mdec_readl(struct mdec *mdec, address_t address);
 static void mdec_writel(struct mdec *mdec, uint32_t l, address_t address);
 static void mdec_dma_in_writel(struct mdec *mdec, uint32_t l);
 static uint32_t mdec_dma_out_readl(struct mdec *mdec);
+static void mdec_process_cmd(struct mdec *mdec);
 
 static bool fifo_empty(struct fifo *fifo);
 static bool fifo_full(struct fifo *fifo);
 static bool fifo_enqueue(struct fifo *fifo, uint32_t data);
 static bool fifo_dequeue(struct fifo *fifo, uint32_t *data, int size);
+
+static void cmd_no_function(struct mdec *mdec);
+static void cmd_decode_macroblock(struct mdec *mdec);
+static void cmd_set_iqtab(struct mdec *mdec);
+static void cmd_set_scale(struct mdec *mdec);
 
 static struct mops mdec_mops = {
 	.readl = (readl_t)mdec_readl,
@@ -91,6 +125,26 @@ static struct dma_ops mdec_dma_in_ops = {
 static struct dma_ops mdec_dma_out_ops = {
 	.readl = (dma_readl_t)mdec_dma_out_readl
 };
+
+/* MDEC(0) - No function */
+void cmd_no_function(struct mdec *mdec)
+{
+}
+
+/* MDEC(1) - Decode Macroblock(s) */
+void cmd_decode_macroblock(struct mdec *mdec)
+{
+}
+
+/* MDEC(2) - Set Quant Table(s) */
+void cmd_set_iqtab(struct mdec *mdec)
+{
+}
+
+/* MDEC(3) - Set Scale Table */
+void cmd_set_scale(struct mdec *mdec)
+{
+}
 
 uint32_t mdec_readl(struct mdec *mdec, address_t address)
 {
@@ -128,6 +182,9 @@ void mdec_writel(struct mdec *mdec, uint32_t l, address_t address)
 	case COMMAND:
 		/* Enqueue command/parameter */
 		fifo_enqueue(&mdec->fifo_in, l);
+
+		/* Process command */
+		mdec_process_cmd(mdec);
 
 		/* Update Data-In Request status bit (set when DMA0 enabled and
 		ready to receive data) */
@@ -242,6 +299,36 @@ bool fifo_dequeue(struct fifo *fifo, uint32_t *data, int size)
 
 	/* Return success */
 	return true;
+}
+
+void mdec_process_cmd(struct mdec *mdec)
+{
+	/* Dequeue command from FIFO if needed */
+	if (!mdec->stat.cmd_busy)
+		fifo_dequeue(&mdec->fifo_in, &mdec->cmd.raw, 1);
+
+	/* Process command */
+	switch (mdec->cmd.code) {
+	case 0x00:
+		cmd_no_function(mdec);
+		break;
+	case 0x01:
+		cmd_decode_macroblock(mdec);
+		break;
+	case 0x02:
+		cmd_set_iqtab(mdec);
+		break;
+	case 0x03:
+		cmd_set_scale(mdec);
+		break;
+	case 0x04:
+	case 0x05:
+	case 0x06:
+	case 0x07:
+		/* These commands act identical as MDEC(0) */
+		cmd_no_function(mdec);
+		break;
+	}
 }
 
 bool mdec_init(struct controller_instance *instance)
