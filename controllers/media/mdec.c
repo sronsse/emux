@@ -7,6 +7,8 @@
 #define STATUS		4
 #define CONTROL		4
 
+#define FIFO_SIZE	32
+
 #define BLOCK_Y		4
 #define BLOCK_Y1	0
 #define BLOCK_Y2	1
@@ -15,12 +17,18 @@
 #define BLOCK_CR	4
 #define BLOCK_CB	5
 
+struct fifo {
+	uint32_t data[FIFO_SIZE];
+	int pos;
+	int num;
+};
+
 union stat {
 	uint32_t raw;
 	struct {
 		uint32_t num_param_words:16;
 		uint32_t current_block:3;
-		uint32_t unused: 4;
+		uint32_t unused:4;
 		uint32_t data_output_bit15:1;
 		uint32_t data_output_signed:1;
 		uint32_t data_output_depth:2;
@@ -51,6 +59,8 @@ union ctrl {
 struct mdec {
 	union stat stat;
 	union ctrl ctrl;
+	struct fifo fifo_in;
+	struct fifo fifo_out;
 	struct region region;
 	struct dma_channel dma_in_channel;
 	struct dma_channel dma_out_channel;
@@ -63,6 +73,11 @@ static uint32_t mdec_readl(struct mdec *mdec, address_t address);
 static void mdec_writel(struct mdec *mdec, uint32_t l, address_t address);
 static void mdec_dma_in_writel(struct mdec *mdec, uint32_t l);
 static uint32_t mdec_dma_out_readl(struct mdec *mdec);
+
+static bool fifo_empty(struct fifo *fifo);
+static bool fifo_full(struct fifo *fifo);
+static bool fifo_enqueue(struct fifo *fifo, uint32_t data);
+static bool fifo_dequeue(struct fifo *fifo, uint32_t *data, int size);
 
 static struct mops mdec_mops = {
 	.readl = (readl_t)mdec_readl,
@@ -84,8 +99,17 @@ uint32_t mdec_readl(struct mdec *mdec, address_t address)
 	/* Handle register read */
 	switch (address) {
 	case RESPONSE:
-		/* Read response */
-		l = 0;
+		/* The data is always output as a 8x8 pixel bitmap, so, when
+		manually reading from this register and using colored 16x16
+		pixel macroblocks, the data from four 8x8 blocks must be
+		re-ordered accordingly. For monochrome 8x8 macroblocks, no
+		re-ordering is needed. */
+		fifo_dequeue(&mdec->fifo_out, &l, 1);
+
+		/* Update Data-Out Request status bit (set when DMA1 enabled and
+		ready to send data) */
+		mdec->stat.data_out_req = mdec->ctrl.en_data_out_req;
+		mdec->stat.data_out_req &= !fifo_empty(&mdec->fifo_out);
 		break;
 	case STATUS:
 		/* Read status register */
@@ -102,6 +126,18 @@ void mdec_writel(struct mdec *mdec, uint32_t l, address_t address)
 	/* Handle register write */
 	switch (address) {
 	case COMMAND:
+		/* Enqueue command/parameter */
+		fifo_enqueue(&mdec->fifo_in, l);
+
+		/* Update Data-In Request status bit (set when DMA0 enabled and
+		ready to receive data) */
+		mdec->stat.data_in_req = mdec->ctrl.en_data_in_req;
+		mdec->stat.data_in_req &= !fifo_full(&mdec->fifo_in);
+
+		/* Update Data-Out Request status bit (set when DMA1 enabled and
+		ready to send data) */
+		mdec->stat.data_out_req = mdec->ctrl.en_data_out_req;
+		mdec->stat.data_out_req &= !fifo_empty(&mdec->fifo_out);
 		break;
 	case CONTROL:
 		/* Write control register */
@@ -113,7 +149,21 @@ void mdec_writel(struct mdec *mdec, uint32_t l, address_t address)
 			mdec->stat.current_block = BLOCK_Y;
 			mdec->stat.data_out_fifo_empty = 1;
 			mdec->ctrl.raw = 0;
+			mdec->fifo_in.pos = 0;
+			mdec->fifo_in.num = 0;
+			mdec->fifo_out.pos = 0;
+			mdec->fifo_out.num = 0;
 		}
+
+		/* Update Data-In Request status bit (set when DMA0 enabled and
+		ready to receive data) */
+		mdec->stat.data_in_req = mdec->ctrl.en_data_in_req;
+		mdec->stat.data_in_req &= !fifo_full(&mdec->fifo_in);
+
+		/* Update Data-Out Request status bit (set when DMA1 enabled and
+		ready to send data) */
+		mdec->stat.data_out_req = mdec->ctrl.en_data_out_req;
+		mdec->stat.data_out_req &= !fifo_empty(&mdec->fifo_out);
 		break;
 	}
 }
@@ -122,6 +172,10 @@ void mdec_dma_in_writel(struct mdec *mdec, uint32_t l)
 {
 	/* Consume 1 clk/word */
 	clock_consume(1);
+
+	/* Return already if channel is not enabled */
+	if (!mdec->ctrl.en_data_in_req)
+		return;
 
 	/* DMA operation is equivalent to writing to command register */
 	mdec_writel(mdec, l, COMMAND);
@@ -132,8 +186,62 @@ uint32_t mdec_dma_out_readl(struct mdec *mdec)
 	/* Consume 1 clk/word */
 	clock_consume(1);
 
+	/* Return already if channel is not enabled */
+	if (!mdec->ctrl.en_data_out_req)
+		return 0;
+
 	/* DMA operation is equivalent to reading from response register */
 	return mdec_readl(mdec, RESPONSE);
+}
+
+bool fifo_empty(struct fifo *fifo)
+{
+	/* Return whether FIFO is empty or not */
+	return (fifo->num == 0);
+}
+
+bool fifo_full(struct fifo *fifo)
+{
+	/* Return whether FIFO is full or not */
+	return (fifo->num == FIFO_SIZE);
+}
+
+bool fifo_enqueue(struct fifo *fifo, uint32_t data)
+{
+	/* Return already if FIFO is full */
+	if (fifo_full(fifo))
+		return false;
+
+	/* Add command/data to FIFO and handle position overflow */
+	fifo->data[fifo->pos++] = data;
+	if (fifo->pos == FIFO_SIZE)
+		fifo->pos = 0;
+
+	/* Increment number of elements */
+	fifo->num++;
+
+	/* Return success */
+	return true;
+}
+
+bool fifo_dequeue(struct fifo *fifo, uint32_t *data, int size)
+{
+	int index;
+	int i;
+
+	/* Return if FIFO does not have enough elements */
+	if (fifo->num < size)
+		return false;
+
+	/* Remove command/data from FIFO */
+	for (i = 0; i < size; i++) {
+		index = ((fifo->pos - fifo->num) + FIFO_SIZE) % FIFO_SIZE;
+		data[i] = fifo->data[index];
+		fifo->num--;
+	}
+
+	/* Return success */
+	return true;
 }
 
 bool mdec_init(struct controller_instance *instance)
@@ -187,6 +295,12 @@ void mdec_reset(struct controller_instance *instance)
 	mdec->stat.current_block = BLOCK_Y;
 	mdec->stat.data_out_fifo_empty = 1;
 	mdec->ctrl.raw = 0;
+
+	/* Reset FIFOs */
+	mdec->fifo_in.pos = 0;
+	mdec->fifo_in.num = 0;
+	mdec->fifo_out.pos = 0;
+	mdec->fifo_out.num = 0;
 }
 
 void mdec_deinit(struct controller_instance *instance)
