@@ -23,6 +23,11 @@
 #define BLOCK_CR	4
 #define BLOCK_CB	5
 
+#define DEPTH_4		0
+#define DEPTH_8		1
+#define DEPTH_24	2
+#define DEPTH_15	3
+
 struct cmd_decode_macroblock {
 	uint32_t num_param_words:16;
 	uint32_t unused:9;
@@ -121,6 +126,8 @@ static void cmd_no_function(struct mdec *mdec);
 static void cmd_decode_macroblock(struct mdec *mdec);
 static void cmd_set_iqtab(struct mdec *mdec);
 static void cmd_set_scale(struct mdec *mdec);
+static bool sub_decode_colored_macroblock(struct mdec *mdec);
+static bool sub_decode_monochrome_macroblock(struct mdec *mdec);
 
 static struct mops mdec_mops = {
 	.readl = (readl_t)mdec_readl,
@@ -134,6 +141,21 @@ static struct dma_ops mdec_dma_in_ops = {
 static struct dma_ops mdec_dma_out_ops = {
 	.readl = (dma_readl_t)mdec_dma_out_readl
 };
+
+/* decode_colored_macroblock - MDEC(1) command (at 15bpp or 24bpp depth) */
+bool sub_decode_colored_macroblock(struct mdec *mdec)
+{
+	(void)mdec;
+	LOG_E("sub_decode_colored_macroblock\n");
+	return true;
+}
+/* decode_monochrome_macroblock - MDEC(1) command (at 4bpp or 8bpp depth) */
+bool sub_decode_monochrome_macroblock(struct mdec *mdec)
+{
+	(void)mdec;
+	LOG_E("sub_decode_monochrome_macroblock\n");
+	return true;
+}
 
 /* MDEC(0) - No function */
 void cmd_no_function(struct mdec *mdec)
@@ -150,7 +172,41 @@ void cmd_no_function(struct mdec *mdec)
 /* MDEC(1) - Decode Macroblock(s) */
 void cmd_decode_macroblock(struct mdec *mdec)
 {
-	(void)mdec;
+	struct cmd_decode_macroblock *cmd = &mdec->cmd.decode_macroblock;
+	bool colored;
+	bool complete;
+
+	/* Handle command start */
+	if (!mdec->stat.cmd_busy) {
+		/* Copy data output parameters to status register */
+		mdec->stat.data_output_bit15 = cmd->data_output_bit15;
+		mdec->stat.data_output_signed = cmd->data_output_signed;
+		mdec->stat.data_output_depth = cmd->data_output_depth;
+
+		/* Flag command as busy */
+		mdec->stat.cmd_busy = 1;
+	}
+
+	/* Decrement number of parameter remaining words */
+	cmd->num_param_words--;
+
+	/* Copy number of parameter remaining to status register */
+	mdec->stat.num_param_words = cmd->num_param_words;
+
+	/* This command is followed by one or more macroblock parameters
+	(usually, all macroblocks for the whole image are sent at once). */
+
+	/* Call appropriate sub function */
+	colored = (cmd->data_output_depth == DEPTH_4);
+	colored |= (cmd->data_output_depth == DEPTH_8);
+	complete = colored ?
+		sub_decode_colored_macroblock(mdec) :
+		sub_decode_monochrome_macroblock(mdec);
+
+	exit(1);
+
+	/* Update command busy state */
+	mdec->stat.cmd_busy = !complete;
 }
 
 /* MDEC(2) - Set Quant Table(s) */
