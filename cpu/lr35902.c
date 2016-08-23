@@ -321,9 +321,11 @@ void LD_SP_HL(struct lr35902 *cpu)
 
 void PUSH_rr(struct lr35902 *cpu, uint16_t *rr)
 {
+	clock_consume(8); //1 M-cycle plus another M-cycle internal delay.
 	memory_writeb(cpu->bus_id, *rr >> 8, --cpu->SP);
+	clock_consume(4);
 	memory_writeb(cpu->bus_id, *rr, --cpu->SP);
-	clock_consume(16);
+	clock_consume(4);
 }
 
 void POP_rr(struct lr35902 *cpu, uint16_t *rr)
@@ -720,24 +722,28 @@ void DEC_rr(struct lr35902 *UNUSED(cpu), uint16_t *rr)
 
 void ADD_SP_d(struct lr35902 *cpu)
 {
+	clock_consume(4);
 	int8_t d = memory_readb(cpu->bus_id, cpu->PC++);
+	clock_consume(4);
 	int32_t result = cpu->SP + d;
 	cpu->flags.C = result >> 16;
 	cpu->flags.H = ((cpu->SP & 0x0FFF) + (d & 0x0FFF) > 0x0FFF);
 	cpu->flags.N = 0;
 	cpu->flags.Z = 0;
 	cpu->SP = result;
-	clock_consume(16);
+	clock_consume(8);
 }
 
 void LD_HL_SPpd(struct lr35902 *cpu)
 {
+	clock_consume(4);
 	int8_t d = memory_readb(cpu->bus_id, cpu->PC++);
+	clock_consume(4);
 	uint32_t acc = (uint32_t)cpu->SP + (uint32_t)d;
 	cpu->F = (0x20 & (((cpu->SP>>8) ^ ((d)>>8) ^ (acc >> 8)) << 1));
 	cpu->flags.C = (acc >> 16);
 	cpu->HL = acc;
-	clock_consume(12);
+	clock_consume(4);
 }
 
 void RLCA(struct lr35902 *cpu)
@@ -1224,10 +1230,11 @@ void RETI(struct lr35902 *cpu)
 
 void RST_n(struct lr35902 *cpu, uint8_t n)
 {
+	clock_consume(8);
 	memory_writeb(cpu->bus_id, cpu->PC >> 8, --cpu->SP);
 	memory_writeb(cpu->bus_id, cpu->PC, --cpu->SP);
 	cpu->PC = n;
-	clock_consume(16);
+	clock_consume(8);
 }
 
 bool lr35902_handle_interrupts(struct lr35902 *cpu)
@@ -1238,6 +1245,8 @@ bool lr35902_handle_interrupts(struct lr35902 *cpu)
 	irq = bitops_ffs(cpu->IF);
 	if (irq-- == 0)
 		return false;
+
+	clock_consume(12);
 
 	/* Any interrupt should resume CPU (regardless of IME flag) */
 	cpu->halted = 0;
@@ -1264,7 +1273,7 @@ bool lr35902_handle_interrupts(struct lr35902 *cpu)
 	cpu->PC = INT_VECTOR(irq);
 
 	/* Interrupt handler should consume 20 cycles */
-	clock_consume(20);
+	clock_consume(8);
 	return true;
 }
 
