@@ -34,6 +34,7 @@ AR  = $(NDK_ROOT_DIR)/toolchains/mips64el-linux-android-4.9/prebuilt/$(HOST_PLAT
 
 OBJEXT = .android_mips64.o
 SOEXT  = .android_mips64.so
+LIBEXT = .android_mips64.a
 
 ################
 # Platform setup

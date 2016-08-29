@@ -34,6 +34,7 @@ AR  = $(NDK_ROOT_DIR)/toolchains/x86-4.8/prebuilt/$(HOST_PLATFORM)-x86_64/bin/i6
 
 OBJEXT = .android_x86.o
 SOEXT  = .android_x86.so
+LIBEXT = .android_x86.a
 
 ################
 # Platform setup

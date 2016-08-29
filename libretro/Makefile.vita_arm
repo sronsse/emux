@@ -1,6 +1,6 @@
 ##############
 # Works on hosts Linux
-# Install devkitppc
+# Install vitasdk
 
 #########################
 # Check the host platform
@@ -24,16 +24,17 @@ TARGET_PLATFORM = vita_arm
 #################
 # Toolchain setup
 
-CC  = $(VITASDK_ROOT_DIR)/bin/arm-vita-eabi-gcc
-CXX = $(VITASDK_ROOT_DIR)/bin/arm-vita-eabi-g++
-AS  = $(VITASDK_ROOT_DIR)/bin/arm-vita-eabi-as
-AR  = $(VITASDK_ROOT_DIR)/bin/arm-vita-eabi-ar
+CC  = $(VITASDK)/bin/arm-vita-eabi-gcc
+CXX = $(VITASDK)/bin/arm-vita-eabi-g++
+AS  = $(VITASDK)/bin/arm-vita-eabi-as
+AR  = $(VITASDK)/bin/arm-vita-eabi-ar
 
 ############
 # Extensions
 
 OBJEXT = .vita_arm.o
 SOEXT  = .vita_arm.so
+LIBEXT = .vita_arm.a
 
 ################
 # Platform setup

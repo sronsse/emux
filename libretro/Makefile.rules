@@ -5,7 +5,7 @@ endif
 
 # Get full extension based on linking type
 ifeq ($(STATIC_LINKING), 1)
-	EXTENSION = $(platform).a
+	EXTENSION = libretro$(LIBEXT)
 else
 	EXTENSION = libretro$(SOEXT)
 endif

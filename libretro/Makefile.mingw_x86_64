@@ -34,6 +34,7 @@ AR  = ar
 
 OBJEXT = .mingw_x86_64.o
 SOEXT  = .mingw_x86_64.dll
+LIBEXT = .mingw_x86_64.a
 
 ################
 # Platform setup

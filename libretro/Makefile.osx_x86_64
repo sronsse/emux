@@ -34,6 +34,7 @@ AR  = $(OSXCROSS_ROOT_DIR)/target/bin/x86_64-apple-darwin13-ar
 
 OBJEXT = .osx_x86_64.o
 SOEXT  = .osx_x86_64.dylib
+LIBEXT = .osx_x86_64.a
 
 ################
 # Platform setup

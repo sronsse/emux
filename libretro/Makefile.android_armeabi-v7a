@@ -34,6 +34,7 @@ AR  = $(NDK_ROOT_DIR)/toolchains/arm-linux-androideabi-4.8/prebuilt/$(HOST_PLATF
 
 OBJEXT = .android_armeabi-v7a.o
 SOEXT  = .android_armeabi-v7a.so
+LIBEXT = .android_armeabi-v7a.a
 
 ################
 # Platform setup

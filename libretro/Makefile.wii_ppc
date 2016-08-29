@@ -34,6 +34,7 @@ AR  = $(DEVKITPPC_ROOT_DIR)/bin/powerpc-eabi-ar
 
 OBJEXT = .wii_ppc.o
 SOEXT  = .wii_ppc.so
+LIBEXT = .wii_ppc.a
 
 ################
 # Platform setup

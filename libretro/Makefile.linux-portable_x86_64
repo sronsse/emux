@@ -34,6 +34,7 @@ AR  = ar
 
 OBJEXT = .linux-portable_x86_64.o
 SOEXT  = .linux-portable_x86_64.so
+LIBEXT = .linux-portable_x86_64.a
 
 ################
 # Platform setup
