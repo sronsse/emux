@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <list.h>
+#include <util.h>
 #include <video.h>
 
 #define INPUT_START(_name) \
@@ -10,13 +11,14 @@
 		.name = #_name,
 #define INPUT_END \
 	}; \
-	__attribute__((constructor)) static void _register() \
-	{ \
-		list_insert(&input_frontends, &_input_frontend); \
-	} \
-	__attribute__((destructor)) static void _unregister() \
+	static void _unregister(void) \
 	{ \
 		list_remove(&input_frontends, &_input_frontend); \
+	} \
+	INITIALIZER(_register) \
+	{ \
+		list_insert(&input_frontends, &_input_frontend); \
+		atexit(_unregister); \
 	}
 
 /* Generic codes */

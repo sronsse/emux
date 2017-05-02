@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <list.h>
+#include <util.h>
 
 #define MACHINE_START(_name, _description) \
 	static struct machine _machine = { \
@@ -10,13 +11,14 @@
 		.description = _description,
 #define MACHINE_END \
 	}; \
-	__attribute__((constructor)) static void _register() \
-	{ \
-		list_insert(&machines, &_machine); \
-	} \
-	__attribute__((destructor)) static void _unregister() \
+	static void _unregister(void) \
 	{ \
 		list_remove(&machines, &_machine); \
+	} \
+	INITIALIZER(_register) \
+	{ \
+		list_insert(&machines, &_machine); \
+		atexit(_unregister); \
 	}
 
 typedef void machine_priv_data_t;

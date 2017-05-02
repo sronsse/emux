@@ -4,19 +4,21 @@
 #include <stdbool.h>
 #include <list.h>
 #include <resource.h>
+#include <util.h>
 
 #define CONTROLLER_START(_name) \
 	static struct controller _controller = { \
 		.name = #_name,
 #define CONTROLLER_END \
 	}; \
-	__attribute__((constructor)) static void _register() \
-	{ \
-		list_insert(&controllers, &_controller); \
-	} \
-	__attribute__((destructor)) static void _unregister() \
+	static void _unregister(void) \
 	{ \
 		list_remove(&controllers, &_controller); \
+	} \
+	INITIALIZER(_register) \
+	{ \
+		list_insert(&controllers, &_controller); \
+		atexit(_unregister); \
 	}
 
 typedef void controller_mach_data_t;

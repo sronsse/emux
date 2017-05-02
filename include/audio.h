@@ -4,19 +4,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <list.h>
+#include <util.h>
 
 #define AUDIO_START(_name) \
 	static struct audio_frontend _audio_frontend = { \
 		.name = #_name,
 #define AUDIO_END \
 	}; \
-	__attribute__((constructor)) static void _register() \
-	{ \
-		list_insert(&audio_frontends, &_audio_frontend); \
-	} \
-	__attribute__((destructor)) static void _unregister() \
+	static void _unregister(void) \
 	{ \
 		list_remove(&audio_frontends, &_audio_frontend); \
+	} \
+	INITIALIZER(_register) \
+	{ \
+		list_insert(&audio_frontends, &_audio_frontend); \
+		atexit(_unregister); \
 	}
 
 typedef void audio_priv_data_t;

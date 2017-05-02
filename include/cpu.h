@@ -3,19 +3,21 @@
 
 #include <stdbool.h>
 #include <list.h>
+#include <util.h>
 
 #define CPU_START(_name) \
 	static struct cpu _cpu = { \
 		.name = #_name,
 #define CPU_END \
 	}; \
-	__attribute__((constructor)) static void _register() \
-	{ \
-		list_insert(&cpus, &_cpu); \
-	} \
-	__attribute__((destructor)) static void _unregister() \
+	static void _unregister(void) \
 	{ \
 		list_remove(&cpus, &_cpu); \
+	} \
+	INITIALIZER(_register) \
+	{ \
+		list_insert(&cpus, &_cpu); \
+		atexit(_unregister); \
 	}
 
 typedef void cpu_mach_data_t;

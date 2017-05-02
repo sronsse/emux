@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <util.h>
 
 #define PARAM(_var, _type, _name, _module, _desc) \
 	static struct param _param_##_var = { \
@@ -12,13 +13,14 @@
 		.module = _module, \
 		.desc = _desc \
 	}; \
-	__attribute__((constructor)) static void _register_param_##_var() \
-	{ \
-		cmdline_register_param(&_param_##_var); \
-	} \
-	__attribute__((destructor)) static void _unregister_param_##_var() \
+	static void _unregister_param_##_var(void) \
 	{ \
 		cmdline_unregister_param(&_param_##_var); \
+	} \
+	INITIALIZER(_register_param_##_var) \
+	{ \
+		cmdline_register_param(&_param_##_var); \
+		atexit(_unregister_param_##_var); \
 	}
 
 struct param {
