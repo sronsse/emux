@@ -2,7 +2,11 @@
 #define _UTIL_H
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+#ifdef __GNUC__
 #define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
+#else
+#define UNUSED(x) x
+#endif
 
 #ifdef __cplusplus
 #define INITIALIZER(f) \
