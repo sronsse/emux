@@ -1,8 +1,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifdef __GNUC__
 #include <unistd.h>
 #include <sys/time.h>
+#endif
 #include <clock.h>
 #include <log.h>
 
@@ -14,7 +16,9 @@ static float machine_clock_rate;
 static float mach_delay;
 static float current_cycle;
 static float num_remaining_cycles;
+#ifdef __GNUC__
 static struct timeval start_time;
+#endif
 struct clock *current_clock;
 
 void clock_add(struct clock *clock)
@@ -42,7 +46,9 @@ void clock_reset()
 
 	/* Initialize current cycle and start time */
 	current_cycle = 0.0f;
+#ifdef __GNUC__
 	gettimeofday(&start_time, NULL);
+#endif
 
 	/* Reset all clock remaining cycles */
 	for (i = 0; i < num_clocks; i++)
@@ -52,9 +58,11 @@ void clock_reset()
 void clock_tick_all(bool handle_delay)
 {
 	float num_cycles;
+#ifdef __GNUC__
 	float real_delay;
 	float d;
 	struct timeval current_time;
+#endif
 	int i;
 
 	/* Initialize number of cycles to skip */
@@ -86,6 +94,7 @@ void clock_tick_all(bool handle_delay)
 	current_cycle += num_cycles;
 	num_remaining_cycles = num_cycles;
 
+#ifdef __GNUC__
 	/* Only sleep if delay handling is needed */
 	if (handle_delay) {
 		/* Get actual delay (in ns) */
@@ -99,11 +108,14 @@ void clock_tick_all(bool handle_delay)
 			usleep(d);
 		}
 	}
+#endif
 
 	/* Reset current cycle and start time if needed */
 	if (current_cycle >= machine_clock_rate) {
+#ifdef __GNUC__
 		if (handle_delay)
 			gettimeofday(&start_time, NULL);
+#endif
 		current_cycle -= machine_clock_rate;
 	}
 }

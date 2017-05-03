@@ -1,6 +1,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
+#ifdef __GNUC__
 #include <unistd.h>
+#endif
 #ifndef _WIN32
 #include <sys/mman.h>
 #include <sys/stat.h>

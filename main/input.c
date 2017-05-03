@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #ifndef __LIBRETRO__
+#ifdef __GNUC__
 #include <config.h>
+#endif
 #endif
 #include <cmdline.h>
 #include <env.h>

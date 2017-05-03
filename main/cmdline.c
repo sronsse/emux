@@ -1,4 +1,6 @@
+#ifdef __GNUC__
 #include <getopt.h>
+#endif
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -7,7 +9,9 @@
 #include <audio.h>
 #include <cmdline.h>
 #ifndef __LIBRETRO__
+#ifdef __GNUC__
 #include <config.h>
+#endif
 #endif
 #include <list.h>
 #include <machine.h>
@@ -30,6 +34,7 @@ struct cmdline {
 
 static int param_sort_compare(const void *a, const void *b);
 #ifndef __LIBRETRO__
+#ifdef __GNUC__
 static void cmdline_build(int argc, char *argv[], int defc, char *defv[]);
 static void cmdline_print_module_options(char *module, bool error);
 static void cmdline_print_option(struct param *p, bool error);
@@ -38,12 +43,15 @@ static bool cmdline_parse_bool(char *long_name, bool *arg);
 static bool cmdline_parse_int(char *long_name, int *arg);
 static bool cmdline_parse_string(char *long_name, char **string);
 #endif
+#endif
 
 struct param **params;
 static int num_params;
 #ifndef __LIBRETRO__
+#ifdef __GNUC__
 static struct cmdline cmdline;
 static char def_cmdline[] = DEF_CMDLINE;
+#endif
 #endif
 
 int param_sort_compare(const void *a, const void *b)
@@ -169,6 +177,7 @@ bool cmdline_set_param(char *name, char *module, char *value)
 }
 
 #ifndef __LIBRETRO__
+#ifdef __GNUC__
 void cmdline_build(int argc, char *argv[], int defc, char *defv[])
 {
 #if defined(CONFIG_CMDLINE_EXTEND)
@@ -432,5 +441,6 @@ bool cmdline_parse_string(char *long_name, char **arg)
 		*arg = str;
 	return true;
 }
+#endif
 #endif
 
