@@ -84,17 +84,17 @@ void ram_writeb(uint8_t *ram, uint8_t b, address_t address)
 void ram_writew(uint8_t *ram, uint16_t w, address_t address)
 {
 	uint8_t *mem = ram + address;
-	*mem++ = w;
+	*mem++ = (uint8_t)w;
 	*mem = w >> 8;
 }
 
 void ram_writel(uint8_t *ram, uint32_t l, address_t address)
 {
 	uint8_t *mem = ram + address;
-	*mem++ = l;
-	*mem++ = l >> 8;
-	*mem++ = l >> 16;
-	*mem = l >> 24;
+	*mem++ = (uint8_t)l;
+	*mem++ = (uint8_t)(l >> 8);
+	*mem++ = (uint8_t)(l >> 16);
+	*mem = (uint8_t)(l >> 24);
 }
 
 void memory_region_add(struct region *region)
