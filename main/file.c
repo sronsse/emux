@@ -173,18 +173,18 @@ uint32_t file_get_size(file_handle_t f)
 
 bool file_read(file_handle_t f, void *dst, int offset, int size)
 {
-	int n;
+	size_t n;
 	fseek(f, offset, SEEK_SET);
 	n = fread(dst, 1, size, f);
-	return (n == size);
+	return (n == (size_t)size);
 }
 
 bool file_write(file_handle_t f, void *src, int offset, int size)
 {
-	int n;
+	size_t n;
 	fseek(f, offset, SEEK_SET);
 	n = fwrite(src, 1, size, f);
-	return (n == size);
+	return (n == (size_t)size);
 }
 
 void *file_map(enum path_type type, char *path, int offset, int size)
