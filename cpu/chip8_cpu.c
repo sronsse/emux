@@ -722,7 +722,7 @@ void chip8_deinit(struct cpu_instance *instance)
 	free(chip8);
 }
 
-CPU_START(chip8)
+CPU_START(chip8_cpu)
 	.init = chip8_init,
 	.reset = chip8_reset,
 	.deinit = chip8_deinit
