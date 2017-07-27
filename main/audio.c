@@ -40,21 +40,21 @@ int16_t audio_get_sample(void **buffer)
 		v = *((uint8_t *)*buffer);
 		v -= UCHAR_MAX / 2;
 		v <<= 8;
-		*(uint8_t **)buffer += sizeof(uint8_t);
+		(*(uint8_t **)buffer)++;
 		break;
 	case AUDIO_FORMAT_S8:
 		v = *((int8_t *)*buffer);
 		v <<= 8;
-		*(int8_t **)buffer += sizeof(int8_t);
+		(*(int8_t **)buffer)++;
 		break;
 	case AUDIO_FORMAT_U16:
 		v = *((uint16_t *)*buffer);
 		v -= USHRT_MAX / 2;
-		*(uint16_t **)buffer += sizeof(uint16_t);
+		(*(uint16_t **)buffer)++;
 		break;
 	case AUDIO_FORMAT_S16:
 		v = *((int16_t *)*buffer);
-		*(int16_t **)buffer += sizeof(int16_t);
+		(*(int16_t **)buffer)++;
 		break;
 	}
 
