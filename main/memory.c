@@ -138,6 +138,7 @@ void memory_region_remove_all()
 	/* Free all regions */
 	free(regions);
 	regions = NULL;
+	num_regions = 0;
 }
 
 void dma_channel_add(struct dma_channel *channel)
@@ -184,5 +185,6 @@ void dma_channel_remove_all()
 	/* Free all channels */
 	free(dma_channels);
 	dma_channels = NULL;
+	num_dma_channels = 0;
 }
 
